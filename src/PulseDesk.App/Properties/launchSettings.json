@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "PulseDesk": {
+      "commandName": "Project"
+    },
+    "PulseDesk (demo)": {
+      "commandName": "Project",
+      "commandLineArgs": "--demo"
+    }
+  }
+}

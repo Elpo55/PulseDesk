@@ -1,0 +1,40 @@
+<Page
+    x:Class="PulseDesk.App.Views.HistoryPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    NavigationCacheMode="Required">
+
+    <ScrollViewer>
+        <StackPanel
+            MaxWidth="{StaticResource PageMaxWidth}"
+            Padding="{StaticResource PagePadding}"
+            Spacing="12">
+            <StackPanel>
+                <TextBlock Style="{StaticResource PageTitleTextStyle}" Text="History" />
+                <TextBlock Style="{StaticResource PageSubtitleTextStyle}" Text="Important events over time" />
+            </StackPanel>
+
+            <Border Style="{StaticResource CardStyle}" Padding="24">
+                <Grid ColumnSpacing="20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon FontSize="40" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" Glyph="&#xE81C;" VerticalAlignment="Top" />
+                    <StackPanel Grid.Column="1" Spacing="8">
+                        <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Event history is coming in the next version" />
+                        <TextBlock Style="{StaticResource BodyTextBlockStyle}" TextWrapping="Wrap">
+                            This page will list events such as "CPU usage exceeded 90%", "Disk C: exceeded 85%" or
+                            "System resumed from sleep", with filters, retention settings (1 to 90 days) and the option
+                            to turn individual event types off. Events will be stored locally, aggregated, and never uploaded.
+                        </TextBlock>
+                        <TextBlock Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap">
+                            Today, the Dashboard's System health panel already evaluates the same thresholds in real time,
+                            and every chart keeps up to 30 minutes of history in memory.
+                        </TextBlock>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

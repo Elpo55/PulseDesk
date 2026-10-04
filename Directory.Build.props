@@ -1,0 +1,37 @@
+<Project>
+
+  <!--
+    Product identity: the single source of truth for name, version, author, URL and license.
+    These values are stamped into every assembly and read at runtime by PulseDesk.Core.AppInfo.
+    Do not duplicate them anywhere else in the code base.
+  -->
+  <PropertyGroup Label="Product identity">
+    <Product>PulseDesk</Product>
+    <Version>0.1.0</Version>
+    <Authors>Elpo55</Authors>
+    <Company>$(Authors)</Company>
+    <Copyright>Copyright (c) 2026 $(Authors)</Copyright>
+    <Description>A lightweight, local-first Windows system dashboard.</Description>
+    <PulseDeskProjectUrl>https://github.com/Elpo55/PulseDesk</PulseDeskProjectUrl>
+    <PulseDeskLicense>MIT</PulseDeskLicense>
+  </PropertyGroup>
+
+  <ItemGroup Label="Product identity metadata">
+    <AssemblyMetadata Include="PulseDesk.ProjectUrl" Value="$(PulseDeskProjectUrl)" />
+    <AssemblyMetadata Include="PulseDesk.License" Value="$(PulseDeskLicense)" />
+    <AssemblyMetadata Include="PulseDesk.Authors" Value="$(Authors)" />
+  </ItemGroup>
+
+  <PropertyGroup Label="Build">
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <!-- CI builds must stay warning-free. GitHub Actions sets CI=true. -->
+    <TreatWarningsAsErrors Condition="'$(CI)' == 'true'">true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+</Project>

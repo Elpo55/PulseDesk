@@ -1,0 +1,120 @@
+<Page
+    x:Class="PulseDesk.App.Views.StoragePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:PulseDesk.App.Controls"
+    xmlns:vm="using:PulseDesk.App.ViewModels"
+    NavigationCacheMode="Required">
+
+    <ScrollViewer>
+        <StackPanel
+            MaxWidth="{StaticResource PageMaxWidth}"
+            Padding="{StaticResource PagePadding}"
+            Spacing="12">
+
+            <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource PageTitleTextStyle}" Text="Storage" />
+                    <TextBlock Style="{StaticResource PageSubtitleTextStyle}" Text="{x:Bind ViewModel.Summary, Mode=OneWay}" />
+                </StackPanel>
+                <Button
+                    Grid.Column="1"
+                    VerticalAlignment="Center"
+                    AutomationProperties.Name="Refresh"
+                    Command="{x:Bind ViewModel.RefreshCommand}"
+                    ToolTipService.ToolTip="Refresh now">
+                    <FontIcon FontSize="14" Glyph="&#xE72C;" />
+                </Button>
+            </Grid>
+
+            <InfoBar
+                IsClosable="False"
+                IsOpen="{x:Bind ViewModel.IsUnavailable, Mode=OneWay}"
+                Message="Volume information could not be read. Details are in the log file."
+                Severity="Warning" />
+
+            <ItemsControl ItemsSource="{x:Bind ViewModel.Drives}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <controls:AdaptiveGridPanel MinItemWidth="340" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:DriveItemViewModel">
+                        <Border Style="{StaticResource CardStyle}">
+                            <StackPanel Spacing="12">
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <FontIcon FontSize="28" Foreground="{ThemeResource DiskAccentBrush}" Glyph="&#xEDA2;" />
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Style="{StaticResource CardHeaderTextStyle}" Text="{x:Bind Title, Mode=OneWay}" />
+                                        <TextBlock Style="{StaticResource LabelTextStyle}" Text="{x:Bind Details, Mode=OneWay}" />
+                                    </StackPanel>
+                                    <Border
+                                        Grid.Column="2"
+                                        Padding="8,2"
+                                        VerticalAlignment="Top"
+                                        Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                        CornerRadius="{StaticResource ControlCornerRadius}"
+                                        Visibility="{x:Bind IsSystemDrive, Mode=OneWay}">
+                                        <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Text="Windows" />
+                                    </Border>
+                                </Grid>
+
+                                <StackPanel Spacing="4">
+                                    <controls:LevelProgressBar Level="{x:Bind Level, Mode=OneWay}" Value="{x:Bind UsedPercent, Mode=OneWay}" />
+                                    <TextBlock Style="{StaticResource LabelTextStyle}" Text="{x:Bind UsageText, Mode=OneWay}" />
+                                </StackPanel>
+
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition />
+                                        <ColumnDefinition />
+                                        <ColumnDefinition />
+                                    </Grid.ColumnDefinitions>
+                                    <controls:StatItem Label="Used" Value="{x:Bind Used, Mode=OneWay}" />
+                                    <controls:StatItem Grid.Column="1" Label="Free" Value="{x:Bind Free, Mode=OneWay}" />
+                                    <controls:StatItem Grid.Column="2" Label="Total" Value="{x:Bind Total, Mode=OneWay}" />
+                                </Grid>
+
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition />
+                                        <ColumnDefinition />
+                                        <ColumnDefinition />
+                                    </Grid.ColumnDefinitions>
+                                    <controls:StatItem Label="Active time" Value="{x:Bind ActiveTime, Mode=OneWay}" />
+                                    <controls:StatItem Grid.Column="1" Label="Read" Value="{x:Bind Read, Mode=OneWay}" />
+                                    <controls:StatItem Grid.Column="2" Label="Write" Value="{x:Bind Write, Mode=OneWay}" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Storage analyzer" />
+            <Border Style="{StaticResource CardStyle}">
+                <Grid ColumnSpacing="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon FontSize="24" Glyph="&#xE8B7;" VerticalAlignment="Top" />
+                    <StackPanel Grid.Column="1" Spacing="4">
+                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Find large folders — planned" />
+                        <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="A future version will measure folder sizes on demand to show where space goes. It will be read-only: PulseDesk never deletes files. Network drives are not listed, because querying a disconnected drive can block for a long time." />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</Page>
