@@ -82,6 +82,16 @@ through any documented Windows API without a third-party kernel driver, which Pu
 install. See [docs/architecture.md](docs/architecture.md#where-the-numbers-come-from) for the data source
 of every metric.
 
+## Install
+
+Download the installer from the [latest release](https://github.com/Elpo55/PulseDesk/releases/latest):
+`PulseDesk-<version>-setup-x64.exe` (or `-arm64` for Windows on ARM), run it, then start PulseDesk from the Start
+menu. It installs for all users by default; choose **Install for me only** on the first screen to install without
+administrator rights. Uninstall it from Settings › Apps.
+
+The installer is not code-signed yet: if SmartScreen shows "Windows protected your PC", click **More info**, then
+**Run anyway**, and compare the file with `SHA256SUMS.txt` from the release.
+
 ## Requirements
 
 - Windows 10 version 1809 (build 17763) or later, Windows 11 recommended; x64 or ARM64

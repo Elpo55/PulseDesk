@@ -55,6 +55,20 @@ dotnet publish src/PulseDesk.App -c Release -r win-x64 --self-contained -o artif
 The output folder runs on any Windows 10 1809+ PC without installing .NET or the Windows App SDK.
 Use `-r win-arm64` for ARM64.
 
+### Installer and release
+
+`installer/PulseDesk.iss` ([Inno Setup 6](https://jrsoftware.org/isinfo.php)) packages that folder into a setup program
+(Program Files or per-user install, Start menu shortcut, uninstaller in Settings › Apps):
+
+```powershell
+dotnet publish src/PulseDesk.App -c Release -r win-x64 --self-contained -o artifacts/publish/win-x64
+& "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" /DAppVersion=1.0.0 /DArch=x64 installer\PulseDesk.iss
+```
+
+The installer lands in `artifacts/installer`. To publish a release, set `<Version>` in `Directory.Build.props`, add
+`docs/release-notes/v<version>.md`, then push a `v<version>` tag: `.github/workflows/release.yml` runs the tests, builds the
+x64 and ARM64 installers with their SHA-256 checksums and creates the GitHub release.
+
 ## Conventions
 
 - **Layers**: Core stays platform-agnostic. Windows APIs belong in Infrastructure. WinUI types belong in App.

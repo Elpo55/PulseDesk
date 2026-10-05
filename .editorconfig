@@ -16,6 +16,11 @@ indent_size = 4
 [*.md]
 trim_trailing_whitespace = false
 
+[*.iss]
+# Inno Setup reads non-ASCII text (the French messages) correctly only from UTF-8 with a BOM.
+charset = utf-8-bom
+indent_size = 2
+
 [*.cs]
 # Namespaces and usings
 csharp_style_namespace_declarations = file_scoped:warning

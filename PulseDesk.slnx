@@ -7,6 +7,9 @@
     <File Path="README.md" />
     <File Path="IMPLEMENTATION_NOTES.md" />
   </Folder>
+  <Folder Name="/installer/">
+    <File Path="installer/PulseDesk.iss" />
+  </Folder>
   <Folder Name="/docs/">
     <File Path="docs/architecture.md" />
     <File Path="docs/development.md" />

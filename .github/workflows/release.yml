@@ -1,0 +1,91 @@
+name: Release
+
+# Pushing a version tag (v1.2.3) builds the installers and publishes the GitHub release.
+# The tag must match <Version> in Directory.Build.props; release notes come from docs/release-notes/<tag>.md.
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    # WinUI 3 and the Windows performance APIs require a Windows runner.
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Check the tag matches the product version
+        shell: pwsh
+        run: |
+          $version = '${{ github.ref_name }}'.TrimStart('v')
+          $declared = ([xml](Get-Content Directory.Build.props)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          if ($declared -ne $version) { throw "Tag $version does not match Directory.Build.props version $declared." }
+          if (-not (Test-Path "docs/release-notes/${{ github.ref_name }}.md")) { throw "Missing release notes docs/release-notes/${{ github.ref_name }}.md." }
+          "VERSION=$version" >> $env:GITHUB_ENV
+
+      - name: Test
+        run: dotnet test --project src/PulseDesk.Tests --configuration Release
+
+      - name: Publish
+        shell: pwsh
+        run: |
+          foreach ($arch in 'x64', 'arm64') {
+            dotnet publish src/PulseDesk.App --configuration Release --runtime "win-$arch" --self-contained --output "artifacts/publish/win-$arch"
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          }
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) {
+            choco install innosetup --no-progress -y
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          }
+
+      - name: Build installers
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          foreach ($arch in 'x64', 'arm64') {
+            & $iscc /Q "/DAppVersion=$env:VERSION" "/DArch=$arch" installer/PulseDesk.iss
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          }
+
+          Get-ChildItem artifacts/installer/*.exe |
+            Get-FileHash -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash.ToLowerInvariant())  $(Split-Path $_.Path -Leaf)" } |
+            Set-Content artifacts/installer/SHA256SUMS.txt -Encoding ascii
+          Get-Content artifacts/installer/SHA256SUMS.txt
+
+      # One-time cleanup: 1.0.0 replaces an earlier release published without installers.
+      - name: Remove the placeholder release
+        if: github.ref_name == 'v1.0.0'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view PulseDesk *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release delete PulseDesk --cleanup-tag --yes
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          }
+          exit 0
+
+      - name: Publish the release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $files = @(Get-ChildItem artifacts/installer/*.exe | ForEach-Object FullName) + 'artifacts/installer/SHA256SUMS.txt'
+          gh release create '${{ github.ref_name }}' @files --verify-tag --title "PulseDesk $env:VERSION" --notes-file 'docs/release-notes/${{ github.ref_name }}.md'
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
