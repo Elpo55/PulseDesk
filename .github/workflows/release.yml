@@ -67,20 +67,6 @@ jobs:
             Set-Content artifacts/installer/SHA256SUMS.txt -Encoding ascii
           Get-Content artifacts/installer/SHA256SUMS.txt
 
-      # One-time cleanup: 1.0.0 replaces an earlier release published without installers.
-      - name: Remove the placeholder release
-        if: github.ref_name == 'v1.0.0'
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release view PulseDesk *> $null
-          if ($LASTEXITCODE -eq 0) {
-            gh release delete PulseDesk --cleanup-tag --yes
-            if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          }
-          exit 0
-
       - name: Publish the release
         shell: pwsh
         env:
