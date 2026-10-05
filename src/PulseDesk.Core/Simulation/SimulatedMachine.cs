@@ -267,6 +267,7 @@ public sealed class SimulatedMachine
             {
                 ParentProcessId = ParentId,
                 StartTime = StartTime,
+                ExecutablePath = IsSystem ? null : $@"C:\Demo\{Path.GetFileNameWithoutExtension(Name)}\{Name}",
                 CpuPercent = cpu,
                 PrivateWorkingSetBytes = memory,
                 WorkingSetBytes = memory + (memory / 3),

@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using PulseDesk.Core.Metrics;
 using Windows.Foundation;
@@ -25,6 +26,18 @@ public sealed partial class TimeSeriesChart : UserControl
 
     public static readonly DependencyProperty ShowAxisLabelsProperty = DependencyProperty.Register(
         nameof(ShowAxisLabels), typeof(bool), typeof(TimeSeriesChart), new PropertyMetadata(true));
+
+    /// <summary>Time of the cursor line (a <see cref="DateTimeOffset"/>), or null for none.</summary>
+    public static readonly DependencyProperty CursorTimeProperty = DependencyProperty.Register(
+        nameof(CursorTime), typeof(object), typeof(TimeSeriesChart), new PropertyMetadata(null, OnCursorChanged));
+
+    /// <summary>Times drawn as small ticks along the top edge (events), or null for none.</summary>
+    public static readonly DependencyProperty MarkersProperty = DependencyProperty.Register(
+        nameof(Markers), typeof(object), typeof(TimeSeriesChart), new PropertyMetadata(null, OnChanged));
+
+    /// <summary>When true, clicking or dragging on the plot raises <see cref="TimeSelected"/>.</summary>
+    public static readonly DependencyProperty IsTimeSelectionEnabledProperty = DependencyProperty.Register(
+        nameof(IsTimeSelectionEnabled), typeof(bool), typeof(TimeSeriesChart), new PropertyMetadata(false));
 
     /// <summary>A gap longer than this many average sampling intervals breaks the line.</summary>
     private const double GapFactor = 4;
@@ -59,7 +72,99 @@ public sealed partial class TimeSeriesChart : UserControl
         set => SetValue(ShowAxisLabelsProperty, value);
     }
 
+    public DateTimeOffset? CursorTime
+    {
+        get => GetValue(CursorTimeProperty) as DateTimeOffset?;
+        set => SetValue(CursorTimeProperty, value);
+    }
+
+    public IReadOnlyList<DateTimeOffset>? Markers
+    {
+        get => GetValue(MarkersProperty) as IReadOnlyList<DateTimeOffset>;
+        set => SetValue(MarkersProperty, value);
+    }
+
+    public bool IsTimeSelectionEnabled
+    {
+        get => (bool)GetValue(IsTimeSelectionEnabledProperty);
+        set => SetValue(IsTimeSelectionEnabledProperty, value);
+    }
+
+    /// <summary>Raised when the user clicks or drags on the plot (only when <see cref="IsTimeSelectionEnabled"/>).</summary>
+    public event EventHandler<DateTimeOffset>? TimeSelected;
+
     private static void OnChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) => ((TimeSeriesChart)d).Render();
+
+    private static void OnCursorChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) => ((TimeSeriesChart)d).UpdateCursor();
+
+    private void OnPlotPointerPressed(object sender, PointerRoutedEventArgs e) => SelectTime(e);
+
+    private void OnPlotPointerMoved(object sender, PointerRoutedEventArgs e)
+    {
+        if (e.Pointer.IsInContact)
+        {
+            SelectTime(e);
+        }
+    }
+
+    private void SelectTime(PointerRoutedEventArgs e)
+    {
+        if (!IsTimeSelectionEnabled || Data is not { } data || Plot.ActualWidth <= 1)
+        {
+            return;
+        }
+
+        var x = Math.Clamp(e.GetCurrentPoint(Plot).Position.X / Plot.ActualWidth, 0, 1);
+        TimeSelected?.Invoke(this, data.End - data.Window + (data.Window * x));
+        e.Handled = true;
+    }
+
+    /// <summary>Moves the cursor line without redrawing the series (cheap enough for dragging).</summary>
+    private void UpdateCursor()
+    {
+        var data = Data;
+        var width = Plot.ActualWidth;
+        if (CursorTime is not { } cursor || data is null || width <= 1 || data.Window <= TimeSpan.Zero)
+        {
+            CursorLine.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var position = (cursor - (data.End - data.Window)) / data.Window;
+        if (position is < 0 or > 1)
+        {
+            CursorLine.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        CursorTransform.X = (position * width) - 1;
+        CursorLine.Visibility = Visibility.Visible;
+    }
+
+    private void RenderMarkers(TimeSeriesData data, double width)
+    {
+        if (Markers is not { Count: > 0 } markers)
+        {
+            MarkerPath.Data = null;
+            return;
+        }
+
+        var geometry = new GeometryGroup();
+        var start = data.End - data.Window;
+        foreach (var marker in markers)
+        {
+            var position = (marker - start) / data.Window;
+            if (position is < 0 or > 1)
+            {
+                continue;
+            }
+
+            var x = position * width;
+            geometry.Children.Add(new LineGeometry { StartPoint = new Point(x, 0), EndPoint = new Point(x, 8) });
+        }
+
+        MarkerPath.Data = geometry;
+    }
 
     private static void OnBrushChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
@@ -82,7 +187,8 @@ public sealed partial class TimeSeriesChart : UserControl
         var height = Plot.ActualHeight;
         if (data is null || width <= 1 || height <= 1 || data.Window <= TimeSpan.Zero)
         {
-            AreaPath.Data = LinePath.Data = SecondaryLinePath.Data = null;
+            AreaPath.Data = LinePath.Data = SecondaryLinePath.Data = MarkerPath.Data = null;
+            UpdateCursor();
             return;
         }
 
@@ -96,6 +202,8 @@ public sealed partial class TimeSeriesChart : UserControl
         SecondaryLinePath.Data = data.Secondary is { Count: > 0 } secondary
             ? ToGeometry(BuildFigures(secondary, data, width, height, maxPoints), closed: false, height)
             : null;
+        RenderMarkers(data, width);
+        UpdateCursor();
     }
 
     /// <summary>Converts samples to screen points, split into runs wherever the data has a gap.</summary>

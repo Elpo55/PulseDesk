@@ -13,6 +13,9 @@ public static class SettingsValidator
     /// <summary>Longest chart window, which sizes the in-memory history.</summary>
     public static TimeSpan MaxChartWindow => TimeSpan.FromSeconds(ChartWindowOptions[^1]);
 
+    /// <summary>Durations offered for the in-memory replay buffer, in minutes.</summary>
+    public static IReadOnlyList<int> ReplayMinuteOptions { get; } = [5, 10, 15, 30, 60];
+
     /// <summary>Fastest allowed sampling interval for any metric.</summary>
     public const int MinIntervalMs = 500;
 
@@ -27,6 +30,8 @@ public static class SettingsValidator
             General = Normalize(settings.General ?? new GeneralSettings()),
             Monitoring = Normalize(settings.Monitoring ?? new MonitoringSettings()),
             Alerts = Normalize(settings.Alerts ?? new AlertSettings()),
+            SmartAlerts = Normalize(settings.SmartAlerts ?? new SmartAlertSettings()),
+            History = Normalize(settings.History ?? new HistorySettings()),
             Diagnostics = Normalize(settings.Diagnostics ?? new DiagnosticsSettings()),
             Window = Normalize(settings.Window ?? new WindowSettings()),
         };
@@ -71,6 +76,35 @@ public static class SettingsValidator
             DiskCriticalPercent = diskCritical,
             ProcessMemoryWarningPercent = ClampPercent(alerts.ProcessMemoryWarningPercent, 30),
             ProcessCpuWarningPercent = ClampPercent(alerts.ProcessCpuWarningPercent, 50),
+        };
+    }
+
+    private static SmartAlertSettings Normalize(SmartAlertSettings alerts) => alerts with
+    {
+        CpuPercent = Math.Clamp(ClampPercent(alerts.CpuPercent, 90), 50, 100),
+        CpuMinutes = Math.Clamp(alerts.CpuMinutes, 1, 60),
+        MemoryPercent = Math.Clamp(ClampPercent(alerts.MemoryPercent, 90), 50, 100),
+        MemoryMinutes = Math.Clamp(alerts.MemoryMinutes, 1, 60),
+        DiskActivePercent = Math.Clamp(ClampPercent(alerts.DiskActivePercent, 95), 50, 100),
+        DiskMinutes = Math.Clamp(alerts.DiskMinutes, 1, 60),
+        AppCpuPercent = Math.Clamp(ClampPercent(alerts.AppCpuPercent, 25), 5, 100),
+        AppCpuMinutes = Math.Clamp(alerts.AppCpuMinutes, 1, 60),
+        MemoryGrowthPoints = double.IsFinite(alerts.MemoryGrowthPoints) ? Math.Clamp(alerts.MemoryGrowthPoints, 3, 50) : 10,
+        MemoryGrowthMinutes = Math.Clamp(alerts.MemoryGrowthMinutes, 10, 120),
+        UnusualMinutes = Math.Clamp(alerts.UnusualMinutes, 2, 60),
+        LowDiskFreePercent = double.IsFinite(alerts.LowDiskFreePercent) ? Math.Clamp(alerts.LowDiskFreePercent, 1, 50) : 10,
+        CooldownMinutes = Math.Clamp(alerts.CooldownMinutes, 1, 240),
+        MaxNewAlertsPerHour = Math.Clamp(alerts.MaxNewAlertsPerHour, 1, 60),
+    };
+
+    private static HistorySettings Normalize(HistorySettings history)
+    {
+        var detail = Math.Clamp(history.DetailRetentionDays, 1, 31);
+        return history with
+        {
+            ReplayMinutes = Nearest(ReplayMinuteOptions, history.ReplayMinutes),
+            DetailRetentionDays = detail,
+            SummaryRetentionDays = Math.Max(Math.Clamp(history.SummaryRetentionDays, 7, 365), detail),
         };
     }
 

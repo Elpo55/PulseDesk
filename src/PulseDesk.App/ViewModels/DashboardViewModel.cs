@@ -3,6 +3,9 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PulseDesk.App.Controls;
 using PulseDesk.App.Services;
+using PulseDesk.Core.Alerts;
+using PulseDesk.Core.Analysis;
+using PulseDesk.Core.Diagnosis;
 using PulseDesk.Core.Formatting;
 using PulseDesk.Core.Interfaces;
 using PulseDesk.Core.Metrics;
@@ -12,22 +15,53 @@ using PulseDesk.Core.Settings;
 
 namespace PulseDesk.App.ViewModels;
 
-/// <summary>The default page: the state of the PC at a glance.</summary>
+/// <summary>
+/// The default page: "how is my PC?" at a glance. An overall status, the key metrics with mini-graphs, the
+/// insights worth knowing now, and one-click access to Diagnosis, Replay, Changes, App Impact and Alerts.
+/// </summary>
 public sealed partial class DashboardViewModel : PageViewModel
 {
     private const int TopCount = 5;
+    private static readonly TimeSpan SparklineWindow = TimeSpan.FromMinutes(2);
+    private static readonly TimeSpan InsightRefreshInterval = TimeSpan.FromSeconds(15);
 
     private readonly SettingsService _settings;
     private readonly ISystemInfoProvider _systemInfo;
     private readonly NavigationService _navigation;
+    private readonly DiagnosisService _diagnosis;
+    private readonly AlertService _alerts;
+    private readonly BaselineService _baseline;
+    private readonly IPerformanceHistory _history;
+    private readonly InsightNavigator _navigator;
     private SystemInformation? _information;
+    private long _lastInsights;
+    private bool _insightsRunning;
 
-    public DashboardViewModel(UiMetricsHub hub, SettingsService settings, ISystemInfoProvider systemInfo, NavigationService navigation)
+    public DashboardViewModel(
+        UiMetricsHub hub,
+        SettingsService settings,
+        ISystemInfoProvider systemInfo,
+        NavigationService navigation,
+        DiagnosisService diagnosis,
+        AlertService alerts,
+        BaselineService baseline,
+        IPerformanceHistory history,
+        InsightNavigator navigator)
         : base(hub)
     {
         _settings = settings;
         _systemInfo = systemInfo;
         _navigation = navigation;
+        _diagnosis = diagnosis;
+        _alerts = alerts;
+        _baseline = baseline;
+        _history = history;
+        _navigator = navigator;
+        StatusText = HealthGlyphs.Text(PcHealthState.Unknown);
+        StatusDetail = DiagnosisReport.Empty.Headline;
+        StatusGlyph = HealthGlyphs.Unknown;
+        StatusBrushKey = "StatusUnknownBrush";
+        AlertsText = "Alerts";
         Subtitle = string.Empty;
         HealthSummary = "Checking…";
         CpuStats = string.Empty;
@@ -45,6 +79,40 @@ public sealed partial class DashboardViewModel : PageViewModel
 
     public MetricTileViewModel Disk { get; } = new();
 
+    public MetricTileViewModel Network { get; } = new();
+
+    public ObservableCollection<InsightItemViewModel> Insights { get; } = [];
+
+    [ObservableProperty]
+    public partial string StatusText { get; set; }
+
+    [ObservableProperty]
+    public partial string StatusDetail { get; set; }
+
+    [ObservableProperty]
+    public partial string StatusGlyph { get; set; }
+
+    [ObservableProperty]
+    public partial string StatusBrushKey { get; set; }
+
+    [ObservableProperty]
+    public partial string AlertsText { get; set; }
+
+    [ObservableProperty]
+    public partial TimeSeriesData? CpuSpark { get; set; }
+
+    [ObservableProperty]
+    public partial TimeSeriesData? MemorySpark { get; set; }
+
+    [ObservableProperty]
+    public partial TimeSeriesData? GpuSpark { get; set; }
+
+    [ObservableProperty]
+    public partial TimeSeriesData? DiskSpark { get; set; }
+
+    [ObservableProperty]
+    public partial TimeSeriesData? NetworkSpark { get; set; }
+
     public ObservableCollection<HealthItemViewModel> HealthItems { get; } = [];
 
     public ObservableCollection<TopProcessItemViewModel> TopProcesses { get; } = [];
@@ -53,9 +121,6 @@ public sealed partial class DashboardViewModel : PageViewModel
 
     [ObservableProperty]
     public partial string Subtitle { get; set; }
-
-    [ObservableProperty]
-    public partial HealthStatus OverallHealth { get; set; }
 
     [ObservableProperty]
     public partial string HealthSummary { get; set; }
@@ -118,12 +183,31 @@ public sealed partial class DashboardViewModel : PageViewModel
     [RelayCommand]
     private void OpenPerformance() => _navigation.Navigate(AppPage.Performance);
 
+    [RelayCommand]
+    private void OpenDiagnosis() => _navigation.Navigate(AppPage.Diagnosis);
+
+    [RelayCommand]
+    private void OpenReplay() => _navigation.Navigate(AppPage.Replay);
+
+    [RelayCommand]
+    private void OpenChanges() => _navigation.Navigate(AppPage.Changes);
+
+    [RelayCommand]
+    private void OpenAppImpact() => _navigation.Navigate(AppPage.AppImpact);
+
+    [RelayCommand]
+    private void OpenAlerts() => _navigation.Navigate(AppPage.Alerts);
+
     protected override async void OnActivated()
     {
         SelectedWindow = ChartWindowOption.FromSeconds(_settings.Current.Monitoring.ChartWindowSeconds);
+        _alerts.Changed += OnAlertsChanged;
+        _ = RefreshInsightsAsync();
         _information ??= await _systemInfo.GetAsync(CancellationToken.None);
         UpdateSubtitle(Hub.Snapshot);
     }
+
+    protected override void OnDeactivated() => _alerts.Changed -= OnAlertsChanged;
 
     protected override void Update(SystemSnapshot snapshot, MetricKind updated)
     {
@@ -157,15 +241,26 @@ public sealed partial class DashboardViewModel : PageViewModel
             UpdateSubtitle(snapshot);
         }
 
+        if ((updated & MetricKind.Network) != 0)
+        {
+            UpdateNetwork(snapshot);
+        }
+
         if ((updated & (MetricKind.Cpu | MetricKind.Memory)) != 0)
         {
             UpdateCharts(snapshot);
+        }
+
+        UpdateSparklines(snapshot, updated);
+
+        if ((updated & MetricKind.Cpu) != 0 && Environment.TickCount64 - _lastInsights >= InsightRefreshInterval.TotalMilliseconds)
+        {
+            _ = RefreshInsightsAsync();
         }
     }
 
     protected override void OnHealthChanged(HealthReport report)
     {
-        OverallHealth = report.Overall;
         var problems = report.Indicators.Count(i => i.Status is HealthStatus.Warning or HealthStatus.Critical);
         HealthSummary = report.Indicators.Count == 0 ? "Checking…"
             : problems == 0 ? "No issue detected"
@@ -176,6 +271,123 @@ public sealed partial class DashboardViewModel : PageViewModel
         foreach (var indicator in report.Indicators.OrderByDescending(i => i.Status))
         {
             HealthItems.Add(new HealthItemViewModel(indicator.Status, indicator.Summary, indicator.Detail));
+        }
+    }
+
+    /// <summary>Re-runs the diagnosis in the background and updates the status and insights.</summary>
+    private async Task RefreshInsightsAsync()
+    {
+        if (_insightsRunning)
+        {
+            return;
+        }
+
+        _insightsRunning = true;
+        _lastInsights = Environment.TickCount64;
+        try
+        {
+            var report = await _diagnosis.RunAsync(CancellationToken.None);
+            if (IsActive)
+            {
+                ApplyInsights(report);
+            }
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            // The diagnosis service logs its own failures; the dashboard keeps working without insights.
+            StatusDetail = "Diagnosis not available";
+        }
+        finally
+        {
+            _insightsRunning = false;
+        }
+    }
+
+    private void ApplyInsights(DiagnosisReport report)
+    {
+        var alerts = _alerts.Alerts;
+        var state = DashboardInsights.State(report, alerts);
+        StatusText = HealthGlyphs.Text(state);
+        (StatusGlyph, StatusBrushKey) = HealthGlyphs.For(state);
+        StatusDetail = report.Headline;
+
+        var active = alerts.Count(a => a.IsActive);
+        var unseen = alerts.Count(a => a.Status == AlertStatus.New);
+        AlertsText = unseen > 0 ? $"Alerts ({unseen} new)" : active > 0 ? $"Alerts ({active} active)" : "Alerts";
+
+        var insights = DashboardInsights.Build(report, alerts, _history.GetRecent(TimeSpan.FromMinutes(10)), _baseline.Current);
+        CollectionSync.Resize(Insights, insights.Count, _ => new InsightItemViewModel(i => _navigator.Open(i.Action, i.AppKey)), (item, i) => item.Set(insights[i]));
+    }
+
+    private void OnAlertsChanged(object? sender, EventArgs e) => _lastInsights = 0;
+
+    private void UpdateNetwork(SystemSnapshot snapshot)
+    {
+        if (snapshot.Network is not { } network)
+        {
+            var off = !_settings.Current.Monitoring.NetworkEnabled;
+            Network.Set(
+                off ? "Off" : Display.Format<NetworkMetrics>(snapshot, MetricKind.Network, null, _ => string.Empty),
+                off ? "Network monitoring is turned off" : string.Empty,
+                string.Empty,
+                double.NaN);
+            return;
+        }
+
+        var connectivity = network.Connectivity switch
+        {
+            NetworkConnectivity.InternetAccess => "Internet access",
+            NetworkConnectivity.ConstrainedInternetAccess => "Limited Internet access",
+            NetworkConnectivity.LocalAccess => "No Internet access",
+            NetworkConnectivity.None => "Not connected",
+            _ => "Connectivity unknown",
+        };
+        var hasRates = network.Interfaces.Any(i => i.ReceiveBitsPerSecond is not null);
+        Network.Set(
+            hasRates ? $"↓ {MetricFormatter.BitsPerSecond(network.ReceiveBitsPerSecond)}" : MetricFormatter.Pending,
+            hasRates ? $"↑ {MetricFormatter.BitsPerSecond(network.SendBitsPerSecond)}" : string.Empty,
+            network.PrimaryInterface is { } primary ? $"{primary.Name} · {connectivity}" : connectivity,
+            double.NaN);
+    }
+
+    /// <summary>Mini-graphs of the last two minutes, from the chart history (no extra collection).</summary>
+    private void UpdateSparklines(SystemSnapshot snapshot, MetricKind updated)
+    {
+        if (snapshot.Timestamp == default)
+        {
+            return;
+        }
+
+        var history = Hub.Monitor.History;
+        var since = snapshot.Timestamp - SparklineWindow;
+        TimeSeriesData Spark(string key, double maximum) =>
+            new(history.GetSamples(key, since), null, snapshot.Timestamp, SparklineWindow, maximum, string.Empty, string.Empty);
+
+        if ((updated & MetricKind.Cpu) != 0)
+        {
+            CpuSpark = Spark(SeriesKeys.Cpu, 100);
+        }
+
+        if ((updated & MetricKind.Memory) != 0)
+        {
+            MemorySpark = Spark(SeriesKeys.Memory, 100);
+        }
+
+        if ((updated & MetricKind.Gpu) != 0)
+        {
+            GpuSpark = snapshot.PrimaryGpu is { } gpu ? Spark(SeriesKeys.Gpu(gpu.AdapterId), 100) : null;
+        }
+
+        if ((updated & MetricKind.DiskActivity) != 0)
+        {
+            DiskSpark = snapshot.SystemDrive is { } drive ? Spark(SeriesKeys.DiskActive(drive.Letter), 100) : null;
+        }
+
+        if ((updated & MetricKind.Network) != 0)
+        {
+            var receive = history.GetSamples(SeriesKeys.NetworkReceive, since);
+            var peak = receive.Select(s => s.Value).DefaultIfEmpty(0).Max();
+            NetworkSpark = new TimeSeriesData(receive, null, snapshot.Timestamp, SparklineWindow, ChartScale.NiceMaximum(peak * 1.1, 100_000), string.Empty, string.Empty);
         }
     }
 
@@ -293,5 +505,45 @@ public sealed partial class DashboardViewModel : PageViewModel
         Subtitle = snapshot.System is { } system
             ? $"{name} · Up {MetricFormatter.DurationCompact(system.Uptime)}"
             : name;
+    }
+}
+
+/// <summary>One insight on the dashboard.</summary>
+public sealed partial class InsightItemViewModel : ObservableObject
+{
+    private readonly Action<InsightItemViewModel> _open;
+
+    public InsightItemViewModel(Action<InsightItemViewModel> open)
+    {
+        _open = open;
+        Text = Glyph = BrushKey = string.Empty;
+    }
+
+    public DiagnosisAction Action { get; private set; }
+
+    public string? AppKey { get; private set; }
+
+    [ObservableProperty]
+    public partial string Text { get; set; }
+
+    [ObservableProperty]
+    public partial string Glyph { get; set; }
+
+    [ObservableProperty]
+    public partial string BrushKey { get; set; }
+
+    [ObservableProperty]
+    public partial bool HasAction { get; set; }
+
+    [RelayCommand]
+    private void Open() => _open(this);
+
+    public void Set(Insight insight)
+    {
+        Text = insight.Text;
+        (Glyph, BrushKey) = insight.IsNote ? (InsightDisplay.InfoGlyph, "StatusUnknownBrush") : HealthGlyphs.For(insight.Severity);
+        Action = insight.Action;
+        AppKey = insight.AppKey;
+        HasAction = insight.Action != DiagnosisAction.None;
     }
 }

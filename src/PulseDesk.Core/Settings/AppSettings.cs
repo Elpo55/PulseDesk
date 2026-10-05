@@ -15,6 +15,10 @@ public sealed record AppSettings
 
     public AlertSettings Alerts { get; init; } = new();
 
+    public SmartAlertSettings SmartAlerts { get; init; } = new();
+
+    public HistorySettings History { get; init; } = new();
+
     public DiagnosticsSettings Diagnostics { get; init; } = new();
 
     public WindowSettings Window { get; init; } = new();
@@ -120,6 +124,74 @@ public sealed record AlertSettings
 
     /// <summary>An application using more than this share of total CPU for the CPU sustain time is reported.</summary>
     public double ProcessCpuWarningPercent { get; init; } = 50;
+}
+
+/// <summary>
+/// Rules of the intelligent alerts. Unlike the health thresholds (instant indicators), alerts require a
+/// condition to last for minutes, take the PC's usual behavior into account and are rate-limited.
+/// </summary>
+public sealed record SmartAlertSettings
+{
+    public bool Enabled { get; init; } = true;
+
+    /// <summary>CPU usage that must be sustained for <see cref="CpuMinutes"/>.</summary>
+    public double CpuPercent { get; init; } = 90;
+
+    public int CpuMinutes { get; init; } = 5;
+
+    /// <summary>Memory usage that must be sustained for <see cref="MemoryMinutes"/>.</summary>
+    public double MemoryPercent { get; init; } = 90;
+
+    public int MemoryMinutes { get; init; } = 3;
+
+    /// <summary>Disk active time that must be sustained for <see cref="DiskMinutes"/>.</summary>
+    public double DiskActivePercent { get; init; } = 95;
+
+    public int DiskMinutes { get; init; } = 2;
+
+    /// <summary>Share of total CPU one application must use for <see cref="AppCpuMinutes"/>.</summary>
+    public double AppCpuPercent { get; init; } = 25;
+
+    public int AppCpuMinutes { get; init; } = 5;
+
+    /// <summary>Rise of memory usage (percentage points) over <see cref="MemoryGrowthMinutes"/> that is reported.</summary>
+    public double MemoryGrowthPoints { get; init; } = 10;
+
+    public int MemoryGrowthMinutes { get; init; } = 20;
+
+    /// <summary>Alert when CPU, memory or disk stay above the PC's usual range (needs the baseline).</summary>
+    public bool UnusualActivity { get; init; } = true;
+
+    /// <summary>How long activity must stay unusual before an alert.</summary>
+    public int UnusualMinutes { get; init; } = 8;
+
+    /// <summary>Free space on the system disk, percent of its size, below which an alert is raised.</summary>
+    public double LowDiskFreePercent { get; init; } = 10;
+
+    /// <summary>A condition that ends and comes back within this time reopens the same alert instead of creating a new one.</summary>
+    public int CooldownMinutes { get; init; } = 15;
+
+    /// <summary>At most this many new alerts per hour; extra ones are not raised (and logged).</summary>
+    public int MaxNewAlertsPerHour { get; init; } = 6;
+
+    /// <summary>Show a Windows notification for new warnings and critical alerts.</summary>
+    public bool ShowNotifications { get; init; }
+}
+
+/// <summary>Performance history preferences (replay buffer and long-term local history).</summary>
+public sealed record HistorySettings
+{
+    /// <summary>Record aggregated history to the local database (replay of the last minutes always works).</summary>
+    public bool RecordHistory { get; init; } = true;
+
+    /// <summary>Detailed, in-memory history available in Replay, in minutes.</summary>
+    public int ReplayMinutes { get; init; } = 15;
+
+    /// <summary>How long minute-level data is kept, in days.</summary>
+    public int DetailRetentionDays { get; init; } = 7;
+
+    /// <summary>How long hourly summaries, events, alerts and changes are kept, in days.</summary>
+    public int SummaryRetentionDays { get; init; } = 90;
 }
 
 /// <summary>Minimum level written to the local log files.</summary>

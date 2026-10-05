@@ -8,12 +8,16 @@ namespace PulseDesk.App.Services;
 public enum AppPage
 {
     Dashboard,
+    Diagnosis,
+    Replay,
+    AppImpact,
+    Changes,
+    Alerts,
     Performance,
     Processes,
     Storage,
     Network,
     System,
-    History,
     Settings,
 }
 
@@ -44,12 +48,16 @@ public sealed class NavigationService
     private static Type GetPageType(AppPage page) => page switch
     {
         AppPage.Dashboard => typeof(DashboardPage),
+        AppPage.Diagnosis => typeof(DiagnosisPage),
+        AppPage.Replay => typeof(ReplayPage),
+        AppPage.AppImpact => typeof(AppImpactPage),
+        AppPage.Changes => typeof(ChangesPage),
+        AppPage.Alerts => typeof(AlertsPage),
         AppPage.Performance => typeof(PerformancePage),
         AppPage.Processes => typeof(ProcessesPage),
         AppPage.Storage => typeof(StoragePage),
         AppPage.Network => typeof(NetworkPage),
         AppPage.System => typeof(SystemPage),
-        AppPage.History => typeof(HistoryPage),
         AppPage.Settings => typeof(SettingsPage),
         _ => throw new ArgumentOutOfRangeException(nameof(page)),
     };

@@ -12,7 +12,7 @@
             Padding="{StaticResource PagePadding}"
             Spacing="12">
 
-            <!-- Header with overall health -->
+            <!-- Header: how is my PC? -->
             <Grid ColumnSpacing="16">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -22,23 +22,26 @@
                     <TextBlock Style="{StaticResource PageTitleTextStyle}" Text="Dashboard" />
                     <TextBlock Style="{StaticResource PageSubtitleTextStyle}" Text="{x:Bind ViewModel.Subtitle, Mode=OneWay}" />
                 </StackPanel>
-                <Border
+                <Button
                     Grid.Column="1"
-                    Padding="12,6"
+                    Padding="14,8"
                     VerticalAlignment="Center"
-                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1"
-                    CornerRadius="16">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <controls:HealthGlyph Status="{x:Bind ViewModel.OverallHealth, Mode=OneWay}" />
-                        <TextBlock VerticalAlignment="Center" Text="{x:Bind ViewModel.HealthSummary, Mode=OneWay}" />
+                    AutomationProperties.Name="PC status, open the diagnosis"
+                    Command="{x:Bind ViewModel.OpenDiagnosisCommand}"
+                    CornerRadius="18"
+                    ToolTipService.ToolTip="Open the diagnosis">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <controls:StatusIcon VerticalAlignment="Center" BrushKey="{x:Bind ViewModel.StatusBrushKey, Mode=OneWay}" Glyph="{x:Bind ViewModel.StatusGlyph, Mode=OneWay}" GlyphSize="18" />
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind ViewModel.StatusText, Mode=OneWay}" />
+                            <TextBlock Style="{StaticResource LabelTextStyle}" Text="{x:Bind ViewModel.StatusDetail, Mode=OneWay}" />
+                        </StackPanel>
                     </StackPanel>
-                </Border>
+                </Button>
             </Grid>
 
-            <!-- Key metrics -->
-            <controls:AdaptiveGridPanel MinItemWidth="220">
+            <!-- Performance -->
+            <controls:AdaptiveGridPanel MinItemWidth="200">
                 <controls:MetricCard
                     Title="CPU"
                     AccentBrush="{ThemeResource CpuAccentBrush}"
@@ -46,6 +49,7 @@
                     Glyph="&#xE950;"
                     Percent="{x:Bind ViewModel.Cpu.Percent, Mode=OneWay}"
                     SecondaryDetail="{x:Bind ViewModel.Cpu.SecondaryDetail, Mode=OneWay}"
+                    Sparkline="{x:Bind ViewModel.CpuSpark, Mode=OneWay}"
                     Value="{x:Bind ViewModel.Cpu.Value, Mode=OneWay}" />
                 <controls:MetricCard
                     Title="MEMORY"
@@ -54,6 +58,7 @@
                     Glyph="&#xE964;"
                     Percent="{x:Bind ViewModel.Memory.Percent, Mode=OneWay}"
                     SecondaryDetail="{x:Bind ViewModel.Memory.SecondaryDetail, Mode=OneWay}"
+                    Sparkline="{x:Bind ViewModel.MemorySpark, Mode=OneWay}"
                     Value="{x:Bind ViewModel.Memory.Value, Mode=OneWay}" />
                 <controls:MetricCard
                     Title="GPU"
@@ -62,6 +67,7 @@
                     Glyph="&#xEEA0;"
                     Percent="{x:Bind ViewModel.Gpu.Percent, Mode=OneWay}"
                     SecondaryDetail="{x:Bind ViewModel.Gpu.SecondaryDetail, Mode=OneWay}"
+                    Sparkline="{x:Bind ViewModel.GpuSpark, Mode=OneWay}"
                     Value="{x:Bind ViewModel.Gpu.Value, Mode=OneWay}" />
                 <controls:MetricCard
                     Title="SYSTEM DISK"
@@ -70,8 +76,92 @@
                     Glyph="&#xEDA2;"
                     Percent="{x:Bind ViewModel.Disk.Percent, Mode=OneWay}"
                     SecondaryDetail="{x:Bind ViewModel.Disk.SecondaryDetail, Mode=OneWay}"
+                    Sparkline="{x:Bind ViewModel.DiskSpark, Mode=OneWay}"
                     Value="{x:Bind ViewModel.Disk.Value, Mode=OneWay}" />
+                <controls:MetricCard
+                    Title="NETWORK"
+                    AccentBrush="{ThemeResource NetworkAccentBrush}"
+                    Detail="{x:Bind ViewModel.Network.Detail, Mode=OneWay}"
+                    Glyph="&#xE968;"
+                    Percent="{x:Bind ViewModel.Network.Percent, Mode=OneWay}"
+                    SecondaryDetail="{x:Bind ViewModel.Network.SecondaryDetail, Mode=OneWay}"
+                    Sparkline="{x:Bind ViewModel.NetworkSpark, Mode=OneWay}"
+                    Value="{x:Bind ViewModel.Network.Value, Mode=OneWay}" />
             </controls:AdaptiveGridPanel>
+
+            <!-- Insights and quick actions -->
+            <Grid ColumnSpacing="12" RowSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Border Style="{StaticResource CardStyle}">
+                    <StackPanel Spacing="6">
+                        <TextBlock Style="{StaticResource CardHeaderTextStyle}" Text="Insights" />
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.Insights}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:InsightItemViewModel">
+                                    <Grid Padding="0,4" ColumnSpacing="10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <controls:StatusIcon Margin="0,2,0,0" VerticalAlignment="Top" BrushKey="{x:Bind BrushKey, Mode=OneWay}" Glyph="{x:Bind Glyph, Mode=OneWay}" GlyphSize="14" />
+                                        <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="{x:Bind Text, Mode=OneWay}" TextWrapping="Wrap" />
+                                        <Button
+                                            Grid.Column="2"
+                                            Padding="6,2"
+                                            VerticalAlignment="Center"
+                                            AutomationProperties.Name="Details"
+                                            Command="{x:Bind OpenCommand}"
+                                            Style="{StaticResource SubtleButtonStyle}"
+                                            ToolTipService.ToolTip="Details"
+                                            Visibility="{x:Bind HasAction, Mode=OneWay}">
+                                            <FontIcon FontSize="12" Glyph="&#xE76C;" />
+                                        </Button>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+                <Border Grid.Column="1" MinWidth="220" Style="{StaticResource CardStyle}">
+                    <StackPanel Spacing="6">
+                        <TextBlock Style="{StaticResource CardHeaderTextStyle}" Text="Quick actions" />
+                        <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Command="{x:Bind ViewModel.OpenDiagnosisCommand}" ToolTipService.ToolTip="Why is my PC slow?">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon FontSize="14" Glyph="&#xE95E;" />
+                                <TextBlock Text="Diagnose" />
+                            </StackPanel>
+                        </Button>
+                        <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Command="{x:Bind ViewModel.OpenReplayCommand}" ToolTipService.ToolTip="What happened in the last minutes?">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon FontSize="14" Glyph="&#xE81C;" />
+                                <TextBlock Text="Replay" />
+                            </StackPanel>
+                        </Button>
+                        <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Command="{x:Bind ViewModel.OpenChangesCommand}" ToolTipService.ToolTip="What changed recently?">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon FontSize="14" Glyph="&#xE8AB;" />
+                                <TextBlock Text="View changes" />
+                            </StackPanel>
+                        </Button>
+                        <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Command="{x:Bind ViewModel.OpenAppImpactCommand}" ToolTipService.ToolTip="Which application weighs the most?">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon FontSize="14" Glyph="&#xE9F9;" />
+                                <TextBlock Text="App impact" />
+                            </StackPanel>
+                        </Button>
+                        <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Command="{x:Bind ViewModel.OpenAlertsCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon FontSize="14" Glyph="&#xEA8F;" />
+                                <TextBlock Text="{x:Bind ViewModel.AlertsText, Mode=OneWay}" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Border>
+            </Grid>
 
             <!-- Charts -->
             <controls:AdaptiveGridPanel MinItemWidth="420">
@@ -196,7 +286,7 @@
                         </Grid.RowDefinitions>
                         <StackPanel MinHeight="32">
                             <TextBlock Style="{StaticResource CardHeaderTextStyle}" Text="System health" />
-                            <TextBlock Style="{StaticResource LabelTextStyle}" Text="Technical indicators based on your alert thresholds" />
+                            <TextBlock Style="{StaticResource LabelTextStyle}" Text="{x:Bind ViewModel.HealthSummary, Mode=OneWay}" ToolTipService.ToolTip="Instant indicators based on your health thresholds (Settings)" />
                         </StackPanel>
                         <ItemsControl Grid.Row="1" ItemsSource="{x:Bind ViewModel.HealthItems}">
                             <ItemsControl.ItemTemplate>

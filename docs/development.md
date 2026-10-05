@@ -30,9 +30,10 @@ In Visual Studio, open `PulseDesk.slnx`, set **PulseDesk.App** as the startup pr
 | `--demo` | Use `SimulatedMachine` instead of the Windows providers. The title bar shows "DEMO MODE". |
 | `--tray` | Start hidden in the notification area. |
 | `--startup` | Added by the Run key: applies "Start minimized" / "Start in tray". |
-| `--page=Name` | Open on a page (`Dashboard`, `Performance`, `Processes`, `Storage`, `Network`, `System`, `History`, `Settings`). |
+| `--page=Name` | Open on a page (`Dashboard`, `Diagnosis`, `Replay`, `AppImpact`, `Changes`, `Alerts`, `Performance`, `Processes`, `Storage`, `Network`, `System`, `Settings`). `History` opens Replay. |
 
-Demo mode uses its own single-instance key, so it can run next to a normal instance.
+Demo mode uses its own single-instance key, so it can run next to a normal instance. Its history is kept in
+memory only: simulated data never reaches the real history database.
 
 ### Local data
 
@@ -40,6 +41,7 @@ Demo mode uses its own single-instance key, so it can run next to a normal insta
 | --- | --- |
 | Settings | `%LOCALAPPDATA%\PulseDesk\settings.json` (delete it to reset) |
 | Logs | `%LOCALAPPDATA%\PulseDesk\Logs\pulsedesk-YYYYMMDD.log` |
+| History (performance, application usage, events, alerts, snapshots, changes) | `%LOCALAPPDATA%\PulseDesk\history.db` (SQLite; delete it, or use Settings › History › Delete, to reset) |
 | Start with Windows | `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\PulseDesk` (only when enabled) |
 
 Set *Settings › Diagnostics › Log level* to **Debug** to see every collection failure.

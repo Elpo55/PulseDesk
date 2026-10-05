@@ -6,7 +6,7 @@ using Microsoft.UI.Xaml.Media;
 namespace PulseDesk.App.Controls;
 
 /// <summary>
-/// Dashboard tile: an icon and title, a large value, two lines of detail and an optional usage bar.
+/// Dashboard tile: an icon and title, a large value, two lines of detail, an optional mini-graph and an optional usage bar.
 /// </summary>
 public sealed partial class MetricCard : UserControl
 {
@@ -18,6 +18,9 @@ public sealed partial class MetricCard : UserControl
     public static readonly DependencyProperty DetailProperty = Register(nameof(Detail), typeof(string), string.Empty);
     public static readonly DependencyProperty SecondaryDetailProperty = Register(nameof(SecondaryDetail), typeof(string), string.Empty);
     public static readonly DependencyProperty AccentBrushProperty = Register(nameof(AccentBrush), typeof(Brush), null);
+
+    /// <summary>Optional mini-graph shown above the bar.</summary>
+    public static readonly DependencyProperty SparklineProperty = Register(nameof(Sparkline), typeof(TimeSeriesData), null);
 
     /// <summary>Bar value, 0–100; NaN hides the bar.</summary>
     public static readonly DependencyProperty PercentProperty = DependencyProperty.Register(
@@ -69,6 +72,12 @@ public sealed partial class MetricCard : UserControl
     {
         get => (double)GetValue(PercentProperty);
         set => SetValue(PercentProperty, value);
+    }
+
+    public TimeSeriesData? Sparkline
+    {
+        get => (TimeSeriesData?)GetValue(SparklineProperty);
+        set => SetValue(SparklineProperty, value);
     }
 
     private static DependencyProperty Register(string name, Type type, object? defaultValue) =>

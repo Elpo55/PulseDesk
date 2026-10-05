@@ -5,8 +5,8 @@ PulseDesk is split into three projects with a strict dependency rule, plus tests
 ```mermaid
 flowchart TB
     App["PulseDesk.App<br/>WinUI 3 · views · view models · UI services"]
-    Core["PulseDesk.Core<br/>models · interfaces · monitoring · health · settings"]
-    Infra["PulseDesk.Infrastructure<br/>Windows implementations"]
+    Core["PulseDesk.Core<br/>models · interfaces · monitoring · history · analysis · diagnosis · alerts · changes · settings"]
+    Infra["PulseDesk.Infrastructure<br/>Windows implementations · SQLite history"]
     Tests["PulseDesk.Tests"]
     App --> Core
     App --> Infra
@@ -29,7 +29,8 @@ The UI never reads system counters itself:
 View (XAML) → ViewModel → UiMetricsHub / service → Core interface → Infrastructure → Windows
 ```
 
-Views contain no logic beyond wiring. View models never call `System.Diagnostics.Process` or any Windows API.
+Views contain no logic beyond wiring. View models never call `System.Diagnostics.Process` or any Windows API,
+and never touch the history database: they go through Core services, which use `IHistoryRepository`.
 
 ## Monitoring pipeline
 
@@ -69,6 +70,8 @@ the UI shows "Not available". The first failure is logged in full; repeats are l
 | --- | --- |
 | One loop, per-metric intervals, coalesced wake-ups | `MetricSchedule`, `MetricsMonitor` |
 | Background mode: processes, GPU, disk and network sampled 5× less often while the window is hidden or minimized | `MetricsMonitor.SetActivity`, `ApplicationShell` |
+| History and per-application tracking only append to memory on the loop; SQLite writes are batched once a minute by one background task | `PerformanceHistory`, `ProcessHistory`, `HistoryRecorder` |
+| Alerts evaluated every 5 s on the thread pool; diagnosis, impact and replay computed only while their page is visible | `AlertService`, page view models |
 | No UI work at all while hidden; at most one queued UI update at a time, at low priority | `UiMetricsHub` |
 | CPU budget: if PulseDesk exceeds it (default 2% of total capacity), every interval is stretched automatically | `SelfUsageGovernor` |
 | Bounded memory: fixed-size ring buffers sized for 30 minutes at the fastest interval | `RingBuffer<T>`, `MetricSeries` |
@@ -100,6 +103,11 @@ PulseDesk uses about 1% of one core (0.05% of total capacity). With the window o
 | Process path, version | `QueryFullProcessImageName`, `FileVersionInfo` | "Access denied" shown for protected processes |
 | OS, firmware | Registry (`CurrentVersion`, `HARDWARE\DESCRIPTION\System\BIOS`) | "Windows 10" in the registry is corrected to "Windows 11" from the build number; OEM placeholder strings are hidden |
 | Uptime | `GetTickCount64` | Includes sleep, like Task Manager |
+| Application identity | `QueryFullProcessImageName` (once per new process) | PID reuse checked with `GetProcessTimes`; name only when access is denied |
+| Installed applications | Uninstall registry keys, `PackageManager.FindPackagesForUser` | Read-only; system components and updates excluded |
+| Startup programs | `Run` keys, Startup folders, `StartupApproved` | Enabled state as set in Settings › Apps › Startup |
+| Network adapters (Changes) | `NetworkInterface.GetAllNetworkInterfaces` | Physical types only; virtual adapters excluded |
+| Per-application network | — | Not available: requires administrator-level event tracing |
 
 All performance counters are added by their English names (`PdhAddEnglishCounter`), so PulseDesk works
 on every Windows display language.
@@ -114,8 +122,74 @@ per-application CPU conditions go through `SustainedThresholdDetector`, which av
 - an active condition clears only below `threshold − hysteresis`, so a value hovering at the limit doesn't flap;
 - a gap in the samples (sleep, pause) restarts the wait.
 
-`HealthService` runs the evaluator on every update in the background, independently of the UI, so a
-future notification or event-history module can subscribe to it directly.
+`HealthService` runs the evaluator on every update in the background, independently of the UI. These instant
+indicators feed the dashboard's System health panel; the intelligent alerts (see above) are a separate, slower layer
+with their own configurable rules.
+
+## From measurements to explanations
+
+PulseDesk's value is *Monitor → Detect → Explain → Understand*. Five functions sit on top of the monitoring loop:
+
+```mermaid
+flowchart LR
+    Monitor["MetricsMonitor"] --> PH["PerformanceHistory<br/>1 snapshot per CPU sample<br/>(ring buffer) + events"]
+    Monitor --> Proc["ProcessHistory<br/>per-application usage"]
+    PH --> Rec["HistoryRecorder<br/>minute aggregates"]
+    Proc --> Rec
+    Rec --> DB[("history.db<br/>(SQLite, local)")]
+    DB --> Base["BaselineService<br/>usual behavior"]
+    PH --> Diag["DiagnosisService"]
+    PH --> Alerts["AlertService"]
+    PH --> Replay["ReplayService"]
+    Base --> Diag
+    Base --> Alerts
+    Proc --> Impact["AppImpactService"]
+    DB --> Impact
+    DB --> Replay
+    Inv["ISystemInventoryProvider"] --> Changes["ChangeDetectionService"]
+    DB --> Changes
+```
+
+| Function | Core types | Page |
+| --- | --- | --- |
+| Diagnosis: "why is my PC slow?" | `IDiagnosisEngine`, `DiagnosisEngine`, `DiagnosisRule`, `DiagnosisService` | Diagnosis |
+| Replay: "what happened?" | `IPerformanceHistory`, `ReplayService`, `ReplayNarrator` | Replay |
+| App Impact: "which application weighs the most?" | `ProcessHistory`, `IAppImpactAnalyzer`, `AppImpactService` | App Impact |
+| Alerts: lasting or unusual conditions | `IAlertEngine`, `AlertEngine`, `AlertRule`, `AlertService` | Alerts |
+| Changes: "what changed?" | `IChangeDetectionService`, `BaselineComparer`, `ISystemInventoryProvider` | Changes |
+
+Principles shared by all of them:
+
+- **Deterministic and explainable.** Rules are plain code with documented thresholds. Every result carries
+  `AnalysisEvidence` (what was measured, value, reference, period, sample count, source) and a `ConfidenceLevel`.
+  Hypotheses are worded as such; an unknown cause is reported as "Change detected, origin unknown."
+- **Never invented.** A metric that is not available is not analyzed (the diagnosis lists it under "Not analyzed").
+  Nothing is described as "usual" before the baseline has 4 hours of history.
+- **Duration and context, not instant thresholds.** Alerts require a condition to last (5 minutes of high CPU by
+  default), compare with the usual range, keep one alert per condition with hysteresis, reopen within a cooldown
+  instead of creating a new one, and are limited per hour.
+- **Applications are identified by executable path.** Processes sharing only a name (several `Update.exe`) are kept
+  apart; protected processes whose path is not accessible are identified by name and flagged as such.
+
+### History and storage
+
+- **Short term, in memory**: `PerformanceHistory` keeps one `MetricSnapshot` per CPU sample in a ring buffer sized
+  for the replay setting (15 minutes by default) and at least the longest alert window, plus a ring buffer of
+  `SystemEvent`s (applications starting to use a lot of CPU or memory, notable applications exiting, connectivity
+  changes, volumes, gaps, pauses, alerts).
+- **Long term, local**: `HistoryRecorder` aggregates snapshots per minute and application usage per five minutes, and
+  a single background task writes them to `%LOCALAPPDATA%\PulseDesk\history.db` through `IHistoryRepository`
+  (`HistoryRepository`, SQLite). Hourly maintenance rolls complete hours up, applies retention (minutes 7 days,
+  hours 90 days by default) and keeps the file under 256 MB. Demo mode uses an in-memory database.
+
+### Extending the analysis
+
+- **A diagnosis rule**: derive from `DiagnosisRule`, return a `Normal` result when the area is fine, and add it to
+  `DiagnosisEngine.CreateDefaultRules`. Another engine (statistical, for example) implements `IDiagnosisEngine` and is
+  registered next to the rule engine in `AppHost`: `DiagnosisService` merges their results.
+- **An alert rule**: derive from `AlertRule`, give each condition a stable `Key`, use `Condition(...)` for hysteresis,
+  and add the rule to `AlertEngine.CreateDefaultRules` (and its thresholds to `SmartAlertSettings`).
+- **A change type**: add it to `ChangeType` and to `BaselineComparer` with a deterministic `ChangeId`.
 
 ## Settings
 
@@ -164,10 +238,10 @@ The dashboard and the other pages don't need to change to keep working.
 
 ### Planned modules
 
-The architecture already leaves room for event history and notifications (subscribe to `HealthService`),
-export (snapshots are plain records), monitoring profiles (`MonitoringSettings`), plugins or a local API.
-A future integration with Windows Orchestrator ("if CPU > 90% for 30 s, run a scenario") would consume
-`IMetricsMonitor.MetricsUpdated` and `SustainedThresholdDetector`, without touching the UI.
+The architecture leaves room for export (all analysis records are serializable), monitoring profiles
+(`MonitoringSettings`), plugins or a local API. A future integration with Windows Orchestrator ("if CPU > 90% for
+30 s, run a scenario") would consume `AlertService.AlertRaised` or `IMetricsMonitor.MetricsUpdated`, without touching
+the UI. See `IMPLEMENTATION_NOTES.md` for the limitations and next steps of the analysis modules.
 
 ## Deviations from the initial folder plan
 

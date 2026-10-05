@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using PulseDesk.App.Services.Tray;
+using PulseDesk.Core.Alerts;
 using PulseDesk.Core.Formatting;
 using PulseDesk.Core.Interfaces;
 using PulseDesk.Core.Models;
@@ -26,6 +27,7 @@ public sealed partial class ApplicationShell : IDisposable
     private readonly ThemeService _theme;
     private readonly NavigationService _navigation;
     private readonly DialogService _dialogs;
+    private readonly AlertService _alerts;
     private readonly StartupOptions _options;
     private readonly DispatcherQueue _dispatcher;
     private readonly ILogger<ApplicationShell> _logger;
@@ -42,6 +44,7 @@ public sealed partial class ApplicationShell : IDisposable
         ThemeService theme,
         NavigationService navigation,
         DialogService dialogs,
+        AlertService alerts,
         StartupOptions options,
         DispatcherQueue dispatcher,
         ILogger<ApplicationShell> logger)
@@ -53,6 +56,7 @@ public sealed partial class ApplicationShell : IDisposable
         _theme = theme;
         _navigation = navigation;
         _dialogs = dialogs;
+        _alerts = alerts;
         _options = options;
         _dispatcher = dispatcher;
         _logger = logger;
@@ -74,6 +78,7 @@ public sealed partial class ApplicationShell : IDisposable
         _settings.Changed += OnSettingsChanged;
         _monitor.StateChanged += OnMonitorStateChanged;
         _monitor.MetricsUpdated += OnMetricsUpdated;
+        _alerts.AlertRaised += OnAlertRaised;
         CreateTray();
 
         _ = _monitor.StartAsync(CancellationToken.None);
@@ -130,6 +135,7 @@ public sealed partial class ApplicationShell : IDisposable
         SavePlacement();
         _monitor.MetricsUpdated -= OnMetricsUpdated;
         _monitor.StateChanged -= OnMonitorStateChanged;
+        _alerts.AlertRaised -= OnAlertRaised;
         _settings.Changed -= OnSettingsChanged;
         _tray?.Dispose();
         _tray = null;
@@ -243,6 +249,17 @@ public sealed partial class ApplicationShell : IDisposable
         Interlocked.Exchange(ref _lastTooltip, now);
         var snapshot = e.Snapshot;
         _dispatcher.TryEnqueue(DispatcherQueuePriority.Low, () => UpdateTooltip(snapshot));
+    }
+
+    /// <summary>Optional Windows notification for new warnings (off by default; alerts are already rate-limited).</summary>
+    private void OnAlertRaised(object? sender, Alert alert)
+    {
+        if (!_settings.Current.SmartAlerts.ShowNotifications || alert.Severity < AlertSeverity.Warning)
+        {
+            return;
+        }
+
+        _dispatcher.TryEnqueue(() => _tray?.ShowInfo(alert.Title, $"{alert.Value}. Open PulseDesk › Alerts for details."));
     }
 
     private void UpdateTooltip(SystemSnapshot snapshot)

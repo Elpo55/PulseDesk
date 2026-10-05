@@ -21,6 +21,13 @@
             <SolidColorBrush x:Key="StatusWarningBrush" Color="#9D5D00" />
             <SolidColorBrush x:Key="StatusCriticalBrush" Color="#C42B1C" />
             <SolidColorBrush x:Key="StatusUnknownBrush" Color="#8A8A8A" />
+            <SolidColorBrush x:Key="StatusInfoBrush" Color="#0067C0" />
+
+            <!-- Impact levels (App Impact) -->
+            <SolidColorBrush x:Key="LevelLowBrush" Color="#0F7B0F" />
+            <SolidColorBrush x:Key="LevelModerateBrush" Color="#0067C0" />
+            <SolidColorBrush x:Key="LevelHighBrush" Color="#9D5D00" />
+            <SolidColorBrush x:Key="LevelVeryHighBrush" Color="#C42B1C" />
 
             <!-- Charts -->
             <SolidColorBrush x:Key="ChartGridBrush" Color="#14000000" />
@@ -43,6 +50,12 @@
             <SolidColorBrush x:Key="StatusWarningBrush" Color="#FCE100" />
             <SolidColorBrush x:Key="StatusCriticalBrush" Color="#FF99A4" />
             <SolidColorBrush x:Key="StatusUnknownBrush" Color="#9D9D9D" />
+            <SolidColorBrush x:Key="StatusInfoBrush" Color="#4CC2FF" />
+
+            <SolidColorBrush x:Key="LevelLowBrush" Color="#6CCB5F" />
+            <SolidColorBrush x:Key="LevelModerateBrush" Color="#4CC2FF" />
+            <SolidColorBrush x:Key="LevelHighBrush" Color="#FCE100" />
+            <SolidColorBrush x:Key="LevelVeryHighBrush" Color="#FF99A4" />
 
             <SolidColorBrush x:Key="ChartGridBrush" Color="#1AFFFFFF" />
             <SolidColorBrush x:Key="ChartBackgroundBrush" Color="#08FFFFFF" />
@@ -63,6 +76,12 @@
             <SolidColorBrush x:Key="StatusWarningBrush" Color="{ThemeResource SystemColorHighlightColor}" />
             <SolidColorBrush x:Key="StatusCriticalBrush" Color="{ThemeResource SystemColorHighlightColor}" />
             <SolidColorBrush x:Key="StatusUnknownBrush" Color="{ThemeResource SystemColorGrayTextColor}" />
+            <SolidColorBrush x:Key="StatusInfoBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+
+            <SolidColorBrush x:Key="LevelLowBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="LevelModerateBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="LevelHighBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+            <SolidColorBrush x:Key="LevelVeryHighBrush" Color="{ThemeResource SystemColorHighlightColor}" />
 
             <SolidColorBrush x:Key="ChartGridBrush" Color="{ThemeResource SystemColorGrayTextColor}" />
             <SolidColorBrush x:Key="ChartBackgroundBrush" Color="Transparent" />

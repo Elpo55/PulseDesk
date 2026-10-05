@@ -12,7 +12,8 @@ namespace PulseDesk.Infrastructure.Processes;
 /// </summary>
 /// <remarks>
 /// Processes are tracked by PID and creation time, so a reused PID never inherits another process's
-/// counters. The System Idle Process (PID 0) is excluded: it is not a real process.
+/// counters. The System Idle Process (PID 0) is excluded: it is not a real process. The executable path is
+/// read once, when a process is first seen (it identifies applications in App Impact).
 /// </remarks>
 public sealed class WindowsProcessMetricProvider : IProcessMetricProvider, IDisposable
 {
@@ -83,9 +84,11 @@ public sealed class WindowsProcessMetricProvider : IProcessMetricProvider, IDisp
             var identity = new ProcessIdentity(entry.ProcessId, entry.CreateTime);
             double? cpu = null, ioRead = null, ioWrite = null;
             string name;
+            string? path;
             if (_previous.TryGetValue(identity, out var previous))
             {
                 name = previous.Name;
+                path = previous.Path;
                 if (elapsed > TimeSpan.Zero)
                 {
                     cpu = Percentages.Clamp((entry.CpuTime - previous.CpuTime) / capacityTicks * 100);
@@ -96,13 +99,15 @@ public sealed class WindowsProcessMetricProvider : IProcessMetricProvider, IDisp
             else
             {
                 name = ResolveName(entry);
+                path = ProcessImagePath.TryGet(entry.ProcessId, entry.CreateTime);
             }
 
-            _next[identity] = new PreviousSample(entry.CpuTime, entry.IoReadBytes, entry.IoWriteBytes, name);
+            _next[identity] = new PreviousSample(entry.CpuTime, entry.IoReadBytes, entry.IoWriteBytes, name, path);
             processes.Add(new ProcessMetrics(identity, name)
             {
                 ParentProcessId = entry.ParentProcessId,
                 StartTime = entry.CreateTime > 0 ? DateTimeOffset.FromFileTime(entry.CreateTime) : null,
+                ExecutablePath = path,
                 CpuPercent = cpu,
                 PrivateWorkingSetBytes = entry.PrivateWorkingSet,
                 WorkingSetBytes = entry.WorkingSet,
@@ -131,5 +136,5 @@ public sealed class WindowsProcessMetricProvider : IProcessMetricProvider, IDisp
         return entry.ProcessId == 4 ? "System" : $"Process {entry.ProcessId}";
     }
 
-    private readonly record struct PreviousSample(long CpuTime, long IoReadBytes, long IoWriteBytes, string Name);
+    private readonly record struct PreviousSample(long CpuTime, long IoReadBytes, long IoWriteBytes, string Name, string? Path);
 }

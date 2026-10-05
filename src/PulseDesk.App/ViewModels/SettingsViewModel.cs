@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using PulseDesk.App.Services;
 using PulseDesk.Core;
 using PulseDesk.Core.Formatting;
+using PulseDesk.Core.History;
 using PulseDesk.Core.Interfaces;
 using PulseDesk.Core.Models;
 using PulseDesk.Core.Settings;
@@ -29,6 +30,8 @@ public sealed partial class SettingsViewModel : PageViewModel
     private readonly IStartupRegistration _startup;
     private readonly ExternalLauncher _launcher;
     private readonly PulseDeskPaths _paths;
+    private readonly HistoryRecorder _history;
+    private readonly DialogService _dialogs;
     private bool _loading;
     private long _lastOverheadUpdate;
 
@@ -38,6 +41,8 @@ public sealed partial class SettingsViewModel : PageViewModel
         IStartupRegistration startup,
         ExternalLauncher launcher,
         PulseDeskPaths paths,
+        HistoryRecorder history,
+        DialogService dialogs,
         StartupOptions options)
         : base(hub)
     {
@@ -45,9 +50,12 @@ public sealed partial class SettingsViewModel : PageViewModel
         _startup = startup;
         _launcher = launcher;
         _paths = paths;
+        _history = history;
+        _dialogs = dialogs;
         IsDemoMode = options.DemoMode;
         _loading = true;
-        StartupStatus = SelfCpu = SelfMemory = Throttle = string.Empty;
+        StartupStatus = SelfCpu = SelfMemory = Throttle = HistoryStatus = string.Empty;
+        ReplayDuration = ReplayDurations[2];
         RealtimeInterval = RealtimeIntervals[1];
         DetailInterval = DetailIntervals[1];
         StorageInterval = StorageIntervals[1];
@@ -65,6 +73,9 @@ public sealed partial class SettingsViewModel : PageViewModel
     public IReadOnlyList<ChartWindowOption> ChartWindows => ChartWindowOption.All;
 
     public IReadOnlyList<string> LogLevels { get; } = ["Debug", "Information", "Warning", "Error"];
+
+    public IReadOnlyList<IntervalOption> ReplayDurations { get; } =
+        SettingsValidator.ReplayMinuteOptions.Select(m => IntervalOption.Of(m * 60_000)).ToArray();
 
     public bool IsDemoMode { get; }
 
@@ -166,6 +177,76 @@ public sealed partial class SettingsViewModel : PageViewModel
     [ObservableProperty]
     public partial double ProcessCpuWarning { get; set; }
 
+    // ---- Smart alerts ---------------------------------------------------------------------------
+
+    [ObservableProperty]
+    public partial bool SmartAlertsEnabled { get; set; }
+
+    [ObservableProperty]
+    public partial double AlertCpuPercent { get; set; }
+
+    [ObservableProperty]
+    public partial double AlertCpuMinutes { get; set; }
+
+    [ObservableProperty]
+    public partial double AlertMemoryPercent { get; set; }
+
+    [ObservableProperty]
+    public partial double AlertMemoryMinutes { get; set; }
+
+    [ObservableProperty]
+    public partial double AlertDiskPercent { get; set; }
+
+    [ObservableProperty]
+    public partial double AlertDiskMinutes { get; set; }
+
+    [ObservableProperty]
+    public partial double AlertAppCpuPercent { get; set; }
+
+    [ObservableProperty]
+    public partial double AlertAppCpuMinutes { get; set; }
+
+    [ObservableProperty]
+    public partial double AlertGrowthPoints { get; set; }
+
+    [ObservableProperty]
+    public partial double AlertGrowthMinutes { get; set; }
+
+    [ObservableProperty]
+    public partial bool AlertUnusual { get; set; }
+
+    [ObservableProperty]
+    public partial double AlertUnusualMinutes { get; set; }
+
+    [ObservableProperty]
+    public partial double AlertLowDiskPercent { get; set; }
+
+    [ObservableProperty]
+    public partial double AlertCooldownMinutes { get; set; }
+
+    [ObservableProperty]
+    public partial double AlertMaxPerHour { get; set; }
+
+    [ObservableProperty]
+    public partial bool AlertNotifications { get; set; }
+
+    // ---- History --------------------------------------------------------------------------------
+
+    [ObservableProperty]
+    public partial bool RecordHistory { get; set; }
+
+    [ObservableProperty]
+    public partial IntervalOption ReplayDuration { get; set; }
+
+    [ObservableProperty]
+    public partial double DetailRetentionDays { get; set; }
+
+    [ObservableProperty]
+    public partial double SummaryRetentionDays { get; set; }
+
+    [ObservableProperty]
+    public partial string HistoryStatus { get; set; }
+
     // ---- Diagnostics ----------------------------------------------------------------------------
 
     [ObservableProperty]
@@ -198,10 +279,39 @@ public sealed partial class SettingsViewModel : PageViewModel
     [RelayCommand]
     private void ResetAlerts() => _settings.Update(s => s with { Alerts = new AlertSettings() });
 
+    [RelayCommand]
+    private void ResetSmartAlerts() => _settings.Update(s => s with { SmartAlerts = new SmartAlertSettings() });
+
+    [RelayCommand]
+    private async Task ClearHistoryAsync()
+    {
+        var confirmed = await _dialogs.ConfirmAsync(
+            "Delete the local history?",
+            "PulseDesk will delete the recorded performance history, application usage, events, alerts and detected changes from this PC. The usual-behavior baseline will be learned again. This cannot be undone.",
+            "Delete history");
+        if (!confirmed)
+        {
+            return;
+        }
+
+        try
+        {
+            await _history.ClearAsync(CancellationToken.None);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            HistoryStatus = $"The history could not be deleted: {ex.Message}";
+            return;
+        }
+
+        await UpdateHistoryStatusAsync();
+    }
+
     protected override void OnActivated()
     {
         Load(_settings.Current);
         UpdateOverhead();
+        _ = UpdateHistoryStatusAsync();
     }
 
     protected override void Update(SystemSnapshot snapshot, MetricKind updated)
@@ -310,6 +420,49 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     partial void OnProcessCpuWarningChanged(double value) => SaveNumber(value, v => s => s with { Alerts = s.Alerts with { ProcessCpuWarningPercent = v } });
 
+    partial void OnSmartAlertsEnabledChanged(bool value) => Save(s => s with { SmartAlerts = s.SmartAlerts with { Enabled = value } });
+
+    partial void OnAlertCpuPercentChanged(double value) => SaveNumber(value, v => s => s with { SmartAlerts = s.SmartAlerts with { CpuPercent = v } });
+
+    partial void OnAlertCpuMinutesChanged(double value) => SaveNumber(value, v => s => s with { SmartAlerts = s.SmartAlerts with { CpuMinutes = (int)v } });
+
+    partial void OnAlertMemoryPercentChanged(double value) => SaveNumber(value, v => s => s with { SmartAlerts = s.SmartAlerts with { MemoryPercent = v } });
+
+    partial void OnAlertMemoryMinutesChanged(double value) => SaveNumber(value, v => s => s with { SmartAlerts = s.SmartAlerts with { MemoryMinutes = (int)v } });
+
+    partial void OnAlertDiskPercentChanged(double value) => SaveNumber(value, v => s => s with { SmartAlerts = s.SmartAlerts with { DiskActivePercent = v } });
+
+    partial void OnAlertDiskMinutesChanged(double value) => SaveNumber(value, v => s => s with { SmartAlerts = s.SmartAlerts with { DiskMinutes = (int)v } });
+
+    partial void OnAlertAppCpuPercentChanged(double value) => SaveNumber(value, v => s => s with { SmartAlerts = s.SmartAlerts with { AppCpuPercent = v } });
+
+    partial void OnAlertAppCpuMinutesChanged(double value) => SaveNumber(value, v => s => s with { SmartAlerts = s.SmartAlerts with { AppCpuMinutes = (int)v } });
+
+    partial void OnAlertGrowthPointsChanged(double value) => SaveNumber(value, v => s => s with { SmartAlerts = s.SmartAlerts with { MemoryGrowthPoints = v } });
+
+    partial void OnAlertGrowthMinutesChanged(double value) => SaveNumber(value, v => s => s with { SmartAlerts = s.SmartAlerts with { MemoryGrowthMinutes = (int)v } });
+
+    partial void OnAlertUnusualChanged(bool value) => Save(s => s with { SmartAlerts = s.SmartAlerts with { UnusualActivity = value } });
+
+    partial void OnAlertUnusualMinutesChanged(double value) => SaveNumber(value, v => s => s with { SmartAlerts = s.SmartAlerts with { UnusualMinutes = (int)v } });
+
+    partial void OnAlertLowDiskPercentChanged(double value) => SaveNumber(value, v => s => s with { SmartAlerts = s.SmartAlerts with { LowDiskFreePercent = v } });
+
+    partial void OnAlertCooldownMinutesChanged(double value) => SaveNumber(value, v => s => s with { SmartAlerts = s.SmartAlerts with { CooldownMinutes = (int)v } });
+
+    partial void OnAlertMaxPerHourChanged(double value) => SaveNumber(value, v => s => s with { SmartAlerts = s.SmartAlerts with { MaxNewAlertsPerHour = (int)v } });
+
+    partial void OnAlertNotificationsChanged(bool value) => Save(s => s with { SmartAlerts = s.SmartAlerts with { ShowNotifications = value } });
+
+    partial void OnRecordHistoryChanged(bool value) => Save(s => s with { History = s.History with { RecordHistory = value } });
+
+    partial void OnReplayDurationChanged(IntervalOption value) =>
+        Save(s => s with { History = s.History with { ReplayMinutes = value.Milliseconds / 60_000 } });
+
+    partial void OnDetailRetentionDaysChanged(double value) => SaveNumber(value, v => s => s with { History = s.History with { DetailRetentionDays = (int)v } });
+
+    partial void OnSummaryRetentionDaysChanged(double value) => SaveNumber(value, v => s => s with { History = s.History with { SummaryRetentionDays = (int)v } });
+
     partial void OnLogLevelIndexChanged(int value) =>
         Save(s => s with { Diagnostics = s.Diagnostics with { LogLevel = (LogVerbosity)Math.Clamp(value, 0, 3) } });
 
@@ -350,6 +503,31 @@ public sealed partial class SettingsViewModel : PageViewModel
             DiskCritical = alerts.DiskCriticalPercent;
             ProcessMemoryWarning = alerts.ProcessMemoryWarningPercent;
             ProcessCpuWarning = alerts.ProcessCpuWarningPercent;
+
+            var smart = settings.SmartAlerts;
+            SmartAlertsEnabled = smart.Enabled;
+            AlertCpuPercent = smart.CpuPercent;
+            AlertCpuMinutes = smart.CpuMinutes;
+            AlertMemoryPercent = smart.MemoryPercent;
+            AlertMemoryMinutes = smart.MemoryMinutes;
+            AlertDiskPercent = smart.DiskActivePercent;
+            AlertDiskMinutes = smart.DiskMinutes;
+            AlertAppCpuPercent = smart.AppCpuPercent;
+            AlertAppCpuMinutes = smart.AppCpuMinutes;
+            AlertGrowthPoints = smart.MemoryGrowthPoints;
+            AlertGrowthMinutes = smart.MemoryGrowthMinutes;
+            AlertUnusual = smart.UnusualActivity;
+            AlertUnusualMinutes = smart.UnusualMinutes;
+            AlertLowDiskPercent = smart.LowDiskFreePercent;
+            AlertCooldownMinutes = smart.CooldownMinutes;
+            AlertMaxPerHour = smart.MaxNewAlertsPerHour;
+            AlertNotifications = smart.ShowNotifications;
+
+            var history = settings.History;
+            RecordHistory = history.RecordHistory;
+            ReplayDuration = Pick(ReplayDurations, history.ReplayMinutes * 60_000);
+            DetailRetentionDays = history.DetailRetentionDays;
+            SummaryRetentionDays = history.SummaryRetentionDays;
 
             LogLevelIndex = (int)settings.Diagnostics.LogLevel;
         }
@@ -394,6 +572,22 @@ public sealed partial class SettingsViewModel : PageViewModel
         Throttle = usage.ThrottleFactor > 1.01
             ? $"Intervals stretched ×{usage.ThrottleFactor:0.##} to stay within the CPU budget"
             : "Running at the configured intervals";
+    }
+
+    private async Task UpdateHistoryStatusAsync()
+    {
+        try
+        {
+            var info = await _history.GetStorageInfoAsync(CancellationToken.None);
+            var since = info.OldestData is { } oldest ? $" · data since {InsightDisplay.Time(oldest)}" : " · no data yet";
+            HistoryStatus = info.SizeBytes > 0
+                ? $"{MetricFormatter.Bytes((ulong)info.SizeBytes)} on disk{since}"
+                : $"{info.Location}{since}";
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            HistoryStatus = $"History not available: {ex.Message}";
+        }
     }
 
     private static IntervalOption Pick(IReadOnlyList<IntervalOption> options, int milliseconds) =>

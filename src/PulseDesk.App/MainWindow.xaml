@@ -72,6 +72,39 @@
                         <FontIcon Glyph="&#xE80F;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
+                <NavigationViewItem AutomationProperties.AutomationId="NavDiagnosis" Content="Diagnosis" Tag="Diagnosis">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE95E;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem AutomationProperties.AutomationId="NavReplay" Content="Replay" Tag="Replay">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE81C;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem AutomationProperties.AutomationId="NavAppImpact" Content="App Impact" Tag="AppImpact">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE9F9;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem AutomationProperties.AutomationId="NavChanges" Content="Changes" Tag="Changes">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE8AB;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem AutomationProperties.AutomationId="NavAlerts" Content="Alerts" Tag="Alerts">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xEA8F;" />
+                    </NavigationViewItem.Icon>
+                    <NavigationViewItem.InfoBadge>
+                        <InfoBadge
+                            AutomationProperties.Name="New alerts"
+                            Value="{x:Bind ViewModel.NewAlertCount, Mode=OneWay}"
+                            Visibility="{x:Bind ViewModel.HasNewAlerts, Mode=OneWay}" />
+                    </NavigationViewItem.InfoBadge>
+                </NavigationViewItem>
+                <NavigationViewItemSeparator />
+                <NavigationViewItemHeader Content="Details" />
                 <NavigationViewItem AutomationProperties.AutomationId="NavPerformance" Content="Performance" Tag="Performance">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE9D9;" />
@@ -95,11 +128,6 @@
                 <NavigationViewItem AutomationProperties.AutomationId="NavSystem" Content="System" Tag="System">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE770;" />
-                    </NavigationViewItem.Icon>
-                </NavigationViewItem>
-                <NavigationViewItem AutomationProperties.AutomationId="NavHistory" Content="History" Tag="History">
-                    <NavigationViewItem.Icon>
-                        <FontIcon Glyph="&#xE81C;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
             </NavigationView.MenuItems>

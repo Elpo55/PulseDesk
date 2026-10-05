@@ -93,6 +93,20 @@ public static class MetricFormatter
         return duration.TotalMinutes >= 1 ? $"{duration.Minutes}m" : $"{duration.Seconds}s";
     }
 
+    /// <summary>Formats a duration with two units, e.g. "45s", "3m 24s", "1h 05m", "2d 3h".</summary>
+    public static string DurationPrecise(TimeSpan duration)
+    {
+        if (duration < TimeSpan.Zero)
+        {
+            duration = TimeSpan.Zero;
+        }
+
+        return duration.TotalDays >= 1 ? $"{(int)duration.TotalDays}d {duration.Hours}h"
+            : duration.TotalHours >= 1 ? $"{(int)duration.TotalHours}h {duration.Minutes:00}m"
+            : duration.TotalMinutes >= 1 ? $"{duration.Minutes}m {duration.Seconds:00}s"
+            : $"{(int)Math.Round(duration.TotalSeconds)}s";
+    }
+
     /// <summary>Formats a duration in words, e.g. "3 days, 14 hours, 21 minutes".</summary>
     public static string DurationLong(TimeSpan duration)
     {

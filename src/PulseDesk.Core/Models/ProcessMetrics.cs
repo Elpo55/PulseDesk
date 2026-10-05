@@ -23,6 +23,12 @@ public sealed record ProcessMetrics(ProcessIdentity Identity, string Name)
     /// <summary>Start time, when known.</summary>
     public DateTimeOffset? StartTime { get; init; }
 
+    /// <summary>
+    /// Full path of the executable, when Windows grants access to it (null for protected processes).
+    /// Used to tell apart different programs sharing an image name (for example several "Update.exe").
+    /// </summary>
+    public string? ExecutablePath { get; init; }
+
     /// <summary>Share of total CPU capacity used, 0–100. Null on the first sample of a process.</summary>
     public double? CpuPercent { get; init; }
 

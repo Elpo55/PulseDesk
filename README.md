@@ -25,6 +25,18 @@ account, no server, no telemetry, and it works offline.
 
 ## Features
 
+PulseDesk does more than show numbers: it detects, explains and helps you understand what happens on your PC.
+
+- **Diagnosis**: "Why is my PC slow?" Deterministic rules check CPU, memory, disks, GPU, network, applications and
+  uptime, and explain each finding with the data behind it, a comparison with your usual activity and a confidence level
+- **Replay**: look back at the last minutes (every second) or hours (per minute): charts with a cursor, the values and
+  applications at any moment, events on the timeline, and a summary of what happened
+- **App Impact**: which applications weigh the most on your PC, this session or over days, with an explainable impact
+  score (CPU, memory and disk I/O weighted by running time), trends and per-application history
+- **Changes**: what changed recently (applications installed, removed or updated, startup programs, Windows build,
+  devices, disk space, average usage), from daily snapshots of the PC
+- **Intelligent alerts**: only for problems that last or are unusual for this PC, one alert per condition, never spam;
+  statuses New, Seen and Resolved; optional notifications
 - **CPU monitoring**: overall and per-logical-processor usage, effective clock speed, base and peak speed, cores, threads, caches
 - **Memory monitoring**: used, available, committed, system cache, kernel pools
 - **GPU monitoring**: usage per adapter (busiest engine, the way Task Manager computes it), dedicated and shared memory, busiest engines
@@ -33,6 +45,7 @@ account, no server, no telemetry, and it works offline.
 - **Process monitoring**: a simplified task manager with live sorting, search, details, top consumers, and ending a process after confirmation
 - **System information**: Windows edition and build, processor, graphics, memory, motherboard, BIOS, uptime
 - **Health indicators**: CPU and memory alerts must persist for a configurable time before they're reported, so short spikes don't trigger them; thresholds are configurable
+- **Local history**: aggregated history in a local SQLite database with automatic retention (configurable, deletable)
 - **Real-time charts**: 30 seconds to 30 minutes of history, kept in fixed-size in-memory ring buffers
 - **Windows tray support**: close to the notification area, pause/resume from the tray, start with Windows
 - **Light, dark and system themes** with the Windows 11 look (Mica, Fluent controls)
@@ -57,8 +70,9 @@ PulseDesk is local-first.
 - No system metrics are uploaded.
 
 PulseDesk never opens a network connection. "Internet available" comes from Windows' own
-connectivity checks, so PulseDesk generates no network traffic to measure it. Settings and logs are stored in
-`%LOCALAPPDATA%\PulseDesk` and stay on your PC.
+connectivity checks, so PulseDesk generates no network traffic to measure it. Settings, logs and the local history
+(performance, application names, alerts, detected changes) are stored in `%LOCALAPPDATA%\PulseDesk` and stay on
+your PC. History recording can be turned off and the history deleted from Settings.
 
 ## Accuracy
 
@@ -95,7 +109,7 @@ certificate is needed. Useful options:
 | --- | --- |
 | `--demo` | Simulated metrics (clearly labeled), for UI work and screenshots |
 | `--tray` | Start hidden in the notification area |
-| `--page=Processes` | Open on a given page (`Dashboard`, `Performance`, `Processes`, `Storage`, `Network`, `System`, `History`, `Settings`) |
+| `--page=Processes` | Open on a given page (`Dashboard`, `Diagnosis`, `Replay`, `AppImpact`, `Changes`, `Alerts`, `Performance`, `Processes`, `Storage`, `Network`, `System`, `Settings`) |
 
 Pass them after `--` with `dotnet run`, for example `dotnet run --project src/PulseDesk.App -- --demo`.
 
@@ -106,16 +120,19 @@ dotnet test --project src/PulseDesk.Tests
 ```
 
 The unit tests cover the Core logic (ring buffers, history, formatting, trends, thresholds, anomaly
-detection, health, settings serialization, the monitoring loop) and the pure parsing helpers of the
-Windows layer. They use simulated data and never depend on the machine's hardware.
+detection, health, settings serialization, the monitoring loop, diagnosis, alerts, app impact, change detection,
+replay), the SQLite history (in memory) and the pure parsing helpers of the Windows layer. They use simulated data
+and never depend on the machine's hardware.
 
 ## Project structure
 
 ```
 src/
   PulseDesk.App/             WinUI 3 application: views, view models, controls, UI services
-  PulseDesk.Core/            Models, interfaces, monitoring loop, health, settings (no Windows dependency)
-  PulseDesk.Infrastructure/  Windows implementations: performance counters, native APIs, registry, files
+  PulseDesk.Core/            Models, interfaces, monitoring loop, health, history, analysis, diagnosis,
+                             alerts, change detection, settings (no Windows dependency)
+  PulseDesk.Infrastructure/  Windows implementations: performance counters, native APIs, registry, files,
+                             local SQLite history
   PulseDesk.Tests/           Unit tests
 docs/                        Architecture and development guides
 ```
@@ -125,15 +142,13 @@ to contribute.
 
 ## Roadmap
 
-Version 0.1 is the MVP. Planned next, in order:
+Done: local history with retention, notifications for lasting problems, Diagnosis, Replay, App Impact, Changes and
+intelligent alerts (see [IMPLEMENTATION_NOTES.md](IMPLEMENTATION_NOTES.md)). Planned next:
 
-1. **History**: a local event log ("CPU usage exceeded 90%", "Disk C: exceeded 85%", "System resumed from
-   sleep") with filters and retention settings
-2. **Notifications** when a threshold stays exceeded (can be turned off)
-3. **Advanced GPU metrics**: temperature and clock speed through the documented D3DKMT adapter statistics, where drivers expose them
-4. **Storage analyzer**: on-demand, read-only folder sizes
-5. Per-process network usage, CSV/JSON export, monitoring profiles, an optional local API (for example for
-   Windows Orchestrator)
+1. **Advanced GPU metrics**: temperature and clock speed through the documented D3DKMT adapter statistics, where drivers expose them
+2. **Storage analyzer**: on-demand, read-only folder sizes
+3. Per-process network usage, export of a diagnosis or a replay period, change detection for drivers and services,
+   monitoring profiles, an optional local API (for example for Windows Orchestrator)
 
 ## License
 

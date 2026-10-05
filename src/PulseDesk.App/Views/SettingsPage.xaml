@@ -11,6 +11,14 @@
             <Setter Property="OffContent" Value="Off" />
             <Setter Property="MinWidth" Value="0" />
         </Style>
+        <Style x:Key="MinutesBoxStyle" TargetType="NumberBox">
+            <Setter Property="Minimum" Value="1" />
+            <Setter Property="Maximum" Value="60" />
+            <Setter Property="SmallChange" Value="1" />
+            <Setter Property="LargeChange" Value="5" />
+            <Setter Property="SpinButtonPlacementMode" Value="Compact" />
+            <Setter Property="MinWidth" Value="110" />
+        </Style>
         <Style x:Key="ThresholdBoxStyle" TargetType="NumberBox">
             <Setter Property="Minimum" Value="1" />
             <Setter Property="Maximum" Value="100" />
@@ -117,6 +125,68 @@
                 </StackPanel>
             </Border>
 
+            <!-- Smart alerts -->
+            <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Alerts" />
+            <controls:SettingRow Description="Raise alerts for problems that last or are unusual for this PC (shown in Alerts)" Glyph="&#xEA8F;" Header="Smart alerts">
+                <ToggleSwitch AutomationProperties.Name="Smart alerts" IsOn="{x:Bind ViewModel.SmartAlertsEnabled, Mode=TwoWay}" />
+            </controls:SettingRow>
+            <controls:SettingRow Description="Also show a Windows notification for new warnings and critical alerts" Glyph="&#xE7E7;" Header="Notifications">
+                <ToggleSwitch AutomationProperties.Name="Alert notifications" IsOn="{x:Bind ViewModel.AlertNotifications, Mode=TwoWay}" />
+            </controls:SettingRow>
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="16">
+                    <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="Each condition must last for the given duration before an alert is raised. While it lasts, a single alert is updated; it resolves one minute after the condition ends." />
+                    <controls:AdaptiveGridPanel MinItemWidth="200" RowSpacing="16">
+                        <NumberBox Header="CPU above (%)" Minimum="50" Style="{StaticResource ThresholdBoxStyle}" Value="{x:Bind ViewModel.AlertCpuPercent, Mode=TwoWay}" />
+                        <NumberBox Header="for (minutes)" Style="{StaticResource MinutesBoxStyle}" Value="{x:Bind ViewModel.AlertCpuMinutes, Mode=TwoWay}" />
+                        <NumberBox Header="Memory above (%)" Minimum="50" Style="{StaticResource ThresholdBoxStyle}" Value="{x:Bind ViewModel.AlertMemoryPercent, Mode=TwoWay}" />
+                        <NumberBox Header="for (minutes)" Style="{StaticResource MinutesBoxStyle}" Value="{x:Bind ViewModel.AlertMemoryMinutes, Mode=TwoWay}" />
+                        <NumberBox Header="Disk busy above (%)" Minimum="50" Style="{StaticResource ThresholdBoxStyle}" Value="{x:Bind ViewModel.AlertDiskPercent, Mode=TwoWay}" />
+                        <NumberBox Header="for (minutes)" Style="{StaticResource MinutesBoxStyle}" Value="{x:Bind ViewModel.AlertDiskMinutes, Mode=TwoWay}" />
+                        <NumberBox Header="One app above (% CPU)" Minimum="5" Style="{StaticResource ThresholdBoxStyle}" Value="{x:Bind ViewModel.AlertAppCpuPercent, Mode=TwoWay}" />
+                        <NumberBox Header="for (minutes)" Style="{StaticResource MinutesBoxStyle}" Value="{x:Bind ViewModel.AlertAppCpuMinutes, Mode=TwoWay}" />
+                        <NumberBox Header="Memory rising by (points)" Maximum="50" Minimum="3" Style="{StaticResource ThresholdBoxStyle}" Value="{x:Bind ViewModel.AlertGrowthPoints, Mode=TwoWay}" />
+                        <NumberBox Header="within (minutes)" Maximum="120" Minimum="10" Style="{StaticResource MinutesBoxStyle}" Value="{x:Bind ViewModel.AlertGrowthMinutes, Mode=TwoWay}" />
+                        <NumberBox Header="System disk free below (%)" Maximum="50" Style="{StaticResource ThresholdBoxStyle}" Value="{x:Bind ViewModel.AlertLowDiskPercent, Mode=TwoWay}" />
+                        <NumberBox Header="Reopen instead of new within (min)" Maximum="240" Style="{StaticResource MinutesBoxStyle}" Value="{x:Bind ViewModel.AlertCooldownMinutes, Mode=TwoWay}" />
+                        <NumberBox Header="New alerts per hour (max)" Style="{StaticResource MinutesBoxStyle}" Value="{x:Bind ViewModel.AlertMaxPerHour, Mode=TwoWay}" />
+                    </controls:AdaptiveGridPanel>
+                    <Grid ColumnSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="Unusual activity" />
+                            <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="Alert when CPU, memory or disk stay above your usual range (learned from at least 4 hours of history) for the given duration." />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12">
+                            <NumberBox AutomationProperties.Name="Unusual activity duration (minutes)" Style="{StaticResource MinutesBoxStyle}" Value="{x:Bind ViewModel.AlertUnusualMinutes, Mode=TwoWay}" />
+                            <ToggleSwitch AutomationProperties.Name="Unusual activity alerts" IsOn="{x:Bind ViewModel.AlertUnusual, Mode=TwoWay}" />
+                        </StackPanel>
+                    </Grid>
+                    <Button HorizontalAlignment="Left" Command="{x:Bind ViewModel.ResetSmartAlertsCommand}" Content="Restore default alert rules" />
+                </StackPanel>
+            </Border>
+
+            <!-- History -->
+            <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="History" />
+            <controls:SettingRow Description="Save aggregated performance, application usage, events, alerts and changes to a local database. Needed for App Impact over days, Changes and the usual-behavior baseline." Glyph="&#xE81C;" Header="Record history">
+                <ToggleSwitch AutomationProperties.Name="Record history" IsOn="{x:Bind ViewModel.RecordHistory, Mode=TwoWay}" />
+            </controls:SettingRow>
+            <controls:SettingRow Description="Detailed data (every second) kept in memory for Replay. Never written to disk." Glyph="&#xE916;" Header="Replay buffer">
+                <ComboBox MinWidth="160" AutomationProperties.Name="Replay buffer" ItemsSource="{x:Bind ViewModel.ReplayDurations}" SelectedItem="{x:Bind ViewModel.ReplayDuration, Mode=TwoWay}" />
+            </controls:SettingRow>
+            <controls:SettingRow Description="Minute-level system data and five-minute application data (1–31 days)" Glyph="&#xE787;" Header="Keep detailed history (days)">
+                <NumberBox MinWidth="110" AutomationProperties.Name="Keep detailed history (days)" LargeChange="7" Maximum="31" Minimum="1" SmallChange="1" SpinButtonPlacementMode="Compact" Value="{x:Bind ViewModel.DetailRetentionDays, Mode=TwoWay}" />
+            </controls:SettingRow>
+            <controls:SettingRow Description="Hourly summaries, events, alerts and changes (7–365 days). Older data is deleted automatically." Glyph="&#xE8F1;" Header="Keep summaries (days)">
+                <NumberBox MinWidth="110" AutomationProperties.Name="Keep summaries (days)" LargeChange="30" Maximum="365" Minimum="7" SmallChange="1" SpinButtonPlacementMode="Compact" Value="{x:Bind ViewModel.SummaryRetentionDays, Mode=TwoWay}" />
+            </controls:SettingRow>
+            <controls:SettingRow Description="{x:Bind ViewModel.HistoryStatus, Mode=OneWay}" Glyph="&#xE74D;" Header="Delete history">
+                <Button AutomationProperties.Name="Delete history" Command="{x:Bind ViewModel.ClearHistoryCommand}" Content="Delete…" />
+            </controls:SettingRow>
+
             <!-- Privacy -->
             <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Privacy" />
             <Border Style="{StaticResource CardStyle}">
@@ -131,7 +201,7 @@
                         <TextBlock Text="No telemetry is enabled by default." TextWrapping="Wrap" />
                         <TextBlock Text="No account is required." TextWrapping="Wrap" />
                         <TextBlock Text="No system metrics are uploaded." TextWrapping="Wrap" />
-                        <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="PulseDesk works offline and never contacts a server. Settings and logs stay in the folder below, on this PC." />
+                        <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="PulseDesk works offline and never contacts a server. Settings, logs and the local history (performance, application names, alerts, detected changes) stay in the folder below, on this PC." TextWrapping="Wrap" />
                         <StackPanel Margin="0,6,0,0" Orientation="Horizontal" Spacing="8">
                             <Button Command="{x:Bind ViewModel.OpenDataFolderCommand}" Content="Open data folder" />
                             <Button Command="{x:Bind ViewModel.OpenLogsFolderCommand}" Content="Open logs folder" />

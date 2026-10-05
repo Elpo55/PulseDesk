@@ -15,7 +15,12 @@
             BorderBrush="{ThemeResource ChartGridBrush}"
             BorderThickness="1"
             CornerRadius="{StaticResource ControlCornerRadius}">
-            <Grid x:Name="Plot" SizeChanged="OnPlotSizeChanged">
+            <Grid
+                x:Name="Plot"
+                Background="Transparent"
+                PointerMoved="OnPlotPointerMoved"
+                PointerPressed="OnPlotPointerPressed"
+                SizeChanged="OnPlotSizeChanged">
                 <!-- Horizontal grid lines at 25%, 50% and 75% of the scale. -->
                 <Grid IsHitTestVisible="False">
                     <Grid.RowDefinitions>
@@ -32,6 +37,21 @@
                 <Path x:Name="AreaPath" IsHitTestVisible="False" />
                 <Path x:Name="LinePath" StrokeThickness="1.5" StrokeLineJoin="Round" IsHitTestVisible="False" />
                 <Path x:Name="SecondaryLinePath" StrokeThickness="1.5" StrokeLineJoin="Round" IsHitTestVisible="False" />
+
+                <!-- Replay: event markers along the top edge and the cursor (hidden unless set). -->
+                <Path x:Name="MarkerPath" Stroke="{ThemeResource TextFillColorSecondaryBrush}" StrokeThickness="1.5" IsHitTestVisible="False" />
+                <Rectangle
+                    x:Name="CursorLine"
+                    Width="2"
+                    HorizontalAlignment="Left"
+                    Fill="{ThemeResource TextFillColorPrimaryBrush}"
+                    IsHitTestVisible="False"
+                    Opacity="0.8"
+                    Visibility="Collapsed">
+                    <Rectangle.RenderTransform>
+                        <TranslateTransform x:Name="CursorTransform" />
+                    </Rectangle.RenderTransform>
+                </Rectangle>
 
                 <TextBlock
                     x:Name="MaximumLabel"

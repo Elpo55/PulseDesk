@@ -47,6 +47,16 @@
                 Text="{x:Bind SecondaryDetail, Mode=OneWay}"
                 TextTrimming="CharacterEllipsis" />
 
+            <!-- Optional mini-graph of the last minutes (collapsed when no data is given). -->
+            <local:Sparkline
+                x:Name="Spark"
+                Grid.Row="4"
+                Height="36"
+                Margin="0,10,0,0"
+                VerticalAlignment="Bottom"
+                Data="{x:Bind Sparkline, Mode=OneWay}"
+                Stroke="{x:Bind AccentBrush, Mode=OneWay}" />
+
             <local:UsageBar
                 x:Name="Bar"
                 Grid.Row="5"

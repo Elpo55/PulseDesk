@@ -2,6 +2,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Dispatching;
 using PulseDesk.App.ViewModels;
+using PulseDesk.Core.Alerts;
+using PulseDesk.Core.Analysis;
+using PulseDesk.Core.Changes;
+using PulseDesk.Core.Diagnosis;
+using PulseDesk.Core.History;
 using PulseDesk.Core.Interfaces;
 using PulseDesk.Core.Monitoring;
 using PulseDesk.Core.Settings;
@@ -60,6 +65,53 @@ public sealed class AppHost : IAsyncDisposable
         services.AddSingleton<HealthService>();
         services.AddSingleton<IStartupRegistration, RunKeyStartupRegistration>();
 
+        // History and analysis. Demo mode keeps its history in memory: simulated data never reaches the
+        // real history database.
+        services.AddSingleton<IHistoryRepository>(sp => options.DemoMode
+            ? HistoryRepository.InMemory(sp.GetRequiredService<ILogger<HistoryRepository>>())
+            : new HistoryRepository(paths.HistoryDatabaseFile, sp.GetRequiredService<ILogger<HistoryRepository>>()));
+        services.AddSingleton(sp => new PerformanceHistory(sp.GetRequiredService<IMetricsMonitor>(), sp.GetRequiredService<SettingsService>()));
+        services.AddSingleton<IPerformanceHistory>(sp => sp.GetRequiredService<PerformanceHistory>());
+        services.AddSingleton(sp => new HistoryRecorder(
+            sp.GetRequiredService<IPerformanceHistory>(),
+            sp.GetRequiredService<IHistoryRepository>(),
+            sp.GetRequiredService<SettingsService>(),
+            sp.GetRequiredService<ILogger<HistoryRecorder>>()));
+        services.AddSingleton(sp => new ProcessHistory(sp.GetRequiredService<IMetricsMonitor>()));
+        services.AddSingleton<IAppImpactAnalyzer, AppImpactAnalyzer>();
+        services.AddSingleton(sp => new AppImpactService(
+            sp.GetRequiredService<ProcessHistory>(),
+            sp.GetRequiredService<IHistoryRepository>(),
+            sp.GetRequiredService<IAppImpactAnalyzer>(),
+            sp.GetRequiredService<IMetricsMonitor>()));
+        services.AddSingleton(sp => new BaselineService(sp.GetRequiredService<IHistoryRepository>(), sp.GetRequiredService<ILogger<BaselineService>>()));
+        services.AddSingleton<IDiagnosisEngine>(sp => new DiagnosisEngine(sp.GetRequiredService<ILogger<DiagnosisEngine>>()));
+        services.AddSingleton(sp => new DiagnosisService(
+            sp.GetServices<IDiagnosisEngine>(),
+            sp.GetRequiredService<IPerformanceHistory>(),
+            sp.GetRequiredService<IMetricsMonitor>(),
+            sp.GetRequiredService<BaselineService>(),
+            sp.GetRequiredService<SettingsService>(),
+            sp.GetRequiredService<ILogger<DiagnosisService>>()));
+        services.AddSingleton<IAlertEngine>(_ => new AlertEngine());
+        services.AddSingleton(sp => new AlertService(
+            sp.GetRequiredService<IAlertEngine>(),
+            sp.GetRequiredService<IPerformanceHistory>(),
+            sp.GetRequiredService<IMetricsMonitor>(),
+            sp.GetRequiredService<BaselineService>(),
+            sp.GetRequiredService<SettingsService>(),
+            sp.GetRequiredService<IHistoryRepository>(),
+            sp.GetRequiredService<ILogger<AlertService>>()));
+        services.AddSingleton(sp => new ChangeDetectionService(
+            sp.GetRequiredService<ISystemInventoryProvider>(),
+            sp.GetRequiredService<ISystemInfoProvider>(),
+            sp.GetRequiredService<IMetricsMonitor>(),
+            sp.GetRequiredService<IHistoryRepository>(),
+            sp.GetRequiredService<SettingsService>(),
+            sp.GetRequiredService<ILogger<ChangeDetectionService>>()));
+        services.AddSingleton<IChangeDetectionService>(sp => sp.GetRequiredService<ChangeDetectionService>());
+        services.AddSingleton(sp => new ReplayService(sp.GetRequiredService<IPerformanceHistory>(), sp.GetRequiredService<IHistoryRepository>()));
+
         if (options.DemoMode)
         {
             AddSimulatedProviders(services);
@@ -70,6 +122,8 @@ public sealed class AppHost : IAsyncDisposable
         }
 
         // UI services
+        services.AddSingleton<AnalysisServices>();
+        services.AddSingleton<InsightNavigator>();
         services.AddSingleton<UiMetricsHub>();
         services.AddSingleton<ThemeService>();
         services.AddSingleton<NavigationService>();
@@ -81,6 +135,11 @@ public sealed class AppHost : IAsyncDisposable
         // View models live as long as the app, so pages keep their state (sorting, selection) between visits.
         services.AddSingleton<ShellViewModel>();
         services.AddSingleton<DashboardViewModel>();
+        services.AddSingleton<AppImpactViewModel>();
+        services.AddSingleton<DiagnosisViewModel>();
+        services.AddSingleton<AlertsViewModel>();
+        services.AddSingleton<ChangesViewModel>();
+        services.AddSingleton<ReplayViewModel>();
         services.AddSingleton<PerformanceViewModel>();
         services.AddSingleton<ProcessesViewModel>();
         services.AddSingleton<StorageViewModel>();
@@ -139,6 +198,7 @@ public sealed class AppHost : IAsyncDisposable
             sp.GetRequiredService<WindowsProcessMetricProvider>(),
             sp.GetRequiredService<WindowsSystemMetricProvider>()));
         services.AddSingleton<ISystemInfoProvider, WindowsSystemInfoProvider>();
+        services.AddSingleton<ISystemInventoryProvider, WindowsSystemInventoryProvider>();
         services.AddSingleton<IProcessManager, WindowsProcessManager>();
     }
 
@@ -147,6 +207,7 @@ public sealed class AppHost : IAsyncDisposable
         services.AddSingleton(_ => new SimulatedMachine());
         services.AddSingleton(sp => SimulatedProviders.Create(sp.GetRequiredService<SimulatedMachine>()));
         services.AddSingleton<ISystemInfoProvider, FakeSystemInfoProvider>();
+        services.AddSingleton<ISystemInventoryProvider>(_ => new SimulatedInventoryProvider());
         services.AddSingleton<IProcessManager, FakeProcessManager>();
     }
 }

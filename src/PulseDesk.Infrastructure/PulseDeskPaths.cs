@@ -25,4 +25,7 @@ public sealed class PulseDeskPaths
 
     /// <summary><c>%LOCALAPPDATA%\PulseDesk\settings.json</c>.</summary>
     public string SettingsFile => Path.Combine(DataDirectory, "settings.json");
+
+    /// <summary><c>%LOCALAPPDATA%\PulseDesk\history.db</c>: aggregated performance history, events, alerts and changes.</summary>
+    public string HistoryDatabaseFile => Path.Combine(DataDirectory, "history.db");
 }

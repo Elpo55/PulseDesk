@@ -13,10 +13,16 @@ public sealed record StartupOptions(bool DemoMode, bool LaunchedAtSignIn, bool S
     {
         var list = args.Select(a => a.Trim()).ToList();
         var set = new HashSet<string>(list, StringComparer.OrdinalIgnoreCase);
-        var page = list.FirstOrDefault(a => a.StartsWith(PagePrefix, StringComparison.OrdinalIgnoreCase)) is { } pageArgument
-            && Enum.TryParse<AppPage>(pageArgument[PagePrefix.Length..], ignoreCase: true, out var parsed)
-                ? parsed
-                : AppPage.Dashboard;
+        var pageName = list.FirstOrDefault(a => a.StartsWith(PagePrefix, StringComparison.OrdinalIgnoreCase))?[PagePrefix.Length..];
+        // "History" was the name of the page Replay replaced.
+        if (string.Equals(pageName, "History", StringComparison.OrdinalIgnoreCase))
+        {
+            pageName = nameof(AppPage.Replay);
+        }
+
+        var page = pageName is not null && Enum.TryParse<AppPage>(pageName, ignoreCase: true, out var parsed)
+            ? parsed
+            : AppPage.Dashboard;
 
         return new StartupOptions(
             DemoMode: set.Contains("--demo"),

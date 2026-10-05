@@ -47,6 +47,7 @@ public partial class App : Application
         try
         {
             await _host.InitializeAsync();
+            await _host.Services.GetRequiredService<AnalysisServices>().StartAsync(CancellationToken.None);
             _shell = _host.Services.GetRequiredService<ApplicationShell>();
             _shell.ExitRequested += async (_, _) => await ExitAsync();
             _shell.Start();
@@ -73,6 +74,7 @@ public partial class App : Application
         {
             _shell?.PrepareForExit();
             await _host.Services.GetRequiredService<IMetricsMonitor>().StopAsync();
+            await _host.Services.GetRequiredService<AnalysisServices>().StopAsync();
             await _host.Services.GetRequiredService<SettingsService>().FlushAsync();
             await _host.DisposeAsync();
         }
