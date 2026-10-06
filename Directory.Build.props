@@ -7,7 +7,7 @@
   -->
   <PropertyGroup Label="Product identity">
     <Product>Sysora</Product>
-    <Version>1.1.0</Version>
+    <Version>1.1.1</Version>
     <Authors>Elpo55</Authors>
     <Company>$(Authors)</Company>
     <Copyright>Copyright (c) 2026 $(Authors)</Copyright>
