@@ -1,13 +1,13 @@
 # Architecture
 
-PulseDesk is split into three projects with a strict dependency rule, plus tests.
+Sysora is split into three projects with a strict dependency rule, plus tests.
 
 ```mermaid
 flowchart TB
-    App["PulseDesk.App<br/>WinUI 3 · views · view models · UI services"]
-    Core["PulseDesk.Core<br/>models · interfaces · monitoring · history · analysis · diagnosis · alerts · changes · settings"]
-    Infra["PulseDesk.Infrastructure<br/>Windows implementations · SQLite history"]
-    Tests["PulseDesk.Tests"]
+    App["Sysora.App<br/>WinUI 3 · views · view models · UI services"]
+    Core["Sysora.Core<br/>models · interfaces · monitoring · history · analysis · diagnosis · alerts · changes · settings"]
+    Infra["Sysora.Infrastructure<br/>Windows implementations · SQLite history"]
+    Tests["Sysora.Tests"]
     App --> Core
     App --> Infra
     Infra --> Core
@@ -64,7 +64,7 @@ sequenceDiagram
 A provider that throws doesn't stop the others: its metric is flagged in `SystemSnapshot.Unavailable` and
 the UI shows "Not available". The first failure is logged in full; repeats are logged at debug level only.
 
-### Keeping PulseDesk light
+### Keeping Sysora light
 
 | Mechanism | Where |
 | --- | --- |
@@ -73,18 +73,18 @@ the UI shows "Not available". The first failure is logged in full; repeats are l
 | History and per-application tracking only append to memory on the loop; SQLite writes are batched once a minute by one background task | `PerformanceHistory`, `ProcessHistory`, `HistoryRecorder` |
 | Alerts evaluated every 5 s on the thread pool; diagnosis, impact and replay computed only while their page is visible | `AlertService`, page view models |
 | No UI work at all while hidden; at most one queued UI update at a time, at low priority | `UiMetricsHub` |
-| CPU budget: if PulseDesk exceeds it (default 2% of total capacity), every interval is stretched automatically | `SelfUsageGovernor` |
+| CPU budget: if Sysora exceeds it (default 2% of total capacity), every interval is stretched automatically | `SelfUsageGovernor` |
 | Bounded memory: fixed-size ring buffers sized for 30 minutes at the fastest interval | `RingBuffer<T>`, `MetricSeries` |
 | One kernel call for all processes (`NtQuerySystemInformation`), reusable native buffers, allocation-free counter parsing | `ProcessSnapshotReader`, `PdhCounter.VisitInstances` |
 | Charts downsampled to about one point per two pixels (LTTB) | `Downsampler`, `TimeSeriesChart` |
 | Lightweight bars (render transform, no layout) and stable list rows (re-sorting changes content, not items) | `UsageBar`, `ProcessesViewModel.Rows` |
 | Only the visible page listens to updates | `PageViewModel.Activate/Deactivate` |
-| While a game runs and PulseDesk is not the active window: no UI updates, background sampling | `ApplicationShell.UpdateActivity`, `GamingSettings.ReduceMonitoringDuringGames` |
+| While a game runs and Sysora is not the active window: no UI updates, background sampling | `ApplicationShell.UpdateActivity`, `GamingSettings.ReduceMonitoringDuringGames` |
 | Game sessions read the existing snapshots (no extra collection); classification cached per executable; bounded timeline | `GameSessionTracker` |
 | A counter with no valid value for one sample (wrap-around) skips that sample instead of reporting the metric unavailable | `MetricSampleSkippedException`, `MetricsMonitor` |
 
 Measured on a Ryzen 9 7845HX laptop (24 logical processors), Release build: in the background
-PulseDesk uses about 1% of one core (0.05% of total capacity). With the window open, a page uses
+Sysora uses about 1% of one core (0.05% of total capacity). With the window open, a page uses
 1.5–4% of one core, including rendering.
 
 ## Where the numbers come from
@@ -116,7 +116,7 @@ PulseDesk uses about 1% of one core (0.05% of total capacity). With the window o
 | Frame rate (FPS) | — | Not available: requires administrator-level event tracing or hooking into the game |
 | Sleep and resume | `PowerRegisterSuspendResumeNotification` | Pending history written before sleep; all metrics refreshed on resume |
 
-All performance counters are added by their English names (`PdhAddEnglishCounter`), so PulseDesk works
+All performance counters are added by their English names (`PdhAddEnglishCounter`), so Sysora works
 on every Windows display language.
 
 ## Health and anomaly detection
@@ -135,7 +135,7 @@ with their own configurable rules.
 
 ## From measurements to explanations
 
-PulseDesk's value is *Monitor → Detect → Explain → Understand*. Five functions sit on top of the monitoring loop:
+Sysora's value is *Monitor → Detect → Explain → Understand*. Five functions sit on top of the monitoring loop:
 
 ```mermaid
 flowchart LR
@@ -187,7 +187,7 @@ Principles shared by all of them:
   `SystemEvent`s (applications starting to use a lot of CPU or memory, notable applications exiting, connectivity
   changes, volumes, gaps, pauses, alerts).
 - **Long term, local**: `HistoryRecorder` aggregates snapshots per minute and application usage per five minutes, and
-  a single background task writes them to `%LOCALAPPDATA%\PulseDesk\history.db` through `IHistoryRepository`
+  a single background task writes them to `%LOCALAPPDATA%\Sysora\history.db` through `IHistoryRepository`
   (`HistoryRepository`, SQLite). Hourly maintenance rolls complete hours up, applies retention (minutes 7 days,
   hours 90 days by default) and keeps the file under 256 MB. Demo mode uses an in-memory database.
 
@@ -204,18 +204,18 @@ Principles shared by all of them:
 
 `AppSettings` is an immutable record tree serialized with source-generated `System.Text.Json`
 (`SettingsSerializer`). `SettingsValidator` clamps every value into a safe range, so a hand-edited or
-outdated file can never make PulseDesk sample every millisecond. `SettingsService` validates each change,
+outdated file can never make Sysora sample every millisecond. `SettingsService` validates each change,
 raises `Changed` and writes the file 500 ms after the last change. `JsonFileSettingsStore` writes the file
 atomically (temporary file, then replace). A corrupt file is set aside, and the defaults are used.
 
 ## Application shell
 
-- `Program.cs` enforces a single instance per user (`AppInstance`): launching PulseDesk again brings the
+- `Program.cs` enforces a single instance per user (`AppInstance`): launching Sysora again brings the
   running window to the front.
 - `ApplicationShell` owns the window life cycle: initial visibility (`--tray`, "Start minimized" and
   "Start in tray" when launched at sign-in), close behavior (quit or minimize to tray), background mode,
   and the tray icon (`Services/Tray`, a small `Shell_NotifyIcon` wrapper).
-- Start with Windows uses the documented per-user Run key, writing only PulseDesk's own value. The
+- Start with Windows uses the documented per-user Run key, writing only Sysora's own value. The
   setting also reflects whether the user disabled it in *Settings › Apps › Startup*.
 - Shutdown is ordered: stop the monitoring loop, flush settings, dispose providers (PDH queries, native
   buffers), flush logs, exit.
@@ -228,11 +228,11 @@ Light or Dark preference to the window content and the caption buttons.
 
 ## Logging
 
-`FileLoggerProvider` (Infrastructure) writes daily files to `%LOCALAPPDATA%\PulseDesk\Logs` through a
+`FileLoggerProvider` (Infrastructure) writes daily files to `%LOCALAPPDATA%\Sysora\Logs` through a
 bounded queue drained by a background writer, so logging never blocks the caller. Files are kept for
 14 days and capped at 10 MB each. The level (Debug, Information, Warning, Error) can be changed in Settings.
 
-## Extending PulseDesk
+## Extending Sysora
 
 ### Adding a metric
 
@@ -254,7 +254,7 @@ the UI. See `IMPLEMENTATION_NOTES.md` for the limitations and next steps of the 
 
 ## Deviations from the initial folder plan
 
-- `PulseDesk.Infrastructure/System` is named `SystemInfo`: a namespace ending in `.System` would shadow
+- `Sysora.Infrastructure/System` is named `SystemInfo`: a namespace ending in `.System` would shadow
   the `System` namespace in every Infrastructure file.
 - Core has extra folders: `Settings`, `Formatting` and `Simulation`. Infrastructure has extra `Logging`
   and `Settings` folders. App has a `Themes` folder.

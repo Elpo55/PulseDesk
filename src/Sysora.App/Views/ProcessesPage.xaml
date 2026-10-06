@@ -1,0 +1,286 @@
+<Page
+    x:Class="Sysora.App.Views.ProcessesPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Sysora.App.Controls"
+    xmlns:local="using:Sysora.App.Views"
+    xmlns:vm="using:Sysora.App.ViewModels"
+    NavigationCacheMode="Required">
+
+    <Page.Resources>
+        <Style x:Key="ColumnHeaderButtonStyle" TargetType="Button" BasedOn="{StaticResource SubtleButtonStyle}">
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="Padding" Value="4,4" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+
+        <DataTemplate x:Key="TopItemTemplate" x:DataType="vm:TopProcessItemViewModel">
+            <Grid Padding="0,4" ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock MaxWidth="170" Text="{x:Bind Name, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock VerticalAlignment="Center" Style="{StaticResource LabelTextStyle}" Text="{x:Bind InstancesText, Mode=OneWay}" />
+                </StackPanel>
+                <TextBlock Grid.Column="1" Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind PrimaryText, Mode=OneWay}" />
+            </Grid>
+        </DataTemplate>
+    </Page.Resources>
+
+    <Grid Padding="32,24,32,24" RowSpacing="12">
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup>
+                <VisualState x:Name="Wide">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="1100" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="DetailsColumn.Width" Value="360" />
+                        <Setter Target="DetailsRow.Height" Value="0" />
+                        <Setter Target="DetailsPanel.(Grid.Row)" Value="0" />
+                        <Setter Target="DetailsPanel.(Grid.Column)" Value="1" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Narrow">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="0" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="DetailsPanel.MaxHeight" Value="320" />
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Grid ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+                <TextBlock Style="{StaticResource PageTitleTextStyle}" Text="Processes" />
+                <TextBlock Style="{StaticResource PageSubtitleTextStyle}" Text="{x:Bind ViewModel.CountText, Mode=OneWay}" />
+            </StackPanel>
+            <TextBox
+                Grid.Column="1"
+                Width="260"
+                VerticalAlignment="Center"
+                AutomationProperties.Name="Search processes"
+                PlaceholderText="Search by name or PID"
+                Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            <Button
+                Grid.Column="2"
+                VerticalAlignment="Center"
+                AutomationProperties.Name="Refresh"
+                Command="{x:Bind ViewModel.RefreshCommand}"
+                ToolTipService.ToolTip="Refresh now">
+                <FontIcon FontSize="14" Glyph="&#xE72C;" />
+            </Button>
+        </Grid>
+
+        <!-- Top consumers -->
+        <controls:AdaptiveGridPanel Grid.Row="1" MinItemWidth="260">
+            <Border Style="{StaticResource CardStyle}" Padding="16,12">
+                <StackPanel Spacing="4">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon FontSize="14" Foreground="{ThemeResource CpuAccentBrush}" Glyph="&#xE950;" />
+                        <TextBlock Style="{StaticResource LabelTextStyle}" Text="HIGHEST CPU USAGE" />
+                    </StackPanel>
+                    <ItemsControl ItemTemplate="{StaticResource TopItemTemplate}" ItemsSource="{x:Bind ViewModel.TopCpu}" />
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource CardStyle}" Padding="16,12">
+                <StackPanel Spacing="4">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon FontSize="14" Foreground="{ThemeResource MemoryAccentBrush}" Glyph="&#xE964;" />
+                        <TextBlock Style="{StaticResource LabelTextStyle}" Text="HIGHEST MEMORY USAGE" />
+                    </StackPanel>
+                    <ItemsControl ItemTemplate="{StaticResource TopItemTemplate}" ItemsSource="{x:Bind ViewModel.TopMemory}" />
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource CardStyle}" Padding="16,12">
+                <StackPanel Spacing="4">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon FontSize="14" Foreground="{ThemeResource DiskAccentBrush}" Glyph="&#xEDA2;" />
+                        <TextBlock Style="{StaticResource LabelTextStyle}" Text="HIGHEST I/O ACTIVITY" />
+                    </StackPanel>
+                    <ItemsControl ItemTemplate="{StaticResource TopItemTemplate}" ItemsSource="{x:Bind ViewModel.TopIo}" />
+                </StackPanel>
+            </Border>
+        </controls:AdaptiveGridPanel>
+
+        <InfoBar
+            Grid.Row="2"
+            IsOpen="{x:Bind ViewModel.IsStatusOpen, Mode=TwoWay}"
+            Message="{x:Bind ViewModel.StatusMessage, Mode=OneWay}"
+            Severity="{x:Bind local:ProcessesPage.Severity(ViewModel.IsStatusError), Mode=OneWay}"
+            Title="{x:Bind ViewModel.StatusTitle, Mode=OneWay}" />
+
+        <!-- List and details -->
+        <Grid x:Name="Body" Grid.Row="3" ColumnSpacing="12" RowSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition x:Name="DetailsColumn" Width="0" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition x:Name="DetailsRow" Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <Border Padding="0" Style="{StaticResource CardStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Column headers (click to sort) -->
+                    <Grid Padding="12,6,28,6" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="72" />
+                            <ColumnDefinition Width="72" />
+                            <ColumnDefinition Width="96" />
+                            <ColumnDefinition Width="96" />
+                        </Grid.ColumnDefinitions>
+                        <Button AutomationProperties.Name="Sort by name" Command="{x:Bind ViewModel.SortCommand}" CommandParameter="Name" HorizontalContentAlignment="Left" Style="{StaticResource ColumnHeaderButtonStyle}">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <TextBlock Text="Name" />
+                                <FontIcon FontSize="10" Glyph="{x:Bind ViewModel.NameSortGlyph, Mode=OneWay}" />
+                            </StackPanel>
+                        </Button>
+                        <Button Grid.Column="1" AutomationProperties.Name="Sort by PID" Command="{x:Bind ViewModel.SortCommand}" CommandParameter="Pid" HorizontalContentAlignment="Right" Style="{StaticResource ColumnHeaderButtonStyle}">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <FontIcon FontSize="10" Glyph="{x:Bind ViewModel.PidSortGlyph, Mode=OneWay}" />
+                                <TextBlock Text="PID" />
+                            </StackPanel>
+                        </Button>
+                        <Button Grid.Column="2" AutomationProperties.Name="Sort by CPU" Command="{x:Bind ViewModel.SortCommand}" CommandParameter="Cpu" HorizontalContentAlignment="Right" Style="{StaticResource ColumnHeaderButtonStyle}">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <FontIcon FontSize="10" Glyph="{x:Bind ViewModel.CpuSortGlyph, Mode=OneWay}" />
+                                <TextBlock Text="CPU" />
+                            </StackPanel>
+                        </Button>
+                        <Button Grid.Column="3" AutomationProperties.Name="Sort by memory" Command="{x:Bind ViewModel.SortCommand}" CommandParameter="Memory" HorizontalContentAlignment="Right" Style="{StaticResource ColumnHeaderButtonStyle}" ToolTipService.ToolTip="Private working set: physical memory used only by this process">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <FontIcon FontSize="10" Glyph="{x:Bind ViewModel.MemorySortGlyph, Mode=OneWay}" />
+                                <TextBlock Text="Memory" />
+                            </StackPanel>
+                        </Button>
+                        <Button Grid.Column="4" AutomationProperties.Name="Sort by disk I/O" Command="{x:Bind ViewModel.SortCommand}" CommandParameter="Io" HorizontalContentAlignment="Right" Style="{StaticResource ColumnHeaderButtonStyle}" ToolTipService.ToolTip="Read and write I/O (files, devices and network)">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <FontIcon FontSize="10" Glyph="{x:Bind ViewModel.IoSortGlyph, Mode=OneWay}" />
+                                <TextBlock Text="Disk I/O" />
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+
+                    <ListView
+                        Grid.Row="1"
+                        AutomationProperties.Name="Processes"
+                        ItemsSource="{x:Bind ViewModel.Rows}"
+                        SelectedIndex="{x:Bind ViewModel.SelectedRowIndex, Mode=TwoWay}"
+                        SelectionMode="Single">
+                        <!-- Realize about one screen of rows beyond the visible ones (the default is four):
+                             every realized row is refreshed when the live order changes. -->
+                        <ListView.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <ItemsStackPanel CacheLength="1" />
+                            </ItemsPanelTemplate>
+                        </ListView.ItemsPanel>
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="vm:ProcessRowViewModel">
+                                <Grid Height="32" Padding="4,0,0,0" AutomationProperties.Name="{x:Bind Item.Name, Mode=OneWay}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="72" />
+                                        <ColumnDefinition Width="72" />
+                                        <ColumnDefinition Width="96" />
+                                        <ColumnDefinition Width="96" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock VerticalAlignment="Center" Text="{x:Bind Item.Name, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="1" Padding="0,0,4,0" HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{x:Bind Item.PidText, Mode=OneWay}" />
+                                    <TextBlock Grid.Column="2" Padding="0,0,4,0" HorizontalAlignment="Right" VerticalAlignment="Center" Text="{x:Bind Item.CpuText, Mode=OneWay}" />
+                                    <TextBlock Grid.Column="3" Padding="0,0,4,0" HorizontalAlignment="Right" VerticalAlignment="Center" Text="{x:Bind Item.MemoryText, Mode=OneWay}" />
+                                    <TextBlock Grid.Column="4" Padding="0,0,4,0" HorizontalAlignment="Right" VerticalAlignment="Center" Text="{x:Bind Item.IoText, Mode=OneWay}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+
+                    <TextBlock
+                        Grid.Row="2"
+                        Margin="16,8"
+                        Style="{StaticResource LabelTextStyle}"
+                        Text="CPU is a share of total capacity. Memory is the private working set. Per-process network usage is not measured (it requires administrator-level tracing)."
+                        TextWrapping="Wrap" />
+                </Grid>
+            </Border>
+
+            <!-- Details -->
+            <Border
+                x:Name="DetailsPanel"
+                Grid.Row="1"
+                Style="{StaticResource CardStyle}">
+                <Grid>
+                    <TextBlock
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Style="{StaticResource SecondaryTextStyle}"
+                        Text="Select a process to see its details."
+                        Visibility="{x:Bind ViewModel.HasSelection, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
+                    <ScrollViewer Visibility="{x:Bind ViewModel.HasSelection, Mode=OneWay}">
+                        <StackPanel Spacing="12" Padding="0,0,8,0">
+                            <StackPanel Spacing="2">
+                                <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="{x:Bind ViewModel.Details.Name, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Style="{StaticResource LabelTextStyle}" Text="{x:Bind ViewModel.Details.Description, Mode=OneWay}" />
+                            </StackPanel>
+                            <InfoBar IsClosable="False" IsOpen="{x:Bind ViewModel.Details.HasExited, Mode=OneWay}" Message="This process has exited." Severity="Informational" />
+                            <InfoBar IsClosable="False" IsOpen="{x:Bind ViewModel.Details.IsCritical, Mode=OneWay}" Message="Critical Windows process: ending it would stop the system." Severity="Warning" />
+                            <controls:AdaptiveGridPanel MinItemWidth="130" RowSpacing="12">
+                                <controls:StatItem Label="PID" Value="{x:Bind ViewModel.Details.Pid, Mode=OneWay}" />
+                                <controls:StatItem Label="Parent PID" Value="{x:Bind ViewModel.Details.Parent, Mode=OneWay}" />
+                                <controls:StatItem Label="Started" Value="{x:Bind ViewModel.Details.Started, Mode=OneWay}" />
+                                <controls:StatItem Label="Session" Value="{x:Bind ViewModel.Details.Session, Mode=OneWay}" />
+                                <controls:StatItem Label="CPU" Value="{x:Bind ViewModel.Details.Cpu, Mode=OneWay}" />
+                                <controls:StatItem Label="Memory" Value="{x:Bind ViewModel.Details.Memory, Mode=OneWay}" Hint="Private working set" />
+                                <controls:StatItem Label="Working set" Value="{x:Bind ViewModel.Details.WorkingSet, Mode=OneWay}" Hint="Includes memory shared with other processes" />
+                                <controls:StatItem Label="Committed" Value="{x:Bind ViewModel.Details.PrivateBytes, Mode=OneWay}" Hint="Private bytes" />
+                                <controls:StatItem Label="I/O read" Value="{x:Bind ViewModel.Details.IoRead, Mode=OneWay}" />
+                                <controls:StatItem Label="I/O write" Value="{x:Bind ViewModel.Details.IoWrite, Mode=OneWay}" />
+                                <controls:StatItem Label="Threads" Value="{x:Bind ViewModel.Details.Threads, Mode=OneWay}" />
+                                <controls:StatItem Label="Handles" Value="{x:Bind ViewModel.Details.Handles, Mode=OneWay}" />
+                            </controls:AdaptiveGridPanel>
+                            <StackPanel Spacing="2">
+                                <TextBlock Style="{StaticResource LabelTextStyle}" Text="Path" />
+                                <TextBlock IsTextSelectionEnabled="True" Text="{x:Bind ViewModel.Details.Path, Mode=OneWay}" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <controls:AdaptiveGridPanel MinItemWidth="130" RowSpacing="12">
+                                <controls:StatItem Label="Company" Value="{x:Bind ViewModel.Details.Company, Mode=OneWay}" />
+                                <controls:StatItem Label="Version" Value="{x:Bind ViewModel.Details.Version, Mode=OneWay}" />
+                            </controls:AdaptiveGridPanel>
+                            <Button Command="{x:Bind ViewModel.EndProcessCommand}">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon FontSize="14" Glyph="&#xE711;" />
+                                    <TextBlock Text="End process…" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+
+        </Grid>
+    </Grid>
+</Page>

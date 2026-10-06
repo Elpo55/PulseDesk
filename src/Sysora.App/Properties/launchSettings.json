@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "Sysora": {
+      "commandName": "Project"
+    },
+    "Sysora (demo)": {
+      "commandName": "Project",
+      "commandLineArgs": "--demo"
+    }
+  }
+}

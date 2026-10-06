@@ -1,0 +1,253 @@
+<Page
+    x:Class="Sysora.App.Views.AppImpactPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Sysora.App.Controls"
+    xmlns:vm="using:Sysora.App.ViewModels"
+    NavigationCacheMode="Required">
+
+    <Page.Resources>
+        <Style x:Key="ColumnHeaderTextStyle" TargetType="TextBlock" BasedOn="{StaticResource CaptionTextBlockStyle}">
+            <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="TextWrapping" Value="NoWrap" />
+        </Style>
+    </Page.Resources>
+
+    <Grid Padding="32,24,32,24" RowSpacing="12">
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup>
+                <VisualState x:Name="Wide">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="1500" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="DetailsColumn.Width" Value="380" />
+                        <Setter Target="DetailsRow.Height" Value="0" />
+                        <Setter Target="DetailsPanel.(Grid.Row)" Value="0" />
+                        <Setter Target="DetailsPanel.(Grid.Column)" Value="1" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Narrow">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="0" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="DetailsPanel.MaxHeight" Value="420" />
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Grid ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+                <TextBlock Style="{StaticResource PageTitleTextStyle}" Text="App Impact" />
+                <TextBlock Style="{StaticResource PageSubtitleTextStyle}" Text="Which applications weigh the most on your PC" />
+            </StackPanel>
+            <ComboBox
+                Grid.Column="1"
+                MinWidth="160"
+                VerticalAlignment="Center"
+                AutomationProperties.Name="Period"
+                ItemsSource="{x:Bind ViewModel.Periods}"
+                SelectedIndex="{x:Bind ViewModel.PeriodIndex, Mode=TwoWay}" />
+            <Button
+                Grid.Column="2"
+                VerticalAlignment="Center"
+                AutomationProperties.Name="Refresh"
+                Command="{x:Bind ViewModel.RefreshCommand}"
+                ToolTipService.ToolTip="Refresh now">
+                <FontIcon FontSize="14" Glyph="&#xE72C;" />
+            </Button>
+        </Grid>
+
+        <StackPanel Grid.Row="1" Spacing="2">
+            <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind ViewModel.Summary, Mode=OneWay}" />
+            <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind ViewModel.Note, Mode=OneWay}" />
+        </StackPanel>
+
+        <!-- Ranking and details -->
+        <Grid Grid.Row="2" ColumnSpacing="12" RowSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition x:Name="DetailsColumn" Width="0" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition x:Name="DetailsRow" Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <Border Padding="0" Style="{StaticResource CardStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <Grid Padding="16,8,28,8" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1" ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="24" />
+                            <ColumnDefinition Width="*" MinWidth="160" />
+                            <ColumnDefinition Width="100" />
+                            <ColumnDefinition Width="56" />
+                            <ColumnDefinition Width="72" />
+                            <ColumnDefinition Width="80" />
+                            <ColumnDefinition Width="64" />
+                            <ColumnDefinition Width="40" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource ColumnHeaderTextStyle}" Text="#" />
+                        <TextBlock Grid.Column="1" Style="{StaticResource ColumnHeaderTextStyle}" Text="Application" />
+                        <TextBlock Grid.Column="2" Style="{StaticResource ColumnHeaderTextStyle}" Text="Impact" ToolTipService.ToolTip="{x:Bind ViewModel.ScoreFormula}" />
+                        <TextBlock Grid.Column="3" HorizontalAlignment="Right" Style="{StaticResource ColumnHeaderTextStyle}" Text="CPU" ToolTipService.ToolTip="Average CPU while running, share of total capacity" />
+                        <TextBlock Grid.Column="4" HorizontalAlignment="Right" Style="{StaticResource ColumnHeaderTextStyle}" Text="Memory" ToolTipService.ToolTip="Average private working set while running" />
+                        <TextBlock Grid.Column="5" HorizontalAlignment="Right" Style="{StaticResource ColumnHeaderTextStyle}" Text="Disk I/O" ToolTipService.ToolTip="Average read and write I/O while running (files, devices and network)" />
+                        <TextBlock Grid.Column="6" HorizontalAlignment="Right" Style="{StaticResource ColumnHeaderTextStyle}" Text="Running" ToolTipService.ToolTip="Measured time the application was running" />
+                        <TextBlock Grid.Column="7" HorizontalAlignment="Center" Style="{StaticResource ColumnHeaderTextStyle}" Text="Trend" ToolTipService.ToolTip="Second half of the period compared with the first half" />
+                    </Grid>
+
+                    <ListView
+                        Grid.Row="1"
+                        AutomationProperties.Name="Applications by impact"
+                        ItemsSource="{x:Bind ViewModel.Items}"
+                        SelectedIndex="{x:Bind ViewModel.SelectedIndex, Mode=TwoWay}"
+                        SelectionMode="Single">
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="vm:AppImpactItemViewModel">
+                                <Grid MinHeight="44" Padding="4,4,0,4" AutomationProperties.Name="{x:Bind Name, Mode=OneWay}" ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="24" />
+                                        <ColumnDefinition Width="*" MinWidth="160" />
+                                        <ColumnDefinition Width="100" />
+                                        <ColumnDefinition Width="56" />
+                                        <ColumnDefinition Width="72" />
+                                        <ColumnDefinition Width="80" />
+                                        <ColumnDefinition Width="64" />
+                                        <ColumnDefinition Width="40" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock VerticalAlignment="Center" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{x:Bind RankText, Mode=OneWay}" />
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" ToolTipService.ToolTip="{x:Bind Location, Mode=OneWay}">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <TextBlock MaxWidth="260" Text="{x:Bind Name, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock VerticalAlignment="Center" Foreground="{ThemeResource StatusNormalBrush}" Style="{StaticResource CaptionTextBlockStyle}" Text="running" Visibility="{x:Bind IsRunning, Mode=OneWay}" />
+                                        </StackPanel>
+                                        <TextBlock MaxLines="1" Style="{StaticResource LabelTextStyle}" Text="{x:Bind Location, Mode=OneWay}" TextWrapping="NoWrap" />
+                                    </StackPanel>
+                                    <controls:LevelBadge Grid.Column="2" BrushKey="{x:Bind LevelBrushKey, Mode=OneWay}" Text="{x:Bind LevelText, Mode=OneWay}" />
+                                    <TextBlock Grid.Column="3" HorizontalAlignment="Right" VerticalAlignment="Center" Text="{x:Bind CpuText, Mode=OneWay}" />
+                                    <TextBlock Grid.Column="4" HorizontalAlignment="Right" VerticalAlignment="Center" Text="{x:Bind MemoryText, Mode=OneWay}" />
+                                    <TextBlock Grid.Column="5" HorizontalAlignment="Right" VerticalAlignment="Center" Text="{x:Bind DiskText, Mode=OneWay}" />
+                                    <TextBlock Grid.Column="6" HorizontalAlignment="Right" VerticalAlignment="Center" Text="{x:Bind DurationText, Mode=OneWay}" />
+                                    <FontIcon Grid.Column="7" HorizontalAlignment="Center" FontSize="12" Glyph="{x:Bind TrendGlyph, Mode=OneWay}" ToolTipService.ToolTip="{x:Bind TrendText, Mode=OneWay}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+
+                    <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" Visibility="{x:Bind ViewModel.IsEmpty, Mode=OneWay}">
+                        <FontIcon FontSize="32" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Glyph="&#xE9D9;" />
+                        <TextBlock HorizontalAlignment="Center" Style="{StaticResource SecondaryTextStyle}" Text="No application usage recorded for this period yet." />
+                    </StackPanel>
+
+                    <TextBlock
+                        Grid.Row="2"
+                        Margin="16,8"
+                        Style="{StaticResource LabelTextStyle}"
+                        Text="Applications are identified by executable path; processes sharing only a name are kept apart. Network usage per application is not available."
+                        TextWrapping="Wrap" />
+                </Grid>
+            </Border>
+
+            <!-- Details -->
+            <Border x:Name="DetailsPanel" Grid.Row="1" Style="{StaticResource CardStyle}">
+                <Grid>
+                    <TextBlock
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Style="{StaticResource SecondaryTextStyle}"
+                        Text="Select an application to see why it ranks there and its history."
+                        TextAlignment="Center"
+                        Visibility="{x:Bind ViewModel.HasSelection, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
+                    <ScrollViewer Visibility="{x:Bind ViewModel.HasSelection, Mode=OneWay}">
+                        <StackPanel Padding="0,0,12,0" Spacing="12">
+                            <StackPanel Spacing="4">
+                                <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="{x:Bind ViewModel.Detail.Name, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
+                                <TextBlock IsTextSelectionEnabled="True" Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind ViewModel.Detail.Location, Mode=OneWay}" />
+                                <StackPanel Margin="0,4,0,0" Orientation="Horizontal" Spacing="8">
+                                    <controls:LevelBadge BrushKey="{x:Bind ViewModel.Detail.LevelBrushKey, Mode=OneWay}" Text="{x:Bind ViewModel.Detail.LevelText, Mode=OneWay}" />
+                                    <TextBlock VerticalAlignment="Center" Style="{StaticResource LabelTextStyle}" Text="{x:Bind ViewModel.Detail.ScoreText, Mode=OneWay}" ToolTipService.ToolTip="{x:Bind ViewModel.ScoreFormula}" />
+                                </StackPanel>
+                            </StackPanel>
+
+                            <TextBlock Text="{x:Bind ViewModel.Detail.Explanation, Mode=OneWay}" TextWrapping="Wrap" />
+                            <StackPanel Spacing="2">
+                                <TextBlock Style="{StaticResource LabelTextStyle}" Text="{x:Bind ViewModel.Detail.StatusText, Mode=OneWay}" />
+                                <TextBlock Style="{StaticResource LabelTextStyle}" Text="{x:Bind ViewModel.Detail.ConfidenceText, Mode=OneWay}" />
+                            </StackPanel>
+
+                            <TextBlock Style="{StaticResource CardHeaderTextStyle}" Text="What drives the score" />
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.Detail.Components}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:ImpactComponentViewModel">
+                                        <Grid Padding="0,4" ColumnSpacing="8" RowSpacing="2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="96" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <TextBlock VerticalAlignment="Center" Text="{x:Bind Resource}" />
+                                            <controls:LevelBadge Grid.Column="1" BrushKey="{x:Bind LevelBrushKey, Mode=OneWay}" Text="{x:Bind LevelText, Mode=OneWay}" />
+                                            <TextBlock Grid.Row="1" Grid.Column="1" Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind Description, Mode=OneWay}" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <TextBlock Style="{StaticResource CardHeaderTextStyle}" Text="History" />
+                            <StackPanel Spacing="8" Visibility="{x:Bind ViewModel.Detail.HasChart, Mode=OneWay}">
+                                <TextBlock Style="{StaticResource LabelTextStyle}" Text="CPU (share of total capacity)" />
+                                <controls:TimeSeriesChart Height="120" AutomationProperties.Name="Application CPU history" Data="{x:Bind ViewModel.Detail.CpuChart, Mode=OneWay}" Stroke="{ThemeResource CpuAccentBrush}" />
+                                <TextBlock Style="{StaticResource LabelTextStyle}" Text="Memory (private working set)" />
+                                <controls:TimeSeriesChart Height="120" AutomationProperties.Name="Application memory history" Data="{x:Bind ViewModel.Detail.MemoryChart, Mode=OneWay}" Stroke="{ThemeResource MemoryAccentBrush}" />
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind ViewModel.Detail.ChartCaption, Mode=OneWay}" />
+                            <StackPanel Spacing="2">
+                                <TextBlock Style="{StaticResource LabelTextStyle}" Text="{x:Bind ViewModel.Detail.PeakText, Mode=OneWay}" TextWrapping="Wrap" />
+                                <TextBlock Style="{StaticResource LabelTextStyle}" Text="{x:Bind ViewModel.Detail.TrendText, Mode=OneWay}" />
+                                <TextBlock Style="{StaticResource LabelTextStyle}" Text="{x:Bind ViewModel.Detail.LaunchesText, Mode=OneWay}" />
+                            </StackPanel>
+
+                            <Expander HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Header="Why this result? (data used)">
+                                <ItemsControl ItemsSource="{x:Bind ViewModel.Detail.Evidence}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:EvidenceItemViewModel">
+                                            <StackPanel Padding="0,6" Spacing="2">
+                                                <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind Metric}" />
+                                                <TextBlock IsTextSelectionEnabled="True" Text="{x:Bind Observed}" TextWrapping="Wrap" />
+                                                <TextBlock IsTextSelectionEnabled="True" Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind Detail}" Visibility="{x:Bind HasDetail}" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Expander>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Page>

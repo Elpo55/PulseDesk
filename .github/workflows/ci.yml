@@ -22,10 +22,10 @@ jobs:
           dotnet-version: 10.0.x
 
       - name: Restore
-        run: dotnet restore PulseDesk.slnx
+        run: dotnet restore Sysora.slnx
 
       - name: Build
-        run: dotnet build PulseDesk.slnx --configuration Release --no-restore
+        run: dotnet build Sysora.slnx --configuration Release --no-restore
 
       - name: Test
-        run: dotnet test --project src/PulseDesk.Tests --configuration Release --no-build
+        run: dotnet test --project src/Sysora.Tests --configuration Release --no-build

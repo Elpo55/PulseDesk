@@ -72,5 +72,5 @@ dotnet_diagnostic.CA1848.severity = none   # LoggerMessage delegates: not worth 
 dotnet_diagnostic.CA1873.severity = none   # Same rationale (argument evaluation in log calls)
 dotnet_diagnostic.CA2254.severity = suggestion
 
-[src/PulseDesk.Tests/**.cs]
+[src/Sysora.Tests/**.cs]
 dotnet_diagnostic.CA1707.severity = none   # Test names use underscores

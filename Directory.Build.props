@@ -1,25 +1,27 @@
 <Project>
 
   <!--
-    Product identity: the single source of truth for name, version, author, URL and license.
-    These values are stamped into every assembly and read at runtime by PulseDesk.Core.AppInfo.
+    Product identity: the single source of truth for name, tagline, version, author, URL and license.
+    These values are stamped into every assembly and read at runtime by Sysora.Core.AppInfo.
     Do not duplicate them anywhere else in the code base.
   -->
   <PropertyGroup Label="Product identity">
-    <Product>PulseDesk</Product>
+    <Product>Sysora</Product>
     <Version>1.1.0</Version>
     <Authors>Elpo55</Authors>
     <Company>$(Authors)</Company>
     <Copyright>Copyright (c) 2026 $(Authors)</Copyright>
     <Description>A lightweight, local-first Windows system dashboard.</Description>
-    <PulseDeskProjectUrl>https://github.com/Elpo55/PulseDesk</PulseDeskProjectUrl>
-    <PulseDeskLicense>MIT</PulseDeskLicense>
+    <SysoraTagline>Your PC, Explained.</SysoraTagline>
+    <SysoraProjectUrl>https://github.com/Elpo55/Sysora</SysoraProjectUrl>
+    <SysoraLicense>MIT</SysoraLicense>
   </PropertyGroup>
 
   <ItemGroup Label="Product identity metadata">
-    <AssemblyMetadata Include="PulseDesk.ProjectUrl" Value="$(PulseDeskProjectUrl)" />
-    <AssemblyMetadata Include="PulseDesk.License" Value="$(PulseDeskLicense)" />
-    <AssemblyMetadata Include="PulseDesk.Authors" Value="$(Authors)" />
+    <AssemblyMetadata Include="Sysora.Tagline" Value="$(SysoraTagline)" />
+    <AssemblyMetadata Include="Sysora.ProjectUrl" Value="$(SysoraProjectUrl)" />
+    <AssemblyMetadata Include="Sysora.License" Value="$(SysoraLicense)" />
+    <AssemblyMetadata Include="Sysora.Authors" Value="$(Authors)" />
   </ItemGroup>
 
   <PropertyGroup Label="Build">

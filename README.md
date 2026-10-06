@@ -1,31 +1,32 @@
 <p align="center">
-  <img src="assets/logo.png" alt="PulseDesk logo" width="96" height="96" />
+  <img src="assets/logo.png" alt="Sysora logo" width="96" height="96" />
 </p>
 
-<h1 align="center">PulseDesk</h1>
+<h1 align="center">Sysora</h1>
 
 <p align="center">
-  <strong>A lightweight, local-first Windows system dashboard.</strong>
+  <strong>Your PC, Explained.</strong><br />
+  A lightweight, local-first Windows system dashboard.
 </p>
 
 <p align="center">
-  <a href="https://github.com/Elpo55/PulseDesk/actions/workflows/ci.yml"><img src="https://github.com/Elpo55/PulseDesk/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://github.com/Elpo55/Sysora/actions/workflows/ci.yml"><img src="https://github.com/Elpo55/Sysora/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <img src="https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D4" alt="Windows 10 | 11" />
   <img src="https://img.shields.io/badge/.NET-10-512BD4" alt=".NET 10" />
   <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT license" />
 </p>
 
-PulseDesk is a modern, local-first Windows dashboard for monitoring system performance, processes,
+Sysora is a modern, local-first Windows dashboard for monitoring system performance, processes,
 storage, network activity and system health in real time. It is a native WinUI 3 application: no
 account, no server, no telemetry, and it works offline.
 
-![PulseDesk dashboard (dark theme, demo data)](docs/images/dashboard-dark.png)
+![Sysora dashboard (dark theme, demo data)](docs/images/dashboard-dark.png)
 
 > Screenshots use demo mode (`--demo`): every value is simulated, and the app shows a "DEMO MODE" badge.
 
 ## Features
 
-PulseDesk does more than show numbers: it detects, explains and helps you understand what happens on your PC.
+Sysora does more than show numbers: it detects, explains and helps you understand what happens on your PC.
 
 - **Diagnosis**: "Why is my PC slow?" Deterministic rules check CPU, memory, disks, GPU, network, applications and
   uptime, and explain each finding with the data behind it, a comparison with your usual activity and a confidence level
@@ -42,7 +43,7 @@ PulseDesk does more than show numbers: it detects, explains and helps you unders
   closes, a recap shows averages and peaks (CPU, GPU, video memory, RAM, disk, network, the game's own usage), the
   limits reached, the likely limiting factor, the busiest background applications and a comparison with your previous
   sessions of the same game. **FPS is never estimated**: Windows offers no reliable source, so it is shown as
-  "Not available". While a game is in front, PulseDesk pauses its own window updates and samples less often
+  "Not available". While a game is in front, Sysora pauses its own window updates and samples less often
 - **Usual activity**: the diagnosis compares the current activity with the last hour, today, yesterday, the last 7 and
   30 days and the usual level at this hour, once enough history exists (otherwise it says how much data is missing)
 - **CPU monitoring**: overall and per-logical-processor usage, effective clock speed, base and peak speed, cores, threads, caches
@@ -72,29 +73,29 @@ PulseDesk does more than show numbers: it detects, explains and helps you unders
 
 ## Privacy
 
-PulseDesk is local-first.
+Sysora is local-first.
 
 - No telemetry is enabled by default.
 - No account is required.
 - No system metrics are uploaded.
 
-PulseDesk never opens a network connection. "Internet available" comes from Windows' own
-connectivity checks, so PulseDesk generates no network traffic to measure it. Settings, logs and the local history
-(performance, application names, alerts, detected changes, game sessions) are stored in `%LOCALAPPDATA%\PulseDesk` and stay on
+Sysora never opens a network connection. "Internet available" comes from Windows' own
+connectivity checks, so Sysora generates no network traffic to measure it. Settings, logs and the local history
+(performance, application names, alerts, detected changes, game sessions) are stored in `%LOCALAPPDATA%\Sysora` and stay on
 your PC. History recording can be turned off and the history deleted from Settings.
 
 ## Accuracy
 
-PulseDesk only shows values Windows actually provides. Anything that isn't available on a given machine
+Sysora only shows values Windows actually provides. Anything that isn't available on a given machine
 appears as **"Not available"**, never as an invented number. For example, CPU temperature can't be read
-through any documented Windows API without a third-party kernel driver, which PulseDesk deliberately does not
+through any documented Windows API without a third-party kernel driver, which Sysora deliberately does not
 install. See [docs/architecture.md](docs/architecture.md#where-the-numbers-come-from) for the data source
 of every metric.
 
 ## Install
 
-Download the installer from the [latest release](https://github.com/Elpo55/PulseDesk/releases/latest):
-`PulseDesk-<version>-setup-x64.exe` (or `-arm64` for Windows on ARM), run it, then start PulseDesk from the Start
+Download the installer from the [latest release](https://github.com/Elpo55/Sysora/releases/latest):
+`Sysora-<version>-setup-x64.exe` (or `-arm64` for Windows on ARM), run it, then start Sysora from the Start
 menu. It installs for all users by default; choose **Install for me only** on the first screen to install without
 administrator rights. Uninstall it from Settings › Apps.
 
@@ -110,15 +111,15 @@ The installer is not code-signed yet: if SmartScreen shows "Windows protected yo
 ## Build
 
 ```powershell
-git clone https://github.com/Elpo55/PulseDesk.git
-cd PulseDesk
-dotnet build PulseDesk.slnx -c Release
+git clone https://github.com/Elpo55/Sysora.git
+cd Sysora
+dotnet build Sysora.slnx -c Release
 ```
 
 ## Run
 
 ```powershell
-dotnet run --project src/PulseDesk.App -c Release
+dotnet run --project src/Sysora.App -c Release
 ```
 
 The app is unpackaged and bundles the Windows App SDK runtime, so no runtime installation or signing
@@ -130,12 +131,12 @@ certificate is needed. Useful options:
 | `--tray` | Start hidden in the notification area |
 | `--page=Processes` | Open on a given page (`Dashboard`, `Diagnosis`, `Replay`, `AppImpact`, `Changes`, `Alerts`, `Gaming`, `Performance`, `Processes`, `Storage`, `Network`, `System`, `Settings`) |
 
-Pass them after `--` with `dotnet run`, for example `dotnet run --project src/PulseDesk.App -- --demo`.
+Pass them after `--` with `dotnet run`, for example `dotnet run --project src/Sysora.App -- --demo`.
 
 ## Test
 
 ```powershell
-dotnet test --project src/PulseDesk.Tests
+dotnet test --project src/Sysora.Tests
 ```
 
 The unit tests cover the Core logic (ring buffers, history, formatting, trends, thresholds, anomaly
@@ -147,12 +148,12 @@ and never depend on the machine's hardware.
 
 ```
 src/
-  PulseDesk.App/             WinUI 3 application: views, view models, controls, UI services
-  PulseDesk.Core/            Models, interfaces, monitoring loop, health, history, analysis, diagnosis,
+  Sysora.App/             WinUI 3 application: views, view models, controls, UI services
+  Sysora.Core/            Models, interfaces, monitoring loop, health, history, analysis, diagnosis,
                              alerts, change detection, settings (no Windows dependency)
-  PulseDesk.Infrastructure/  Windows implementations: performance counters, native APIs, registry, files,
+  Sysora.Infrastructure/  Windows implementations: performance counters, native APIs, registry, files,
                              local SQLite history
-  PulseDesk.Tests/           Unit tests
+  Sysora.Tests/           Unit tests
 docs/                        Architecture and development guides
 ```
 

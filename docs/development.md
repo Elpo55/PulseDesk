@@ -12,16 +12,16 @@ runtime bundled (`WindowsAppSDKSelfContained`), so no MSIX, certificate or runti
 ## Everyday commands
 
 ```powershell
-dotnet build PulseDesk.slnx                     # build everything (Debug)
-dotnet run --project src/PulseDesk.App          # run with live data
-dotnet run --project src/PulseDesk.App -- --demo --page=Processes
-dotnet test --project src/PulseDesk.Tests       # run the unit tests
+dotnet build Sysora.slnx                     # build everything (Debug)
+dotnet run --project src/Sysora.App          # run with live data
+dotnet run --project src/Sysora.App -- --demo --page=Processes
+dotnet test --project src/Sysora.Tests       # run the unit tests
 ```
 
 `global.json` opts into Microsoft.Testing.Platform for `dotnet test` (required by xUnit v3 on .NET 10).
 
-In Visual Studio, open `PulseDesk.slnx`, set **PulseDesk.App** as the startup project and pick the
-*PulseDesk* or *PulseDesk (demo)* launch profile.
+In Visual Studio, open `Sysora.slnx`, set **Sysora.App** as the startup project and pick the
+*Sysora* or *Sysora (demo)* launch profile.
 
 ### Command-line options
 
@@ -39,17 +39,17 @@ memory only: simulated data never reaches the real history database.
 
 | What | Where |
 | --- | --- |
-| Settings | `%LOCALAPPDATA%\PulseDesk\settings.json` (delete it to reset) |
-| Logs | `%LOCALAPPDATA%\PulseDesk\Logs\pulsedesk-YYYYMMDD.log` |
-| History (performance, application usage, events, alerts, snapshots, changes) | `%LOCALAPPDATA%\PulseDesk\history.db` (SQLite; delete it, or use Settings › History › Delete, to reset) |
-| Start with Windows | `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\PulseDesk` (only when enabled) |
+| Settings | `%LOCALAPPDATA%\Sysora\settings.json` (delete it to reset) |
+| Logs | `%LOCALAPPDATA%\Sysora\Logs\sysora-YYYYMMDD.log` |
+| History (performance, application usage, events, alerts, snapshots, changes) | `%LOCALAPPDATA%\Sysora\history.db` (SQLite; delete it, or use Settings › History › Delete, to reset) |
+| Start with Windows | `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\Sysora` (only when enabled) |
 
 Set *Settings › Diagnostics › Log level* to **Debug** to see every collection failure.
 
 ## Publishing
 
 ```powershell
-dotnet publish src/PulseDesk.App -c Release -r win-x64 --self-contained -o artifacts/win-x64
+dotnet publish src/Sysora.App -c Release -r win-x64 --self-contained -o artifacts/win-x64
 ```
 
 The output folder runs on any Windows 10 1809+ PC without installing .NET or the Windows App SDK.
@@ -57,12 +57,12 @@ Use `-r win-arm64` for ARM64.
 
 ### Installer and release
 
-`installer/PulseDesk.iss` ([Inno Setup 6](https://jrsoftware.org/isinfo.php)) packages that folder into a setup program
+`installer/Sysora.iss` ([Inno Setup 6](https://jrsoftware.org/isinfo.php)) packages that folder into a setup program
 (Program Files or per-user install, Start menu shortcut, uninstaller in Settings › Apps):
 
 ```powershell
-dotnet publish src/PulseDesk.App -c Release -r win-x64 --self-contained -o artifacts/publish/win-x64
-& "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" /DAppVersion=1.0.0 /DArch=x64 installer\PulseDesk.iss
+dotnet publish src/Sysora.App -c Release -r win-x64 --self-contained -o artifacts/publish/win-x64
+& "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" /DAppVersion=1.0.0 /DArch=x64 installer\Sysora.iss
 ```
 
 The installer lands in `artifacts/installer`. To publish a release, set `<Version>` in `Directory.Build.props`, add
@@ -99,7 +99,7 @@ restore → build (Release, warnings as errors) → test.
 
 - **Some metrics show "Not available"**: check the log. Performance counters can be disabled or corrupted
   on some systems; `lodctr /R` (in an elevated prompt) rebuilds them.
-- **The window doesn't appear**: PulseDesk may already be running in the notification area. Launching it
+- **The window doesn't appear**: Sysora may already be running in the notification area. Launching it
   again brings the existing window to the front.
-- **Ending a process fails with "Access denied"**: PulseDesk never elevates itself. Processes of other users
-  or of the system require running PulseDesk as administrator. Critical Windows processes are always refused.
+- **Ending a process fails with "Access denied"**: Sysora never elevates itself. Processes of other users
+  or of the system require running Sysora as administrator. Critical Windows processes are always refused.

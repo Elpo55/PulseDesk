@@ -1,0 +1,331 @@
+<Page
+    x:Class="Sysora.App.Views.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Sysora.App.Controls"
+    xmlns:vm="using:Sysora.App.ViewModels"
+    NavigationCacheMode="Required">
+
+    <Page.Resources>
+        <Style TargetType="ToggleSwitch">
+            <Setter Property="OnContent" Value="On" />
+            <Setter Property="OffContent" Value="Off" />
+            <Setter Property="MinWidth" Value="0" />
+        </Style>
+        <Style x:Key="MinutesBoxStyle" TargetType="NumberBox">
+            <Setter Property="Minimum" Value="1" />
+            <Setter Property="Maximum" Value="60" />
+            <Setter Property="SmallChange" Value="1" />
+            <Setter Property="LargeChange" Value="5" />
+            <Setter Property="SpinButtonPlacementMode" Value="Compact" />
+            <Setter Property="MinWidth" Value="110" />
+        </Style>
+        <Style x:Key="ThresholdBoxStyle" TargetType="NumberBox">
+            <Setter Property="Minimum" Value="1" />
+            <Setter Property="Maximum" Value="100" />
+            <Setter Property="SmallChange" Value="1" />
+            <Setter Property="LargeChange" Value="5" />
+            <Setter Property="SpinButtonPlacementMode" Value="Compact" />
+            <Setter Property="MinWidth" Value="110" />
+        </Style>
+    </Page.Resources>
+
+    <ScrollViewer>
+        <StackPanel
+            MaxWidth="1000"
+            Padding="{StaticResource PagePadding}"
+            Spacing="4">
+
+            <TextBlock Style="{StaticResource PageTitleTextStyle}" Text="Settings" />
+            <TextBlock Margin="0,0,0,8" Style="{StaticResource PageSubtitleTextStyle}" Text="Changes are applied and saved immediately." />
+
+            <!-- General -->
+            <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="General" />
+            <controls:SettingRow Description="Follow Windows, or always use light or dark colors" Glyph="&#xE790;" Header="Theme">
+                <ComboBox MinWidth="160" AutomationProperties.Name="Theme" SelectedIndex="{x:Bind ViewModel.ThemeIndex, Mode=TwoWay}">
+                    <x:String>System</x:String>
+                    <x:String>Light</x:String>
+                    <x:String>Dark</x:String>
+                </ComboBox>
+            </controls:SettingRow>
+            <controls:SettingRow Description="What happens when you close the Sysora window" Glyph="&#xE8BB;" Header="Close window">
+                <ComboBox MinWidth="160" AutomationProperties.Name="Close window" SelectedIndex="{x:Bind ViewModel.CloseBehaviorIndex, Mode=TwoWay}">
+                    <x:String>Quit application</x:String>
+                    <x:String>Minimize to tray</x:String>
+                </ComboBox>
+            </controls:SettingRow>
+
+            <!-- Startup -->
+            <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Startup" />
+            <controls:SettingRow Description="{x:Bind ViewModel.StartupStatus, Mode=OneWay}" Glyph="&#xE7E8;" Header="Start Sysora with Windows">
+                <ToggleSwitch AutomationProperties.Name="Start Sysora with Windows" IsOn="{x:Bind ViewModel.StartWithWindows, Mode=TwoWay}" />
+            </controls:SettingRow>
+            <controls:SettingRow Description="When started with Windows, open the window minimized to the taskbar" Glyph="&#xE921;" Header="Start minimized">
+                <ToggleSwitch AutomationProperties.Name="Start minimized" IsOn="{x:Bind ViewModel.StartMinimized, Mode=TwoWay}" />
+            </controls:SettingRow>
+            <controls:SettingRow Description="When started with Windows, stay in the notification area without opening the window" Glyph="&#xE8A9;" Header="Start in tray">
+                <ToggleSwitch AutomationProperties.Name="Start in tray" IsOn="{x:Bind ViewModel.StartInTray, Mode=TwoWay}" />
+            </controls:SettingRow>
+
+            <!-- Monitoring -->
+            <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Monitoring" />
+            <controls:SettingRow Description="Stop collecting metrics until you resume (also available from the title bar and the tray icon)" Glyph="&#xE769;" Header="Pause monitoring">
+                <ToggleSwitch AutomationProperties.Name="Pause monitoring" IsOn="{x:Bind ViewModel.IsPaused, Mode=TwoWay}" />
+            </controls:SettingRow>
+            <controls:SettingRow Description="CPU, memory and network sampling interval" Glyph="&#xE9D9;" Header="Real-time metrics">
+                <ComboBox MinWidth="160" AutomationProperties.Name="Real-time metrics interval" ItemsSource="{x:Bind ViewModel.RealtimeIntervals}" SelectedItem="{x:Bind ViewModel.RealtimeInterval, Mode=TwoWay}" />
+            </controls:SettingRow>
+            <controls:SettingRow Description="Processes, GPU and disk activity sampling interval" Glyph="&#xE71D;" Header="Detailed metrics">
+                <ComboBox MinWidth="160" AutomationProperties.Name="Detailed metrics interval" ItemsSource="{x:Bind ViewModel.DetailIntervals}" SelectedItem="{x:Bind ViewModel.DetailInterval, Mode=TwoWay}" />
+            </controls:SettingRow>
+            <controls:SettingRow Description="How often free space is checked" Glyph="&#xEDA2;" Header="Storage capacity">
+                <ComboBox MinWidth="160" AutomationProperties.Name="Storage capacity interval" ItemsSource="{x:Bind ViewModel.StorageIntervals}" SelectedItem="{x:Bind ViewModel.StorageInterval, Mode=TwoWay}" />
+            </controls:SettingRow>
+            <controls:SettingRow Description="Default time span of charts (history is kept in memory only)" Glyph="&#xE81C;" Header="Chart history">
+                <ComboBox MinWidth="160" AutomationProperties.Name="Chart history" ItemsSource="{x:Bind ViewModel.ChartWindows}" SelectedItem="{x:Bind ViewModel.ChartWindow, Mode=TwoWay}" />
+            </controls:SettingRow>
+            <controls:SettingRow Description="Graphics adapter usage and memory" Glyph="&#xEEA0;" Header="Monitor GPU">
+                <ToggleSwitch AutomationProperties.Name="Monitor GPU" IsOn="{x:Bind ViewModel.GpuEnabled, Mode=TwoWay}" />
+            </controls:SettingRow>
+            <controls:SettingRow Description="Interface throughput and connectivity reported by Windows" Glyph="&#xE968;" Header="Monitor network">
+                <ToggleSwitch AutomationProperties.Name="Monitor network" IsOn="{x:Bind ViewModel.NetworkEnabled, Mode=TwoWay}" />
+            </controls:SettingRow>
+            <controls:SettingRow Description="While the window is hidden or minimized, sample processes, GPU, disk and network less often" Glyph="&#xEC0A;" Header="Reduce activity in the background">
+                <ToggleSwitch AutomationProperties.Name="Reduce activity in the background" IsOn="{x:Bind ViewModel.ReduceActivityWhenHidden, Mode=TwoWay}" />
+            </controls:SettingRow>
+            <controls:SettingRow Description="Maximum CPU Sysora may use, in % of total capacity. Above it, intervals are stretched automatically. 0 = no limit." Glyph="&#xE950;" Header="CPU budget for Sysora">
+                <NumberBox
+                    MinWidth="110"
+                    AutomationProperties.Name="CPU budget for Sysora"
+                    LargeChange="1"
+                    Maximum="25"
+                    Minimum="0"
+                    SmallChange="0.5"
+                    SpinButtonPlacementMode="Compact"
+                    Value="{x:Bind ViewModel.CpuBudget, Mode=TwoWay}" />
+            </controls:SettingRow>
+
+            <!-- Alerts -->
+            <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Health thresholds" />
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="16">
+                    <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="Used by the System health panel. CPU and memory must stay above a threshold for the given duration before being reported, which avoids alerts for short spikes." />
+                    <controls:AdaptiveGridPanel MinItemWidth="200" RowSpacing="16">
+                        <NumberBox Header="CPU warning (%)" Style="{StaticResource ThresholdBoxStyle}" Value="{x:Bind ViewModel.CpuWarning, Mode=TwoWay}" />
+                        <NumberBox Header="CPU critical (%)" Style="{StaticResource ThresholdBoxStyle}" Value="{x:Bind ViewModel.CpuCritical, Mode=TwoWay}" />
+                        <NumberBox Header="CPU duration (s)" Maximum="600" Minimum="5" Style="{StaticResource ThresholdBoxStyle}" Value="{x:Bind ViewModel.CpuSustainSeconds, Mode=TwoWay}" />
+                        <NumberBox Header="Memory warning (%)" Style="{StaticResource ThresholdBoxStyle}" Value="{x:Bind ViewModel.MemoryWarning, Mode=TwoWay}" />
+                        <NumberBox Header="Memory critical (%)" Style="{StaticResource ThresholdBoxStyle}" Value="{x:Bind ViewModel.MemoryCritical, Mode=TwoWay}" />
+                        <NumberBox Header="Memory duration (s)" Maximum="600" Minimum="5" Style="{StaticResource ThresholdBoxStyle}" Value="{x:Bind ViewModel.MemorySustainSeconds, Mode=TwoWay}" />
+                        <NumberBox Header="Disk warning (%)" Style="{StaticResource ThresholdBoxStyle}" Value="{x:Bind ViewModel.DiskWarning, Mode=TwoWay}" />
+                        <NumberBox Header="Disk critical (%)" Style="{StaticResource ThresholdBoxStyle}" Value="{x:Bind ViewModel.DiskCritical, Mode=TwoWay}" />
+                        <NumberBox Header="App memory (% of RAM)" Style="{StaticResource ThresholdBoxStyle}" Value="{x:Bind ViewModel.ProcessMemoryWarning, Mode=TwoWay}" />
+                        <NumberBox Header="App CPU (%)" Style="{StaticResource ThresholdBoxStyle}" Value="{x:Bind ViewModel.ProcessCpuWarning, Mode=TwoWay}" />
+                    </controls:AdaptiveGridPanel>
+                    <Button HorizontalAlignment="Left" Command="{x:Bind ViewModel.ResetAlertsCommand}" Content="Restore default thresholds" />
+                </StackPanel>
+            </Border>
+
+            <!-- Smart alerts -->
+            <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Alerts" />
+            <controls:SettingRow Description="Raise alerts for problems that last or are unusual for this PC (shown in Alerts)" Glyph="&#xEA8F;" Header="Smart alerts">
+                <ToggleSwitch AutomationProperties.Name="Smart alerts" IsOn="{x:Bind ViewModel.SmartAlertsEnabled, Mode=TwoWay}" />
+            </controls:SettingRow>
+            <controls:SettingRow Description="Also show a Windows notification for new warnings and critical alerts" Glyph="&#xE7E7;" Header="Notifications">
+                <ToggleSwitch AutomationProperties.Name="Alert notifications" IsOn="{x:Bind ViewModel.AlertNotifications, Mode=TwoWay}" />
+            </controls:SettingRow>
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="16">
+                    <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="Each condition must last for the given duration before an alert is raised. While it lasts, a single alert is updated; it resolves one minute after the condition ends." />
+                    <controls:AdaptiveGridPanel MinItemWidth="200" RowSpacing="16">
+                        <NumberBox Header="CPU above (%)" Minimum="50" Style="{StaticResource ThresholdBoxStyle}" Value="{x:Bind ViewModel.AlertCpuPercent, Mode=TwoWay}" />
+                        <NumberBox Header="for (minutes)" Style="{StaticResource MinutesBoxStyle}" Value="{x:Bind ViewModel.AlertCpuMinutes, Mode=TwoWay}" />
+                        <NumberBox Header="Memory above (%)" Minimum="50" Style="{StaticResource ThresholdBoxStyle}" Value="{x:Bind ViewModel.AlertMemoryPercent, Mode=TwoWay}" />
+                        <NumberBox Header="for (minutes)" Style="{StaticResource MinutesBoxStyle}" Value="{x:Bind ViewModel.AlertMemoryMinutes, Mode=TwoWay}" />
+                        <NumberBox Header="Disk busy above (%)" Minimum="50" Style="{StaticResource ThresholdBoxStyle}" Value="{x:Bind ViewModel.AlertDiskPercent, Mode=TwoWay}" />
+                        <NumberBox Header="for (minutes)" Style="{StaticResource MinutesBoxStyle}" Value="{x:Bind ViewModel.AlertDiskMinutes, Mode=TwoWay}" />
+                        <NumberBox Header="One app above (% CPU)" Minimum="5" Style="{StaticResource ThresholdBoxStyle}" Value="{x:Bind ViewModel.AlertAppCpuPercent, Mode=TwoWay}" />
+                        <NumberBox Header="for (minutes)" Style="{StaticResource MinutesBoxStyle}" Value="{x:Bind ViewModel.AlertAppCpuMinutes, Mode=TwoWay}" />
+                        <NumberBox Header="Memory rising by (points)" Maximum="50" Minimum="3" Style="{StaticResource ThresholdBoxStyle}" Value="{x:Bind ViewModel.AlertGrowthPoints, Mode=TwoWay}" />
+                        <NumberBox Header="within (minutes)" Maximum="120" Minimum="10" Style="{StaticResource MinutesBoxStyle}" Value="{x:Bind ViewModel.AlertGrowthMinutes, Mode=TwoWay}" />
+                        <NumberBox Header="System disk free below (%)" Maximum="50" Style="{StaticResource ThresholdBoxStyle}" Value="{x:Bind ViewModel.AlertLowDiskPercent, Mode=TwoWay}" />
+                        <NumberBox Header="Reopen instead of new within (min)" Maximum="240" Style="{StaticResource MinutesBoxStyle}" Value="{x:Bind ViewModel.AlertCooldownMinutes, Mode=TwoWay}" />
+                        <NumberBox Header="New alerts per hour (max)" Style="{StaticResource MinutesBoxStyle}" Value="{x:Bind ViewModel.AlertMaxPerHour, Mode=TwoWay}" />
+                    </controls:AdaptiveGridPanel>
+                    <Grid ColumnSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="Unusual activity" />
+                            <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="Alert when CPU, memory or disk stay above your usual range (learned from at least 4 hours of history) for the given duration." />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12">
+                            <NumberBox AutomationProperties.Name="Unusual activity duration (minutes)" Style="{StaticResource MinutesBoxStyle}" Value="{x:Bind ViewModel.AlertUnusualMinutes, Mode=TwoWay}" />
+                            <ToggleSwitch AutomationProperties.Name="Unusual activity alerts" IsOn="{x:Bind ViewModel.AlertUnusual, Mode=TwoWay}" />
+                        </StackPanel>
+                    </Grid>
+                    <Button HorizontalAlignment="Left" Command="{x:Bind ViewModel.ResetSmartAlertsCommand}" Content="Restore default alert rules" />
+                </StackPanel>
+            </Border>
+
+            <!-- History -->
+            <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="History" />
+            <controls:SettingRow Description="Save aggregated performance, application usage, events, alerts, changes and game sessions to a local database. Needed for App Impact over days, Changes, Gaming recaps and the usual-behavior baseline." Glyph="&#xE81C;" Header="Record history">
+                <ToggleSwitch AutomationProperties.Name="Record history" IsOn="{x:Bind ViewModel.RecordHistory, Mode=TwoWay}" />
+            </controls:SettingRow>
+            <controls:SettingRow Description="Detailed data (every second) kept in memory for Replay. Never written to disk." Glyph="&#xE916;" Header="Replay buffer">
+                <ComboBox MinWidth="160" AutomationProperties.Name="Replay buffer" ItemsSource="{x:Bind ViewModel.ReplayDurations}" SelectedItem="{x:Bind ViewModel.ReplayDuration, Mode=TwoWay}" />
+            </controls:SettingRow>
+            <controls:SettingRow Description="Minute-level system data and five-minute application data (1–31 days)" Glyph="&#xE787;" Header="Keep detailed history (days)">
+                <NumberBox MinWidth="110" AutomationProperties.Name="Keep detailed history (days)" LargeChange="7" Maximum="31" Minimum="1" SmallChange="1" SpinButtonPlacementMode="Compact" Value="{x:Bind ViewModel.DetailRetentionDays, Mode=TwoWay}" />
+            </controls:SettingRow>
+            <controls:SettingRow Description="Hourly summaries, events, alerts, changes and game sessions (7–365 days). Older data is deleted automatically." Glyph="&#xE8F1;" Header="Keep summaries (days)">
+                <NumberBox MinWidth="110" AutomationProperties.Name="Keep summaries (days)" LargeChange="30" Maximum="365" Minimum="7" SmallChange="1" SpinButtonPlacementMode="Compact" Value="{x:Bind ViewModel.SummaryRetentionDays, Mode=TwoWay}" />
+            </controls:SettingRow>
+            <controls:SettingRow Description="{x:Bind ViewModel.HistoryStatus, Mode=OneWay}" Glyph="&#xE74D;" Header="Delete history">
+                <Button AutomationProperties.Name="Delete history" Command="{x:Bind ViewModel.ClearHistoryCommand}" Content="Delete…" />
+            </controls:SettingRow>
+
+            <!-- Gaming -->
+            <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Gaming" />
+            <controls:SettingRow Description="Follow game sessions automatically and show a recap when the game closes. FPS is never estimated." Glyph="&#xE7FC;" Header="Game sessions">
+                <ToggleSwitch AutomationProperties.Name="Game sessions" IsOn="{x:Bind ViewModel.GamingEnabled, Mode=TwoWay}" />
+            </controls:SettingRow>
+            <controls:SettingRow Description="Executables that Windows itself recognizes as games (Game Bar's list for your account)" Glyph="&#xE7FC;" Header="Games recognized by Windows">
+                <ToggleSwitch AutomationProperties.Name="Games recognized by Windows" IsOn="{x:Bind ViewModel.DetectWindowsGames, Mode=TwoWay}" />
+            </controls:SettingRow>
+            <controls:SettingRow Description="Executables installed in a game library folder (Steam, Epic, Xbox, GOG, Riot, EA, Ubisoft…); launchers, anti-cheat and crash reporters are left out" Glyph="&#xE8F1;" Header="Games in library folders">
+                <ToggleSwitch AutomationProperties.Name="Games in library folders" IsOn="{x:Bind ViewModel.DetectLibraryGames, Mode=TwoWay}" />
+            </controls:SettingRow>
+            <controls:SettingRow Description="Shorter sessions are not kept (1–30 minutes)" Glyph="&#xE916;" Header="Minimum session length (minutes)">
+                <NumberBox MinWidth="110" AutomationProperties.Name="Minimum session length (minutes)" LargeChange="5" Maximum="30" Minimum="1" SmallChange="1" SpinButtonPlacementMode="Compact" Value="{x:Bind ViewModel.MinimumSessionMinutes, Mode=TwoWay}" />
+            </controls:SettingRow>
+            <controls:SettingRow Description="Show a Windows notification when a game recap is ready" Glyph="&#xE7E7;" Header="Recap notification">
+                <ToggleSwitch AutomationProperties.Name="Recap notification" IsOn="{x:Bind ViewModel.NotifyRecap, Mode=TwoWay}" />
+            </controls:SettingRow>
+            <controls:SettingRow Description="While a game is in front, pause the window's live updates and sample detailed metrics less often. Recording continues." Glyph="&#xEC0A;" Header="Lighter monitoring during games">
+                <ToggleSwitch AutomationProperties.Name="Lighter monitoring during games" IsOn="{x:Bind ViewModel.ReduceMonitoringDuringGames, Mode=TwoWay}" />
+            </controls:SettingRow>
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="10">
+                    <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Your game lists" />
+                    <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="Mark a running application as a game when Sysora does not recognize it, or remove a mark. Applications marked as not a game are never followed." />
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <ComboBox
+                            HorizontalAlignment="Stretch"
+                            AutomationProperties.Name="Running application"
+                            DisplayMemberPath="Label"
+                            ItemsSource="{x:Bind ViewModel.RunningApps}"
+                            PlaceholderText="Choose a running application"
+                            SelectedItem="{x:Bind ViewModel.SelectedRunningApp, Mode=TwoWay}" />
+                        <Button Grid.Column="1" Command="{x:Bind ViewModel.RefreshRunningAppsCommand}" ToolTipService.ToolTip="Refresh the list of running applications">
+                            <FontIcon FontSize="14" Glyph="&#xE72C;" />
+                        </Button>
+                        <Button Grid.Column="2" Command="{x:Bind ViewModel.AddGameCommand}" Content="Mark as a game" />
+                    </Grid>
+                    <TextBlock Style="{StaticResource LabelTextStyle}" Text="Marked as games" />
+                    <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="None" Visibility="{x:Bind ViewModel.HasAddedGames, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.AddedGames}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:GameListItemViewModel">
+                                <Grid Padding="0,2" ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock VerticalAlignment="Center" IsTextSelectionEnabled="True" Text="{x:Bind Path}" TextTrimming="CharacterEllipsis" ToolTipService.ToolTip="{x:Bind Path}" />
+                                    <Button Grid.Column="1" Command="{x:Bind RemoveCommand}" Content="Remove" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Style="{StaticResource LabelTextStyle}" Text="Marked as not games" />
+                    <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="None" Visibility="{x:Bind ViewModel.HasExcludedGames, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.ExcludedGames}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:GameListItemViewModel">
+                                <Grid Padding="0,2" ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock VerticalAlignment="Center" IsTextSelectionEnabled="True" Text="{x:Bind Path}" TextTrimming="CharacterEllipsis" ToolTipService.ToolTip="{x:Bind Path}" />
+                                    <Button Grid.Column="1" Command="{x:Bind RemoveCommand}" Content="Remove" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <!-- Privacy -->
+            <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Privacy" />
+            <Border Style="{StaticResource CardStyle}">
+                <Grid ColumnSpacing="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon FontSize="28" Foreground="{ThemeResource StatusNormalBrush}" Glyph="&#xEA18;" VerticalAlignment="Top" />
+                    <StackPanel Grid.Column="1" Spacing="6">
+                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Sysora is local-first." />
+                        <TextBlock Text="No telemetry is enabled by default." TextWrapping="Wrap" />
+                        <TextBlock Text="No account is required." TextWrapping="Wrap" />
+                        <TextBlock Text="No system metrics are uploaded." TextWrapping="Wrap" />
+                        <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="Sysora works offline and never contacts a server. Settings, logs and the local history (performance, application names, alerts, detected changes, game sessions) stay in the folder below, on this PC." TextWrapping="Wrap" />
+                        <StackPanel Margin="0,6,0,0" Orientation="Horizontal" Spacing="8">
+                            <Button Command="{x:Bind ViewModel.OpenDataFolderCommand}" Content="Open data folder" />
+                            <Button Command="{x:Bind ViewModel.OpenLogsFolderCommand}" Content="Open logs folder" />
+                        </StackPanel>
+                        <TextBlock IsTextSelectionEnabled="True" Style="{StaticResource LabelTextStyle}" Text="{x:Bind ViewModel.DataFolder}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Diagnostics -->
+            <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Diagnostics" />
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="12">
+                    <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Sysora overhead (estimate)" />
+                    <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="Measured from Sysora's own process: CPU averaged over the last 10 seconds as a share of total capacity, memory as the current working set." />
+                    <controls:AdaptiveGridPanel MinItemWidth="200">
+                        <controls:StatItem Label="CPU" Value="{x:Bind ViewModel.SelfCpu, Mode=OneWay}" />
+                        <controls:StatItem Label="Memory" Value="{x:Bind ViewModel.SelfMemory, Mode=OneWay}" />
+                        <controls:StatItem Label="Collection rate" Value="{x:Bind ViewModel.Throttle, Mode=OneWay}" />
+                    </controls:AdaptiveGridPanel>
+                </StackPanel>
+            </Border>
+            <controls:SettingRow Description="Detail level of the local log files (kept 14 days)" Glyph="&#xE9F9;" Header="Log level">
+                <ComboBox MinWidth="160" AutomationProperties.Name="Log level" ItemsSource="{x:Bind ViewModel.LogLevels}" SelectedIndex="{x:Bind ViewModel.LogLevelIndex, Mode=TwoWay}" />
+            </controls:SettingRow>
+
+            <!-- About -->
+            <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="About" />
+            <Border Style="{StaticResource CardStyle}">
+                <Grid ColumnSpacing="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Image Width="56" Height="56" VerticalAlignment="Top" Source="ms-appx:///Assets/Sysora.png" />
+                    <StackPanel Grid.Column="1" Spacing="4">
+                        <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="{x:Bind ViewModel.AppName}" />
+                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind ViewModel.Tagline}" />
+                        <TextBlock IsTextSelectionEnabled="True" Style="{StaticResource LabelTextStyle}" Text="{x:Bind ViewModel.Version}" />
+                        <TextBlock Margin="0,4,0,0" Text="{x:Bind ViewModel.Description}" TextWrapping="Wrap" />
+                        <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind ViewModel.License}" />
+                        <TextBlock Style="{StaticResource SecondaryTextStyle}" Visibility="{x:Bind ViewModel.IsDemoMode}" Text="Running in demo mode: all metrics are simulated." />
+                        <HyperlinkButton Margin="-12,0,0,0" Command="{x:Bind ViewModel.OpenProjectPageCommand}" Content="{x:Bind ViewModel.ProjectUrl}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

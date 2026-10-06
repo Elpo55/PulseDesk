@@ -34,13 +34,13 @@ jobs:
           "VERSION=$version" >> $env:GITHUB_ENV
 
       - name: Test
-        run: dotnet test --project src/PulseDesk.Tests --configuration Release
+        run: dotnet test --project src/Sysora.Tests --configuration Release
 
       - name: Publish
         shell: pwsh
         run: |
           foreach ($arch in 'x64', 'arm64') {
-            dotnet publish src/PulseDesk.App --configuration Release --runtime "win-$arch" --self-contained --output "artifacts/publish/win-$arch"
+            dotnet publish src/Sysora.App --configuration Release --runtime "win-$arch" --self-contained --output "artifacts/publish/win-$arch"
             if ($LASTEXITCODE) { exit $LASTEXITCODE }
           }
 
@@ -57,7 +57,7 @@ jobs:
         run: |
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           foreach ($arch in 'x64', 'arm64') {
-            & $iscc /Q "/DAppVersion=$env:VERSION" "/DArch=$arch" installer/PulseDesk.iss
+            & $iscc /Q "/DAppVersion=$env:VERSION" "/DArch=$arch" installer/Sysora.iss
             if ($LASTEXITCODE) { exit $LASTEXITCODE }
           }
 
@@ -73,5 +73,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $files = @(Get-ChildItem artifacts/installer/*.exe | ForEach-Object FullName) + 'artifacts/installer/SHA256SUMS.txt'
-          gh release create '${{ github.ref_name }}' @files --verify-tag --title "PulseDesk $env:VERSION" --notes-file 'docs/release-notes/${{ github.ref_name }}.md'
+          gh release create '${{ github.ref_name }}' @files --verify-tag --title "Sysora $env:VERSION" --notes-file 'docs/release-notes/${{ github.ref_name }}.md'
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
