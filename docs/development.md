@@ -30,7 +30,7 @@ In Visual Studio, open `PulseDesk.slnx`, set **PulseDesk.App** as the startup pr
 | `--demo` | Use `SimulatedMachine` instead of the Windows providers. The title bar shows "DEMO MODE". |
 | `--tray` | Start hidden in the notification area. |
 | `--startup` | Added by the Run key: applies "Start minimized" / "Start in tray". |
-| `--page=Name` | Open on a page (`Dashboard`, `Diagnosis`, `Replay`, `AppImpact`, `Changes`, `Alerts`, `Performance`, `Processes`, `Storage`, `Network`, `System`, `Settings`). `History` opens Replay. |
+| `--page=Name` | Open on a page (`Dashboard`, `Diagnosis`, `Replay`, `AppImpact`, `Changes`, `Alerts`, `Gaming`, `Performance`, `Processes`, `Storage`, `Network`, `System`, `Settings`). `History` opens Replay. |
 
 Demo mode uses its own single-instance key, so it can run next to a normal instance. Its history is kept in
 memory only: simulated data never reaches the real history database.

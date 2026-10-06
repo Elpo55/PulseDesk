@@ -216,6 +216,63 @@ public sealed class AlertEngineTests
         return raised;
     }
 
+    [Fact]
+    public void LowDiskSpaceStillPresentAfterRestart_ContinuesTheSameAlert()
+    {
+        var first = new AlertEngine();
+        var raised = Assert.Single(first.Evaluate(DiskContext(T0, freeGb: 20)).Raised);
+        var stored = first.Alerts.ToArray();
+
+        // PulseDesk restarts the next day: the disk is still nearly full.
+        var next = new AlertEngine();
+        next.Load(stored);
+        var evaluation = next.Evaluate(DiskContext(T0.AddDays(1), freeGb: 19));
+
+        Assert.Empty(evaluation.Raised);
+        var alert = Assert.Single(next.Alerts);
+        Assert.Equal(raised.Id, alert.Id);
+        Assert.True(alert.IsActive);
+    }
+
+    [Fact]
+    public void LowDiskSpaceGoneAfterRestart_IsResolvedAtItsLastObservation()
+    {
+        var first = new AlertEngine();
+        first.Evaluate(DiskContext(T0, freeGb: 20));
+        var next = new AlertEngine();
+        next.Load(first.Alerts);
+
+        var evaluation = next.Evaluate(DiskContext(T0.AddDays(1), freeGb: 400));
+
+        var resolved = Assert.Single(evaluation.Resolved);
+        Assert.Equal(T0, resolved.ResolvedAt);
+    }
+
+    [Fact]
+    public void ActivityAlertOfAPreviousSession_IsResolvedWhenLoaded()
+    {
+        var engine = new AlertEngine();
+        var series = TestData.Series(T0, 400, _ => 96);
+        Run(engine, series);
+        var active = Assert.Single(engine.Alerts);
+        Assert.True(active.IsActive);
+
+        var next = new AlertEngine();
+        next.Load(engine.Alerts);
+
+        var loaded = Assert.Single(next.Alerts);
+        Assert.Equal(AlertStatus.Resolved, loaded.Status);
+        Assert.Equal(active.UpdatedAt, loaded.ResolvedAt);
+    }
+
+    /// <summary>A context whose system drive (500 GB) has the given free space.</summary>
+    private static AlertContext DiskContext(DateTimeOffset now, double freeGb)
+    {
+        var drive = StorageMetrics.FromTotalAndFree(@"C:\", 500UL << 30, (ulong)(freeGb * (1UL << 30))) with { IsSystemDrive = true };
+        var recent = TestData.Series(now.AddMinutes(-1), 60, _ => 10);
+        return new AlertContext(now, TestData.System(now, 10) with { Storage = [drive] }, recent, UsageBaseline.Empty, Defaults);
+    }
+
     private static AlertContext Context(IReadOnlyList<MetricSnapshot> recent, DateTimeOffset now, UsageBaseline? baseline = null, SmartAlertSettings? settings = null) =>
         new(now, TestData.System(now, recent[^1].CpuPercent ?? 0), recent, baseline ?? UsageBaseline.Empty, settings ?? Defaults);
 

@@ -1,6 +1,7 @@
 using PulseDesk.Core.Interfaces;
 using PulseDesk.Core.Metrics;
 using PulseDesk.Core.Models;
+using PulseDesk.Core.Monitoring;
 using PulseDesk.Infrastructure.Windows;
 
 namespace PulseDesk.Infrastructure.Storage;
@@ -41,7 +42,8 @@ public sealed class WindowsDiskActivityMetricProvider : IDiskActivityMetricProvi
             _write?.VisitInstances((name, value) => Get(name)?.SetWrite(value));
             if (!any)
             {
-                throw new InvalidOperationException("Disk performance counters returned no data.");
+                // Transient (for example right after a volume change); the monitor reports it only if it repeats.
+                throw new MetricSampleSkippedException("Disk performance counters returned no data for this sample.");
             }
 
             return _drives.Values

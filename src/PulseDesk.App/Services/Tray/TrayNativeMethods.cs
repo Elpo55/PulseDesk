@@ -14,6 +14,7 @@ internal static unsafe partial class TrayNativeMethods
     public const uint WmApp = 0x8000;
     public const uint NinSelect = 0x0400;
     public const uint NinKeySelect = 0x0401;
+    public const uint NinBalloonUserClick = 0x0405;
 
     public const uint NimAdd = 0;
     public const uint NimModify = 1;

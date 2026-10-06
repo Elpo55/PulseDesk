@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using PulseDesk.Core.Alerts;
 using PulseDesk.Core.Analysis;
 using PulseDesk.Core.Changes;
+using PulseDesk.Core.Gaming;
 using PulseDesk.Core.History;
 using PulseDesk.Core.Interfaces;
 
@@ -25,6 +26,7 @@ public sealed class HistoryRepository : IHistoryRepository, IAsyncDisposable, ID
     private const string AlertDocument = "alert";
     private const string BaselineDocument = "baseline";
     private const string ChangeDocument = "change";
+    private const string GameDocument = "game";
     private const string InMemoryLocation = "In memory (demo mode: nothing is written to disk)";
 
     /// <summary>Hourly roll-ups wait this long after the hour, so late writes (shutdown flush) are included.</summary>
@@ -299,6 +301,18 @@ public sealed class HistoryRepository : IHistoryRepository, IAsyncDisposable, ID
             .OfType<DetectedChange>()
             .ToArray();
 
+    public Task SaveGameSessionAsync(GameSession session, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        return SaveDocumentsAsync(GameDocument, [(session.Id.ToString("N"), session.Start, AnalysisJson.Serialize(session))], replace: true, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<GameSession>> GetGameSessionsAsync(DateTimeOffset since, CancellationToken cancellationToken) =>
+        (await GetDocumentsAsync(GameDocument, since, cancellationToken).ConfigureAwait(false))
+            .Select(AnalysisJson.DeserializeGameSession)
+            .OfType<GameSession>()
+            .ToArray();
+
     public Task<IReadOnlyList<KnownApp>> GetKnownAppsAsync(CancellationToken cancellationToken) =>
         RunAsync<IReadOnlyList<KnownApp>>(connection =>
         {
@@ -425,9 +439,33 @@ public sealed class HistoryRepository : IHistoryRepository, IAsyncDisposable, ID
         {
             return await Task.Run(() => work(EnsureOpen()), cancellationToken).ConfigureAwait(false);
         }
+        catch (SqliteException ex) when (_filePath is not null && ex.SqliteErrorCode is 11 or 26)
+        {
+            // The file was damaged while open (disk error, external tool): set it aside so the next operation starts a
+            // new history instead of failing forever. This operation still reports its failure.
+            _logger.LogWarning(ex, "The history database became damaged; it was set aside and will be recreated.");
+            ResetDamagedDatabase();
+            throw;
+        }
         finally
         {
             _gate.Release();
+        }
+    }
+
+    /// <summary>Closes the connection and moves the damaged files aside. Caller holds the gate.</summary>
+    private void ResetDamagedDatabase()
+    {
+        try
+        {
+            _connection?.Dispose();
+            _connection = null;
+            SqliteConnection.ClearAllPools();
+            Quarantine();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _logger.LogWarning(ex, "The damaged history database could not be moved aside.");
         }
     }
 

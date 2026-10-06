@@ -6,12 +6,14 @@ using PulseDesk.Core.Alerts;
 using PulseDesk.Core.Analysis;
 using PulseDesk.Core.Changes;
 using PulseDesk.Core.Diagnosis;
+using PulseDesk.Core.Gaming;
 using PulseDesk.Core.History;
 using PulseDesk.Core.Interfaces;
 using PulseDesk.Core.Monitoring;
 using PulseDesk.Core.Settings;
 using PulseDesk.Core.Simulation;
 using PulseDesk.Infrastructure;
+using PulseDesk.Infrastructure.Gaming;
 using PulseDesk.Infrastructure.Logging;
 using PulseDesk.Infrastructure.Network;
 using PulseDesk.Infrastructure.Performance;
@@ -63,6 +65,7 @@ public sealed class AppHost : IAsyncDisposable
             sp.GetRequiredService<ILogger<MetricsMonitor>>()));
         services.AddSingleton<IMetricsMonitor>(sp => sp.GetRequiredService<MetricsMonitor>());
         services.AddSingleton<HealthService>();
+        services.AddSingleton<ISystemPowerEvents, PulseDesk.Infrastructure.Windows.WindowsPowerEvents>();
         services.AddSingleton<IStartupRegistration, RunKeyStartupRegistration>();
 
         // History and analysis. Demo mode keeps its history in memory: simulated data never reaches the
@@ -110,7 +113,22 @@ public sealed class AppHost : IAsyncDisposable
             sp.GetRequiredService<SettingsService>(),
             sp.GetRequiredService<ILogger<ChangeDetectionService>>()));
         services.AddSingleton<IChangeDetectionService>(sp => sp.GetRequiredService<ChangeDetectionService>());
+        services.AddSingleton(sp => new PowerTransitionService(
+            sp.GetRequiredService<ISystemPowerEvents>(),
+            sp.GetRequiredService<IMetricsMonitor>(),
+            sp.GetRequiredService<IPerformanceHistory>(),
+            sp.GetRequiredService<HistoryRecorder>(),
+            sp.GetRequiredService<ProcessHistory>(),
+            sp.GetRequiredService<ILogger<PowerTransitionService>>()));
+        services.AddSingleton(sp => new UsageComparisonService(sp.GetRequiredService<IHistoryRepository>(), sp.GetRequiredService<IPerformanceHistory>()));
         services.AddSingleton(sp => new ReplayService(sp.GetRequiredService<IPerformanceHistory>(), sp.GetRequiredService<IHistoryRepository>()));
+        services.AddSingleton(sp => new GameSessionService(
+            sp.GetRequiredService<IMetricsMonitor>(),
+            sp.GetRequiredService<IPerformanceHistory>(),
+            sp.GetRequiredService<IGameLibrary>(),
+            sp.GetRequiredService<IHistoryRepository>(),
+            sp.GetRequiredService<SettingsService>(),
+            sp.GetRequiredService<ILogger<GameSessionService>>()));
 
         if (options.DemoMode)
         {
@@ -140,6 +158,7 @@ public sealed class AppHost : IAsyncDisposable
         services.AddSingleton<AlertsViewModel>();
         services.AddSingleton<ChangesViewModel>();
         services.AddSingleton<ReplayViewModel>();
+        services.AddSingleton<GamingViewModel>();
         services.AddSingleton<PerformanceViewModel>();
         services.AddSingleton<ProcessesViewModel>();
         services.AddSingleton<StorageViewModel>();
@@ -199,6 +218,7 @@ public sealed class AppHost : IAsyncDisposable
             sp.GetRequiredService<WindowsSystemMetricProvider>()));
         services.AddSingleton<ISystemInfoProvider, WindowsSystemInfoProvider>();
         services.AddSingleton<ISystemInventoryProvider, WindowsSystemInventoryProvider>();
+        services.AddSingleton<IGameLibrary, WindowsGameLibrary>();
         services.AddSingleton<IProcessManager, WindowsProcessManager>();
     }
 
@@ -208,6 +228,7 @@ public sealed class AppHost : IAsyncDisposable
         services.AddSingleton(sp => SimulatedProviders.Create(sp.GetRequiredService<SimulatedMachine>()));
         services.AddSingleton<ISystemInfoProvider, FakeSystemInfoProvider>();
         services.AddSingleton<ISystemInventoryProvider>(_ => new SimulatedInventoryProvider());
+        services.AddSingleton<IGameLibrary, SimulatedGameLibrary>();
         services.AddSingleton<IProcessManager, FakeProcessManager>();
     }
 }

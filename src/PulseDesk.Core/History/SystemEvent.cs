@@ -44,6 +44,18 @@ public enum SystemEventKind
 
     /// <summary>An alert condition ended.</summary>
     AlertResolved,
+
+    /// <summary>A game was identified as running (start of a gaming session).</summary>
+    GameStarted,
+
+    /// <summary>A game was closed (end of a gaming session).</summary>
+    GameEnded,
+
+    /// <summary>Windows reported that the PC is going to sleep.</summary>
+    SystemSuspending,
+
+    /// <summary>Windows reported that the PC resumed from sleep.</summary>
+    SystemResumed,
 }
 
 /// <summary>

@@ -48,6 +48,7 @@ public enum DiagnosisAction
     Diagnosis,
     Alerts,
     Changes,
+    Gaming,
 }
 
 /// <summary>Overall state of the PC, as shown on the dashboard.</summary>

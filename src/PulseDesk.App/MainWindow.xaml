@@ -103,6 +103,17 @@
                             Visibility="{x:Bind ViewModel.HasNewAlerts, Mode=OneWay}" />
                     </NavigationViewItem.InfoBadge>
                 </NavigationViewItem>
+                <NavigationViewItem AutomationProperties.AutomationId="NavGaming" Content="Gaming" Tag="Gaming">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE7FC;" />
+                    </NavigationViewItem.Icon>
+                    <NavigationViewItem.InfoBadge>
+                        <InfoBadge
+                            AutomationProperties.Name="Game running"
+                            Style="{StaticResource AttentionDotInfoBadgeStyle}"
+                            Visibility="{x:Bind ViewModel.IsGameRunning, Mode=OneWay}" />
+                    </NavigationViewItem.InfoBadge>
+                </NavigationViewItem>
                 <NavigationViewItemSeparator />
                 <NavigationViewItemHeader Content="Details" />
                 <NavigationViewItem AutomationProperties.AutomationId="NavPerformance" Content="Performance" Tag="Performance">

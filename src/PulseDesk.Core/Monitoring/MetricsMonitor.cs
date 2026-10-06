@@ -23,6 +23,12 @@ public sealed class MetricsMonitor : IMetricsMonitor, IAsyncDisposable
     public static readonly int HistoryCapacity =
         (int)(SettingsValidator.MaxChartWindow.TotalMilliseconds / SettingsValidator.MinIntervalMs);
 
+    /// <summary>
+    /// Consecutive skipped samples (<see cref="MetricSampleSkippedException"/>) tolerated before the metric is reported
+    /// as unavailable. A single skip is normal (a counter wrapping around); repeated skips are not.
+    /// </summary>
+    public const int MaxConsecutiveSkips = 3;
+
     /// <summary>Uptime changes slowly; it does not need its own setting.</summary>
     private static readonly TimeSpan SystemInterval = TimeSpan.FromSeconds(5);
 
@@ -35,6 +41,7 @@ public sealed class MetricsMonitor : IMetricsMonitor, IAsyncDisposable
     private readonly SelfUsageGovernor _governor;
     private readonly Lock _lock = new();
     private readonly Dictionary<MetricKind, int> _failures = [];
+    private readonly Dictionary<MetricKind, int> _skips = [];
 
     private SystemSnapshot _current = SystemSnapshot.Empty;
     private SelfUsage _selfUsage = new(null, 0, 1.0);
@@ -321,18 +328,27 @@ public sealed class MetricsMonitor : IMetricsMonitor, IAsyncDisposable
         for (var i = 0; i < sources.Length; i++)
         {
             var source = sources[i];
-            if (results[i] is { } apply)
+            switch (results[i])
             {
-                snapshot = apply(snapshot);
-                unavailable &= ~source.Kind;
-            }
-            else
-            {
-                snapshot = source.Clear(snapshot);
-                unavailable |= source.Kind;
+                case { Apply: { } apply }:
+                    snapshot = apply(snapshot);
+                    unavailable &= ~source.Kind;
+                    break;
+                case { Skipped: true }:
+                    // No valid value this time: keep the metric as it is and do not report it as updated.
+                    continue;
+                default:
+                    snapshot = source.Clear(snapshot);
+                    unavailable |= source.Kind;
+                    break;
             }
 
             updated |= source.Kind;
+        }
+
+        if (updated == MetricKind.None)
+        {
+            return;
         }
 
         var timestamp = _time.GetUtcNow();
@@ -342,7 +358,7 @@ public sealed class MetricsMonitor : IMetricsMonitor, IAsyncDisposable
         Publish(new SystemMetricsUpdatedEventArgs(snapshot, updated));
     }
 
-    private async Task<Func<SystemSnapshot, SystemSnapshot>?> CollectSafeAsync(MetricSource source, CancellationToken cancellationToken)
+    private async Task<CollectResult> CollectSafeAsync(MetricSource source, CancellationToken cancellationToken)
     {
         try
         {
@@ -350,17 +366,40 @@ public sealed class MetricsMonitor : IMetricsMonitor, IAsyncDisposable
                 .WaitAsync(ProviderTimeout, _time, cancellationToken)
                 .ConfigureAwait(false);
             OnCollected(source.Kind);
-            return apply;
+            return new CollectResult(apply, Skipped: false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             throw;
         }
+        catch (MetricSampleSkippedException ex) when (OnSampleSkipped(source.Kind, ex))
+        {
+            return new CollectResult(null, Skipped: true);
+        }
         catch (Exception ex)
         {
             OnCollectFailed(source.Kind, ex);
-            return null;
+            return new CollectResult(null, Skipped: false);
         }
+    }
+
+    /// <summary>Returns true while skips are tolerated; false once they repeat too often (then handled as a failure).</summary>
+    private bool OnSampleSkipped(MetricKind kind, MetricSampleSkippedException exception)
+    {
+        int skips;
+        lock (_failures)
+        {
+            skips = _skips.GetValueOrDefault(kind) + 1;
+            _skips[kind] = skips;
+        }
+
+        if (skips > MaxConsecutiveSkips)
+        {
+            return false;
+        }
+
+        _logger.LogDebug("{Metric} sample skipped: {Message}", kind, exception.Message);
+        return true;
     }
 
     private void OnCollected(MetricKind kind)
@@ -369,6 +408,7 @@ public sealed class MetricsMonitor : IMetricsMonitor, IAsyncDisposable
         lock (_failures)
         {
             _failures.Remove(kind, out previousFailures);
+            _skips.Remove(kind);
         }
 
         if (previousFailures > 0)
@@ -608,4 +648,7 @@ public sealed class MetricsMonitor : IMetricsMonitor, IAsyncDisposable
     }
 
     private static TaskCompletionSource NewSignal() => new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    /// <summary>Outcome of one provider call: a value to apply, a skipped sample, or a failure (neither).</summary>
+    private readonly record struct CollectResult(Func<SystemSnapshot, SystemSnapshot>? Apply, bool Skipped);
 }

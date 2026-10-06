@@ -130,4 +130,55 @@ public sealed class SettingsSerializerTests
     {
         Assert.Equal(AppSettings.Default, SettingsValidator.Normalize(AppSettings.Default));
     }
+
+    [Fact]
+    public void RoundTrip_GameLists_AreEqualByContent()
+    {
+        var settings = AppSettings.Default with
+        {
+            Gaming = new GamingSettings
+            {
+                AddedGames = [@"D:\Games\Indie\game.exe"],
+                ExcludedGames = [@"C:\Tools\benchmark.exe"],
+                MinimumSessionMinutes = 5,
+                ReduceMonitoringDuringGames = false,
+            },
+        };
+
+        Assert.True(SettingsSerializer.TryDeserialize(SettingsSerializer.Serialize(settings), out var restored, out var error), error);
+
+        Assert.Equal(settings, restored);
+        Assert.Equal(settings.GetHashCode(), restored.GetHashCode());
+        Assert.NotEqual(settings, restored with { Gaming = restored.Gaming with { AddedGames = [@"D:\Games\Other\game.exe"] } });
+    }
+
+    [Fact]
+    public void Validator_GameLists_AreTrimmedDeduplicatedAndExclusionWins()
+    {
+        var normalized = SettingsValidator.Normalize(AppSettings.Default with
+        {
+            Gaming = new GamingSettings
+            {
+                AddedGames = [@" C:\Games\a.exe ", @"c:\games\A.EXE", "", @"C:\Games\b.exe"],
+                ExcludedGames = [@"C:\GAMES\B.exe"],
+                MinimumSessionMinutes = 0,
+            },
+        });
+
+        Assert.Equal([@"C:\Games\a.exe"], normalized.Gaming.AddedGames);
+        Assert.Equal([@"C:\GAMES\B.exe"], normalized.Gaming.ExcludedGames);
+        Assert.Equal(1, normalized.Gaming.MinimumSessionMinutes);
+    }
+
+    [Fact]
+    public void Update_WithSameGameListContent_IsNotAChange()
+    {
+        var service = NullSettingsStore.Create(s => s with { Gaming = s.Gaming with { AddedGames = [@"C:\Games\a.exe"] } });
+        var changes = 0;
+        service.Changed += (_, _) => changes++;
+
+        service.Update(s => s with { Gaming = s.Gaming with { AddedGames = [@"C:\Games\a.exe"] } });
+
+        Assert.Equal(0, changes);
+    }
 }

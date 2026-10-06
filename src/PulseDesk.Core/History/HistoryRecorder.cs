@@ -30,11 +30,7 @@ public sealed class HistoryRecorder : IAsyncDisposable
     private readonly TimeProvider _time;
     private readonly Lock _lock = new();
     private readonly SystemUsageAggregator _aggregator = new(HistoryResolution.Minute);
-    private readonly Channel<WorkItem> _queue = Channel.CreateBounded<WorkItem>(new BoundedChannelOptions(512)
-    {
-        FullMode = BoundedChannelFullMode.DropOldest,
-        SingleReader = true,
-    });
+    private readonly Channel<WorkItem> _queue;
 
     private CancellationTokenSource? _cts;
     private Task _writer = Task.CompletedTask;
@@ -42,6 +38,9 @@ public sealed class HistoryRecorder : IAsyncDisposable
     private bool _started;
     private bool _available;
     private int _failures;
+    private long _droppedWrites;
+    private long _lastWriteTicks;
+    private string? _lastError;
 
     public HistoryRecorder(
         IPerformanceHistory history,
@@ -55,10 +54,29 @@ public sealed class HistoryRecorder : IAsyncDisposable
         _settings = settings;
         _logger = logger;
         _time = timeProvider ?? TimeProvider.System;
+        _queue = Channel.CreateBounded<WorkItem>(
+            new BoundedChannelOptions(512) { FullMode = BoundedChannelFullMode.DropOldest, SingleReader = true },
+            OnItemDropped);
     }
 
     /// <summary>True once the storage was opened successfully.</summary>
     public bool IsAvailable => Volatile.Read(ref _available);
+
+    /// <summary>State of the writer, for PulseDesk's own health view (cheap to read from any thread).</summary>
+    public HistoryRecorderStatus Status
+    {
+        get
+        {
+            var lastWrite = Interlocked.Read(ref _lastWriteTicks);
+            return new HistoryRecorderStatus(
+                IsAvailable,
+                IsRecording,
+                Volatile.Read(ref _failures),
+                Interlocked.Read(ref _droppedWrites),
+                lastWrite == 0 ? null : new DateTimeOffset(lastWrite, TimeSpan.Zero),
+                Volatile.Read(ref _lastError));
+        }
+    }
 
     private bool IsRecording => _settings.Current.History.RecordHistory;
 
@@ -82,6 +100,7 @@ public sealed class HistoryRecorder : IAsyncDisposable
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
+            Volatile.Write(ref _lastError, ex.Message);
             _logger.LogError(ex, "The history database could not be opened; long-term history is disabled for this session.");
         }
 
@@ -230,6 +249,25 @@ public sealed class HistoryRecorder : IAsyncDisposable
 
     private void Enqueue(WorkItem item) => _queue.Writer.TryWrite(item);
 
+    /// <summary>Called when the queue is full and its oldest item is dropped (the storage stopped keeping up).</summary>
+    private void OnItemDropped(WorkItem item)
+    {
+        switch (item)
+        {
+            case FlushItem flush:
+                // Never leave a caller waiting for a flush that will not happen.
+                flush.Done.TrySetResult();
+                break;
+            case WriteItem:
+                if (Interlocked.Increment(ref _droppedWrites) == 1)
+                {
+                    _logger.LogWarning("History writes are not keeping up; the oldest pending writes are being dropped.");
+                }
+
+                break;
+        }
+    }
+
     private async Task WriteLoopAsync(CancellationToken cancellationToken)
     {
         var reader = _queue.Reader;
@@ -283,13 +321,16 @@ public sealed class HistoryRecorder : IAsyncDisposable
         try
         {
             await operation().ConfigureAwait(false);
+            Interlocked.Exchange(ref _lastWriteTicks, _time.GetUtcNow().UtcTicks);
             if (Interlocked.Exchange(ref _failures, 0) > 0)
             {
+                Volatile.Write(ref _lastError, null);
                 _logger.LogInformation("History {Operation} succeeded again.", what);
             }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
+            Volatile.Write(ref _lastError, ex.Message);
             // Log the first failure in full, then stay quiet: a full disk must not flood the log.
             if (Interlocked.Increment(ref _failures) == 1)
             {
@@ -310,3 +351,18 @@ public sealed class HistoryRecorder : IAsyncDisposable
 
     private sealed record FlushItem(TaskCompletionSource Done) : WorkItem;
 }
+
+/// <summary>State of the history writer.</summary>
+/// <param name="IsAvailable">The database was opened.</param>
+/// <param name="IsRecording">Recording is turned on in the settings.</param>
+/// <param name="ConsecutiveFailures">Write or maintenance failures since the last success.</param>
+/// <param name="DroppedWrites">Writes dropped because the storage did not keep up (since PulseDesk started).</param>
+/// <param name="LastWrite">Last successful write.</param>
+/// <param name="LastError">Message of the last failure, while failures continue.</param>
+public sealed record HistoryRecorderStatus(
+    bool IsAvailable,
+    bool IsRecording,
+    int ConsecutiveFailures,
+    long DroppedWrites,
+    DateTimeOffset? LastWrite,
+    string? LastError);

@@ -1,6 +1,7 @@
 using PulseDesk.Core.Interfaces;
 using PulseDesk.Core.Metrics;
 using PulseDesk.Core.Models;
+using PulseDesk.Core.Monitoring;
 using PulseDesk.Infrastructure.Windows;
 
 namespace PulseDesk.Infrastructure.Performance;
@@ -42,7 +43,9 @@ public sealed class WindowsCpuMetricProvider : ICpuMetricProvider, IDisposable
             var query = _query ?? throw new ObjectDisposedException(nameof(WindowsCpuMetricProvider));
             query.Collect();
 
-            var usage = _total!.GetValue() ?? throw new InvalidOperationException("CPU usage counter returned no data.");
+            // "% Processor Utility" has no valid value for one sample when its underlying counter wraps around
+            // (about every 1 h 55 min): skip that sample rather than report the CPU as unavailable.
+            var usage = _total!.GetValue() ?? throw new MetricSampleSkippedException("CPU usage counter returned no valid value for this sample.");
             var perProcessor = ReadPerProcessor();
             var baseMhz = _frequency?.GetValue();
             var performance = _performance?.GetValue();

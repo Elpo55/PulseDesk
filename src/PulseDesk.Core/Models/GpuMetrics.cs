@@ -31,7 +31,18 @@ public sealed record GpuMetrics(string AdapterId, string Name)
 
     /// <summary>Utilization per engine type (3D, Copy, Video Decode...). Empty when unavailable.</summary>
     public IReadOnlyList<GpuEngineUsage> Engines { get; init; } = [];
+
+    /// <summary>
+    /// Utilization of this adapter by each process using it (its busiest engine, like Task Manager's GPU column),
+    /// for processes above 0.1%. Empty when Windows does not report per-process engine usage.
+    /// </summary>
+    public IReadOnlyList<GpuProcessUsage> Processes { get; init; } = [];
 }
+
+/// <summary>GPU utilization of one process on one adapter.</summary>
+/// <param name="ProcessId">Process ID (the counter does not carry the creation time).</param>
+/// <param name="UsagePercent">Utilization of the process's busiest engine, 0–100.</param>
+public readonly record struct GpuProcessUsage(int ProcessId, double UsagePercent);
 
 /// <summary>Utilization of one GPU engine type.</summary>
 /// <param name="EngineType">Engine type label as reported by Windows (e.g. "3D", "VideoDecode").</param>

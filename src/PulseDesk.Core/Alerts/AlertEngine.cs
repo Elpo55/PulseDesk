@@ -51,11 +51,34 @@ public sealed class AlertEngine(IEnumerable<AlertRule> rules) : IAlertEngine
         new LowDiskSpaceAlertRule(),
     ];
 
+    /// <remarks>
+    /// Alerts still active when they were stored come from a previous session. An activity (CPU, memory, disk busy...)
+    /// cannot be known to still be going on: it is resolved at its last observation. A lasting state (low disk space)
+    /// stays active until the first evaluation: if the condition is still met, the same alert continues (no new alert,
+    /// no new notification); otherwise it is resolved at its last observation.
+    /// </remarks>
     public void Load(IEnumerable<Alert> alerts)
     {
         ArgumentNullException.ThrowIfNull(alerts);
         _alerts.Clear();
-        _alerts.AddRange(alerts.OrderBy(a => a.RaisedAt).TakeLast(MaxAlerts));
+        _missingSince.Clear();
+        var persistent = _rules.Where(r => r.IsPersistentState).Select(r => r.Id).ToHashSet(StringComparer.Ordinal);
+        foreach (var alert in alerts.OrderBy(a => a.RaisedAt).TakeLast(MaxAlerts))
+        {
+            if (!alert.IsActive)
+            {
+                _alerts.Add(alert);
+            }
+            else if (persistent.Contains(alert.RuleId))
+            {
+                _alerts.Add(alert);
+                _missingSince[alert.Key] = alert.UpdatedAt;
+            }
+            else
+            {
+                _alerts.Add(alert with { Status = AlertStatus.Resolved, ResolvedAt = alert.UpdatedAt });
+            }
+        }
     }
 
     public AlertEvaluation Evaluate(AlertContext context)

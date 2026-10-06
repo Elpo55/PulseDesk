@@ -12,6 +12,22 @@ internal static class GpuCounterInstance
     private const string EngineMarker = "_eng_";
     private const string EngineTypeMarker = "_engtype_";
 
+    private const string PidPrefix = "pid_";
+
+    /// <summary>Extracts the process ID of a "GPU Engine" instance ("pid_1234_luid_…").</summary>
+    public static bool TryGetProcessId(ReadOnlySpan<char> instance, out int processId)
+    {
+        processId = 0;
+        if (!instance.StartsWith(PidPrefix, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var digits = instance[PidPrefix.Length..];
+        var end = digits.IndexOf('_');
+        return end > 0 && int.TryParse(digits[..end], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out processId);
+    }
+
     /// <summary>Extracts the adapter LUID part ("luid_0x..._0x...") of any GPU counter instance.</summary>
     public static bool TryGetAdapterId(ReadOnlySpan<char> instance, out ReadOnlySpan<char> adapterId)
     {

@@ -1,0 +1,393 @@
+<Page
+    x:Class="PulseDesk.App.Views.GamingPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:PulseDesk.App.Controls"
+    xmlns:gaming="using:PulseDesk.Core.Gaming"
+    xmlns:vm="using:PulseDesk.App.ViewModels"
+    NavigationCacheMode="Required">
+
+    <Page.Resources>
+        <Style x:Key="RecapChartStyle" TargetType="controls:TimeSeriesChart">
+            <Setter Property="Height" Value="120" />
+        </Style>
+    </Page.Resources>
+
+    <Grid Padding="32,24,32,24" RowSpacing="12">
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup>
+                <VisualState x:Name="Wide">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="1100" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="ListColumn.Width" Value="300" />
+                        <Setter Target="RecapColumn.Width" Value="*" />
+                        <Setter Target="ListRow.Height" Value="*" />
+                        <Setter Target="RecapRow.Height" Value="0" />
+                        <Setter Target="RecapPanel.(Grid.Row)" Value="0" />
+                        <Setter Target="RecapPanel.(Grid.Column)" Value="1" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Narrow">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="0" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="SessionList.MaxHeight" Value="220" />
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Grid ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+                <TextBlock Style="{StaticResource PageTitleTextStyle}" Text="Gaming" />
+                <TextBlock Style="{StaticResource PageSubtitleTextStyle}" Text="A recap of each game session: what your PC, the game and other applications used. FPS is never estimated." TextWrapping="Wrap" />
+            </StackPanel>
+            <Button
+                Grid.Column="1"
+                VerticalAlignment="Center"
+                AutomationProperties.Name="Refresh"
+                Command="{x:Bind ViewModel.RefreshCommand}"
+                ToolTipService.ToolTip="Refresh now">
+                <FontIcon FontSize="14" Glyph="&#xE72C;" />
+            </Button>
+        </Grid>
+
+        <!-- State -->
+        <StackPanel Grid.Row="1" Spacing="8">
+            <InfoBar
+                IsClosable="False"
+                IsOpen="{x:Bind ViewModel.IsDisabled, Mode=OneWay}"
+                Message="Game sessions are turned off in Settings: no new session is recorded."
+                Severity="Informational">
+                <InfoBar.ActionButton>
+                    <Button Command="{x:Bind ViewModel.OpenSettingsCommand}" Content="Open Settings" />
+                </InfoBar.ActionButton>
+            </InfoBar>
+            <InfoBar
+                IsClosable="False"
+                IsOpen="{x:Bind ViewModel.HasError, Mode=OneWay}"
+                Message="{x:Bind ViewModel.ErrorText, Mode=OneWay}"
+                Severity="Error" />
+            <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind ViewModel.Summary, Mode=OneWay}" />
+            <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind ViewModel.Note, Mode=OneWay}" Visibility="{x:Bind ViewModel.HasNote, Mode=OneWay}" />
+            <ProgressBar IsIndeterminate="True" Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay}" />
+        </StackPanel>
+
+        <!-- Game running now -->
+        <Border Grid.Row="2" Style="{StaticResource CardStyle}" Visibility="{x:Bind ViewModel.HasLive, Mode=OneWay}">
+            <Grid ColumnSpacing="16">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <FontIcon VerticalAlignment="Top" FontSize="28" Foreground="{ThemeResource GpuAccentBrush}" Glyph="&#xE7FC;" />
+                <StackPanel Grid.Column="1" Spacing="4">
+                    <TextBlock Style="{StaticResource LabelTextStyle}" Text="GAME RUNNING · RECORDING WITH MINIMAL IMPACT" />
+                    <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind ViewModel.LiveTitle, Mode=OneWay}" TextWrapping="Wrap" />
+                    <TextBlock Text="{x:Bind ViewModel.LiveStats, Mode=OneWay}" TextWrapping="Wrap" />
+                    <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind ViewModel.LiveOverhead, Mode=OneWay}" />
+                    <TextBlock IsTextSelectionEnabled="True" Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind ViewModel.LiveDetail, Mode=OneWay}" />
+                </StackPanel>
+                <Button
+                    Grid.Column="2"
+                    VerticalAlignment="Top"
+                    Command="{x:Bind ViewModel.MarkLiveNotAGameCommand}"
+                    Content="Not a game"
+                    ToolTipService.ToolTip="Stop following this application as a game (Settings › Gaming to undo)" />
+            </Grid>
+        </Border>
+
+        <!-- Sessions and recap -->
+        <Grid Grid.Row="3" ColumnSpacing="12" RowSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="ListColumn" Width="*" />
+                <ColumnDefinition x:Name="RecapColumn" Width="0" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition x:Name="ListRow" Height="Auto" />
+                <RowDefinition x:Name="RecapRow" Height="*" />
+            </Grid.RowDefinitions>
+
+            <Border Padding="0,8" Style="{StaticResource CardStyle}" Visibility="{x:Bind ViewModel.IsEmpty, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                <ListView
+                    x:Name="SessionList"
+                    AutomationProperties.Name="Game sessions"
+                    ItemsSource="{x:Bind ViewModel.Sessions}"
+                    SelectedIndex="{x:Bind ViewModel.SelectedIndex, Mode=TwoWay}"
+                    SelectionMode="Single">
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="vm:GameSessionItemViewModel">
+                            <Grid Padding="0,8" ColumnSpacing="10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <controls:StatusIcon Margin="0,2,0,0" VerticalAlignment="Top" BrushKey="{x:Bind BrushKey, Mode=OneWay}" Glyph="{x:Bind Glyph, Mode=OneWay}" GlyphSize="14" />
+                                <StackPanel Grid.Column="1" Spacing="2">
+                                    <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind Name, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Style="{StaticResource LabelTextStyle}" Text="{x:Bind WhenText, Mode=OneWay}" />
+                                    <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind Headline, Mode=OneWay}" />
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+            </Border>
+
+            <!-- Empty state -->
+            <Border Grid.ColumnSpan="2" Padding="24" Style="{StaticResource CardStyle}" Visibility="{x:Bind ViewModel.IsEmpty, Mode=OneWay}">
+                <StackPanel HorizontalAlignment="Center" MaxWidth="640" Spacing="8">
+                    <FontIcon FontSize="32" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Glyph="&#xE7FC;" />
+                    <TextBlock HorizontalAlignment="Center" Style="{StaticResource BodyStrongTextBlockStyle}" Text="No game session yet" />
+                    <TextBlock HorizontalAlignment="Center" Style="{StaticResource SecondaryTextStyle}" Text="Start a game: PulseDesk follows it automatically when Windows recognizes it as a game (Game Bar's list) or when it is installed in a game library folder (Steam, Epic, Xbox, GOG…). When the game closes, a recap appears here. Sessions shorter than the minimum set in Settings are not kept." TextAlignment="Center" />
+                    <HyperlinkButton HorizontalAlignment="Center" Command="{x:Bind ViewModel.OpenSettingsCommand}" Content="Mark an application as a game in Settings" />
+                </StackPanel>
+            </Border>
+
+            <ScrollViewer x:Name="RecapPanel" Grid.Row="1" Visibility="{x:Bind ViewModel.HasSelection, Mode=OneWay}">
+                <StackPanel Padding="0,0,12,0" Spacing="12">
+                    <!-- Headline -->
+                    <Border Style="{StaticResource CardStyle}">
+                        <Grid ColumnSpacing="14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <controls:StatusIcon Margin="0,4,0,0" VerticalAlignment="Top" BrushKey="{x:Bind ViewModel.Recap.BrushKey, Mode=OneWay}" Glyph="{x:Bind ViewModel.Recap.Glyph, Mode=OneWay}" GlyphSize="22" />
+                            <StackPanel Grid.Column="1" Spacing="4">
+                                <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="{x:Bind ViewModel.Recap.Name, Mode=OneWay}" TextWrapping="Wrap" />
+                                <TextBlock Style="{StaticResource LabelTextStyle}" Text="{x:Bind ViewModel.Recap.Period, Mode=OneWay}" />
+                                <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind ViewModel.Recap.Headline, Mode=OneWay}" />
+                                <TextBlock Text="{x:Bind ViewModel.Recap.Summary, Mode=OneWay}" TextWrapping="Wrap" />
+                                <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind ViewModel.Recap.Coverage, Mode=OneWay}" />
+                                <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind ViewModel.Recap.Detection, Mode=OneWay}" />
+                                <TextBlock IsTextSelectionEnabled="True" Style="{StaticResource LabelTextStyle}" Text="{x:Bind ViewModel.Recap.ExecutablePath, Mode=OneWay}" />
+                            </StackPanel>
+                            <Button
+                                Grid.Column="2"
+                                VerticalAlignment="Top"
+                                Command="{x:Bind ViewModel.MarkSelectedNotAGameCommand}"
+                                Content="Not a game"
+                                ToolTipService.ToolTip="Stop following this application as a game (past sessions are kept)" />
+                        </Grid>
+                    </Border>
+
+                    <!-- Measurements -->
+                    <Border Style="{StaticResource CardStyle}">
+                        <StackPanel Spacing="6">
+                            <TextBlock Style="{StaticResource CardHeaderTextStyle}" Text="Measurements" />
+                            <Grid Padding="0,2" ColumnSpacing="12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="2*" MinWidth="160" />
+                                    <ColumnDefinition Width="*" MinWidth="80" />
+                                    <ColumnDefinition Width="*" MinWidth="80" />
+                                    <ColumnDefinition Width="2*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource LabelTextStyle}" Text="Metric" />
+                                <TextBlock Grid.Column="1" Style="{StaticResource LabelTextStyle}" Text="Average" />
+                                <TextBlock Grid.Column="2" Style="{StaticResource LabelTextStyle}" Text="Maximum" />
+                                <TextBlock Grid.Column="3" Style="{StaticResource LabelTextStyle}" Text="Scope" />
+                            </Grid>
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.Recap.Metrics}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:GameMetricItemViewModel">
+                                        <Grid Padding="0,3" ColumnSpacing="12" Opacity="{x:Bind Opacity}">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="2*" MinWidth="160" />
+                                                <ColumnDefinition Width="*" MinWidth="80" />
+                                                <ColumnDefinition Width="*" MinWidth="80" />
+                                                <ColumnDefinition Width="2*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{x:Bind Name}" TextWrapping="Wrap" />
+                                            <TextBlock Grid.Column="1" Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind Average}" />
+                                            <TextBlock Grid.Column="2" Text="{x:Bind Maximum}" />
+                                            <TextBlock Grid.Column="3" Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind Note}" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Charts -->
+                    <controls:AdaptiveGridPanel MinItemWidth="320">
+                        <Border Style="{StaticResource CardStyle}">
+                            <StackPanel Spacing="6">
+                                <TextBlock Style="{StaticResource CardHeaderTextStyle}" Text="CPU during the session" />
+                                <controls:TimeSeriesChart
+                                    AutomationProperties.Name="CPU during the session"
+                                    Data="{x:Bind ViewModel.Recap.CpuChart, Mode=OneWay}"
+                                    SecondaryStroke="{ThemeResource GpuAccentBrush}"
+                                    Stroke="{ThemeResource CpuAccentBrush}"
+                                    Style="{StaticResource RecapChartStyle}" />
+                                <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind ViewModel.Recap.CpuLegend, Mode=OneWay}" />
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource CardStyle}" Visibility="{x:Bind ViewModel.Recap.HasGpuChart, Mode=OneWay}">
+                            <StackPanel Spacing="6">
+                                <TextBlock Style="{StaticResource CardHeaderTextStyle}" Text="GPU during the session" />
+                                <controls:TimeSeriesChart
+                                    AutomationProperties.Name="GPU during the session"
+                                    Data="{x:Bind ViewModel.Recap.GpuChart, Mode=OneWay}"
+                                    SecondaryStroke="{ThemeResource CpuAccentBrush}"
+                                    Stroke="{ThemeResource GpuAccentBrush}"
+                                    Style="{StaticResource RecapChartStyle}" />
+                                <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind ViewModel.Recap.GpuLegend, Mode=OneWay}" />
+                            </StackPanel>
+                        </Border>
+                    </controls:AdaptiveGridPanel>
+
+                    <!-- Findings -->
+                    <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="What happened" />
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.Recap.Findings}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:GameFindingItemViewModel">
+                                <Expander Margin="0,0,0,8" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                                    <Expander.Header>
+                                        <Grid Padding="0,10" ColumnSpacing="12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <controls:StatusIcon Margin="0,2,0,0" VerticalAlignment="Top" BrushKey="{x:Bind BrushKey}" Glyph="{x:Bind Glyph}" GlyphSize="18" />
+                                            <StackPanel Grid.Column="1" Spacing="2">
+                                                <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind Title}" TextWrapping="Wrap" />
+                                                <TextBlock Text="{x:Bind Description}" TextWrapping="Wrap" />
+                                            </StackPanel>
+                                            <controls:LevelBadge Grid.Column="2" VerticalAlignment="Top" BrushKey="StatusInfoBrush" Text="{x:Bind Qualifier}" Visibility="{x:Bind HasQualifier}" />
+                                        </Grid>
+                                    </Expander.Header>
+                                    <StackPanel Spacing="10">
+                                        <StackPanel Spacing="2" Visibility="{x:Bind HasRecommendation}">
+                                            <TextBlock Style="{StaticResource LabelTextStyle}" Text="What you can do" />
+                                            <TextBlock Text="{x:Bind Recommendation}" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                        <TextBlock Style="{StaticResource LabelTextStyle}" Text="{x:Bind ConfidenceText}" />
+                                        <StackPanel Spacing="4" Visibility="{x:Bind HasEvidence}">
+                                            <TextBlock Style="{StaticResource LabelTextStyle}" Text="Data used" />
+                                            <ItemsControl ItemsSource="{x:Bind Evidence}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate x:DataType="vm:EvidenceItemViewModel">
+                                                        <Grid Padding="0,4" ColumnSpacing="12">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="180" />
+                                                                <ColumnDefinition Width="*" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind Metric}" TextWrapping="Wrap" />
+                                                            <StackPanel Grid.Column="1" Spacing="2">
+                                                                <TextBlock IsTextSelectionEnabled="True" Text="{x:Bind Observed}" TextWrapping="Wrap" />
+                                                                <TextBlock IsTextSelectionEnabled="True" Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind Detail}" Visibility="{x:Bind HasDetail}" />
+                                                            </StackPanel>
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Expander>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- Comparison -->
+                    <Border Style="{StaticResource CardStyle}">
+                        <StackPanel Spacing="6">
+                            <TextBlock Style="{StaticResource CardHeaderTextStyle}" Text="Compared with previous sessions" />
+                            <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind ViewModel.Recap.ComparisonNote, Mode=OneWay}" />
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.Recap.Comparison}" Visibility="{x:Bind ViewModel.Recap.HasComparison, Mode=OneWay}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="gaming:GameComparisonItem">
+                                        <Grid Padding="0,3" ColumnSpacing="12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="2*" MinWidth="160" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{x:Bind Metric}" TextWrapping="Wrap" />
+                                            <TextBlock Grid.Column="1" Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind ThisSession}" />
+                                            <TextBlock Grid.Column="2" Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind Previous}" />
+                                            <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6">
+                                                <TextBlock Text="{x:Bind Difference}" />
+                                                <FontIcon FontSize="12" Foreground="{ThemeResource StatusInfoBrush}" Glyph="&#xE946;" ToolTipService.ToolTip="Notable difference" Visibility="{x:Bind IsNotable}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Other applications, game processes, events -->
+                    <Border Style="{StaticResource CardStyle}">
+                        <StackPanel Spacing="10">
+                            <StackPanel Spacing="4">
+                                <TextBlock Style="{StaticResource CardHeaderTextStyle}" Text="Other applications during the game" />
+                                <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="No other application used a measurable share of the processor." Visibility="{x:Bind ViewModel.Recap.HasOtherApps, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
+                                <ItemsControl ItemsSource="{x:Bind ViewModel.Recap.OtherApps}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="x:String">
+                                            <TextBlock Padding="0,2" Text="{x:Bind}" TextWrapping="Wrap" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                            <StackPanel Spacing="4" Visibility="{x:Bind ViewModel.Recap.HasGameProcesses, Mode=OneWay}">
+                                <TextBlock Style="{StaticResource CardHeaderTextStyle}" Text="Other processes of the game" />
+                                <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="Started by the game or installed in its folder (launchers, anti-cheat, crash reporters…)." />
+                                <ItemsControl ItemsSource="{x:Bind ViewModel.Recap.GameProcesses}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="x:String">
+                                            <TextBlock Padding="0,2" Text="{x:Bind}" TextWrapping="Wrap" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                            <StackPanel Spacing="4" Visibility="{x:Bind ViewModel.Recap.HasEvents, Mode=OneWay}">
+                                <TextBlock Style="{StaticResource CardHeaderTextStyle}" Text="Events during the session" />
+                                <ItemsControl ItemsSource="{x:Bind ViewModel.Recap.Events}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="x:String">
+                                            <TextBlock Padding="0,2" Text="{x:Bind}" TextWrapping="Wrap" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Not available -->
+                    <Border Style="{StaticResource CardStyle}">
+                        <StackPanel Spacing="4">
+                            <TextBlock Style="{StaticResource CardHeaderTextStyle}" Text="Not measured" />
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.Recap.NotAvailable}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="x:String">
+                                        <TextBlock Padding="0,2" Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind}" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </Grid>
+</Page>

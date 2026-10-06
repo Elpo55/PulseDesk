@@ -180,5 +180,68 @@ recoveries, data sources) and dashboard insights. All tests are deterministic (f
 2. Change detection for drivers, services and scheduled tasks (read-only), and Windows Update history.
 3. Export of a diagnosis or a replay period (JSON/CSV/HTML report) for support requests.
 4. Alerts for a specific application (user-defined), and alert snoozing.
-5. GPU per application (`GPU Engine` counters carry the PID).
+5. GPU usage per application on the App Impact page (the per-process GPU data now collected for games could feed it).
 6. A statistical diagnosis engine next to the rule engine (the `IDiagnosisEngine` extension point is ready).
+7. Frame rates for games through PresentMon-style event tracing, as an explicit, optional, administrator-level feature.
+
+---
+
+# Finalisation: gaming sessions, usual-activity comparisons, sleep and resume
+
+## Gaming sessions and recap
+
+| Piece | Project | Role |
+| --- | --- | --- |
+| `GameClassifier` | Core/Gaming | Is an executable a game? Evidence only: the user's lists, Windows' list, game library folders (helpers such as launchers, anti-cheat and crash reporters excluded). Never inferred from resource usage |
+| `IGameLibrary` / `WindowsGameLibrary` | Core/Interfaces, Infrastructure/Gaming | Executables Windows recognizes as games: `HKCU\System\GameConfigStore\Children\*\MatchedExeFullPath` (Game Bar's list, read-only), product names from version resources |
+| `GameSessionTracker` | Core/Gaming | Pure state machine fed by the monitor's snapshots: session start, end (absent for 15 s; a game restarting itself stays one session), averages and peaks, the game's processes, associated processes (started by the game or in its folder), background applications, PulseDesk's own usage, resource limits reached, a bounded timeline |
+| `GameRecapBuilder` | Core/Gaming | Pure recap: measurements (average / maximum), anomalies, analysis worded as hypotheses ("Likely limiting factor", "Possible cause", "Potential contributor", "Observed change, cause unknown"), comparison with previous sessions of the same game, what was not measured |
+| `GameSessionService` | Core/Gaming | Wires the tracker to the monitor, keeps sessions (documents table, kind `game`), raises `RecapReady`, timeline events (game started/closed), "Not a game" / "Mark as a game" |
+| `GamingPage`, `GamingViewModel` | App | Live session, list of sessions, recap with charts; Settings › Gaming; dashboard quick action and insight; notification when a recap is ready (click opens it) |
+
+**FPS is never estimated.** Windows exposes frame rates only through administrator-level event tracing (what
+PresentMon and overlays use) or by hooking into the game; PulseDesk does neither, so every recap shows
+"FPS: Not available" with the reason. Temperatures and per-application network usage are reported as not available
+for the same kind of reason. Video memory is the dedicated memory in use on the game's adapter (all applications):
+Windows does not give the game's own share without another counter set.
+
+**Cost during a game.** No new timer, no new collection: the tracker reads the snapshots already taken, only for the
+metrics refreshed by each update. Per process sample, the work is one dictionary lookup per process (classification
+results are cached per executable path). Per-process GPU usage comes from the `GPU Engine` instances PulseDesk already
+read (their name carries the PID). Memory is bounded: at most 240 timeline points per session (neighbors are merged as
+the session grows), capped application lists. While a game runs and PulseDesk is not the active window, the window's
+live updates stop and detailed metrics are sampled 5× less often ("Lighter monitoring during games", on by default);
+the recap shows PulseDesk's own CPU usage during the session.
+
+Measured (Release, live data, window in the tray, Ryzen 9 7845HX with 24 logical processors, about 355 processes,
+3-minute window after a 4.5-minute warm-up, both builds run back to back): the committed version used 0.040% of total
+CPU capacity (0.96% of one core, 143 MB private memory); this version 0.039% (0.93% of one core, 141 MB). The tracker
+itself, benchmarked on a 300-process snapshot: about 21 µs per process sample with no game running, 28 µs with a game,
+0.1 µs per CPU or memory update, a few hundred bytes allocated per sample.
+
+## Usual activity: hour, day, 7 and 30 days
+
+`UsageComparer` (pure) and `UsageComparisonService` compare the last 15 minutes with the last hour, today, yesterday,
+the last 7 and 30 days, and the same hour on previous days, from the minute history (last two days) and the hourly
+summaries (older), minute data replacing the summary of the same hour so no time is counted twice. Each period has a
+minimum of measured time (30 min, 1 h, 4 h over 2 days, 24 h over 8 days, 45 min over 3 days at this hour); below it
+the table shows a dash and how much data exists. Shown on the Diagnosis page ("Compared with your usual activity").
+
+## Sleep and resume
+
+`WindowsPowerEvents` (`PowerRegisterSuspendResumeNotification`, no window needed) and `PowerTransitionService`:
+before sleep, the minute and the application bucket in progress are written (bounded wait, Windows allows about two
+seconds) and a "PC going to sleep" event is recorded; on resume, "PC resumed from sleep (asleep 42m)" is recorded and
+every metric is refreshed at once. Game sessions exclude the time asleep from their measured time.
+
+## Fixes
+
+- `GamingSettings` compared its lists by reference: settings read back from disk never equaled the saved ones (failing
+  test). Lists now compare by content.
+- A lasting state alert (low disk space) was resolved when PulseDesk closed and raised again, with a new notification,
+  at every start. Alerts of persistent-state rules now continue when the condition is still met at the first evaluation.
+- `% Processor Utility` has no valid value for one sample every ~1 h 55 min (counter wrap): the CPU was reported
+  "not available" for a second each time (visible in the logs). Such samples are now skipped (`MetricSampleSkippedException`);
+  only repeated skips count as a failure. Same for transient empty disk counter samples.
+- A history database damaged while open is now set aside and recreated (previously only detected at open).
+- The game classifier no longer mistakes titles containing "crash" (for example *Crash Bandicoot*) for crash reporters.

@@ -126,6 +126,10 @@ public sealed class WindowsGpuMetricProvider : IGpuMetricProvider, IDisposable
         }
 
         adapter.AddEngineUsage(engineKey, engineType, value);
+        if (value > 0 && GpuCounterInstance.TryGetProcessId(instance, out var processId))
+        {
+            adapter.AddProcessUsage(processId, value);
+        }
     }
 
     private void OnMemoryInstance(ReadOnlySpan<char> instance, double bytes, bool dedicated)
@@ -139,7 +143,11 @@ public sealed class WindowsGpuMetricProvider : IGpuMetricProvider, IDisposable
 
     private sealed class AdapterState(GpuAdapterInfo info)
     {
+        /// <summary>Processes below this utilization are not listed (idle GPU contexts are common).</summary>
+        private const double MinimumProcessUsage = 0.1;
+
         private readonly Dictionary<string, EngineState> _engines = new(StringComparer.Ordinal);
+        private readonly Dictionary<int, double> _processes = [];
         private double _dedicatedUsed;
         private double _sharedUsed;
 
@@ -152,8 +160,16 @@ public sealed class WindowsGpuMetricProvider : IGpuMetricProvider, IDisposable
                 engine.Sum = 0;
             }
 
+            _processes.Clear();
             _dedicatedUsed = 0;
             _sharedUsed = 0;
+        }
+
+        /// <summary>A process's usage is that of its busiest engine instance.</summary>
+        public void AddProcessUsage(int processId, double value)
+        {
+            ref var usage = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrAddDefault(_processes, processId, out _);
+            usage = Math.Max(usage, value);
         }
 
         public void AddEngineUsage(ReadOnlySpan<char> engineKey, ReadOnlySpan<char> engineType, double value)
@@ -190,10 +206,21 @@ public sealed class WindowsGpuMetricProvider : IGpuMetricProvider, IDisposable
                 .ThenBy(e => e.EngineType, StringComparer.Ordinal)
                 .ToArray();
 
+            GpuProcessUsage[] processes = [];
+            if (hasEngineData && _processes.Count > 0)
+            {
+                processes = _processes
+                    .Where(p => p.Value >= MinimumProcessUsage)
+                    .Select(p => new GpuProcessUsage(p.Key, Percentages.Clamp(p.Value)))
+                    .OrderByDescending(p => p.UsagePercent)
+                    .ToArray();
+            }
+
             return new GpuMetrics(Info.AdapterId, Info.Name)
             {
                 UsagePercent = hasEngineData ? (engineTypes.Length > 0 ? engineTypes[0].UsagePercent : 0) : null,
                 Engines = hasEngineData ? engineTypes : [],
+                Processes = processes,
                 DedicatedMemoryTotalBytes = Info.DedicatedMemoryBytes,
                 DedicatedMemoryUsedBytes = hasDedicatedData ? (ulong)Math.Max(_dedicatedUsed, 0) : null,
                 SharedMemoryTotalBytes = Info.SharedMemoryBytes,

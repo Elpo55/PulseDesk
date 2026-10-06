@@ -81,6 +81,49 @@ public sealed class MetricsMonitorTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task SkippedSample_KeepsMetricAvailable_AndPublishesNoCpuUpdate()
+    {
+        await _monitor.DisposeAsync();
+        var cpu = new SkippingCpuProvider(_machine);
+        _monitor = CreateMonitor(SimulatedProviders.Create(_machine) with { Cpu = cpu });
+        await StartAndWaitForFirstRoundAsync();
+        var samples = _monitor.History.GetSamples(SeriesKeys.Cpu, DateTimeOffset.MinValue).Length;
+
+        var cpuUpdates = 0;
+        _monitor.MetricsUpdated += (_, e) =>
+        {
+            if ((e.Updated & MetricKind.Cpu) != 0)
+            {
+                Interlocked.Increment(ref cpuUpdates);
+            }
+        };
+        cpu.SkipNext = 1;
+        await AdvanceUntilAsync(() => cpu.Skipped == 1 && cpu.Calls >= 3);
+
+        Assert.False(_monitor.Current.IsUnavailable(MetricKind.Cpu));
+        Assert.NotNull(_monitor.Current.Cpu);
+        // The skipped sample produced no chart point and no CPU update; the following ones did (the loop may still be
+        // finishing a round, so wait for both counts to settle).
+        await WaitUntilAsync(() => Volatile.Read(ref cpuUpdates) == cpu.Calls - 2
+            && _monitor.History.GetSamples(SeriesKeys.Cpu, DateTimeOffset.MinValue).Length == samples + Volatile.Read(ref cpuUpdates));
+    }
+
+    [Fact]
+    public async Task RepeatedSkips_AreReportedUnavailable()
+    {
+        await _monitor.DisposeAsync();
+        var cpu = new SkippingCpuProvider(_machine);
+        _monitor = CreateMonitor(SimulatedProviders.Create(_machine) with { Cpu = cpu });
+        await StartAndWaitForFirstRoundAsync();
+
+        cpu.SkipNext = MetricsMonitor.MaxConsecutiveSkips + 1;
+        await AdvanceUntilAsync(() => _monitor.Current.IsUnavailable(MetricKind.Cpu));
+        Assert.Null(_monitor.Current.Cpu);
+
+        await AdvanceUntilAsync(() => !_monitor.Current.IsUnavailable(MetricKind.Cpu) && _monitor.Current.Cpu is not null);
+    }
+
+    [Fact]
     public async Task Pause_StopsCollection_ResumeRestartsIt()
     {
         await StartAndWaitForFirstRoundAsync();
@@ -222,6 +265,35 @@ public sealed class MetricsMonitorTests : IAsyncLifetime
         {
             Interlocked.Increment(ref _calls);
             return Task.FromResult(machine.SampleStorage());
+        }
+    }
+
+    private sealed class SkippingCpuProvider(SimulatedMachine machine) : ICpuMetricProvider
+    {
+        private int _calls;
+        private int _skipped;
+        private int _skipNext;
+
+        public int Calls => Volatile.Read(ref _calls);
+
+        public int Skipped => Volatile.Read(ref _skipped);
+
+        public int SkipNext
+        {
+            set => Volatile.Write(ref _skipNext, value);
+        }
+
+        public Task<CpuMetrics> CollectAsync(CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref _calls);
+            if (Interlocked.Decrement(ref _skipNext) >= 0)
+            {
+                Interlocked.Increment(ref _skipped);
+                return Task.FromException<CpuMetrics>(new MetricSampleSkippedException("Counter wrapped."));
+            }
+
+            Volatile.Write(ref _skipNext, 0);
+            return Task.FromResult(machine.SampleCpu());
         }
     }
 

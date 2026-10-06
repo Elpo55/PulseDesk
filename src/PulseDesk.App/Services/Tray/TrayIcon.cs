@@ -74,6 +74,9 @@ internal sealed unsafe partial class TrayIcon : IDisposable
 
     public event EventHandler? ExitRequested;
 
+    /// <summary>The user clicked the last notification balloon.</summary>
+    public event EventHandler? BalloonClicked;
+
     /// <summary>Updates the text shown when hovering the icon (127 characters max).</summary>
     public void SetTooltip(string text)
     {
@@ -180,6 +183,9 @@ internal sealed unsafe partial class TrayIcon : IDisposable
             case NinKeySelect:
             case WmLButtonDblClk:
                 OpenRequested?.Invoke(this, EventArgs.Empty);
+                return true;
+            case NinBalloonUserClick:
+                BalloonClicked?.Invoke(this, EventArgs.Empty);
                 return true;
             case WmContextMenu:
                 // With NOTIFYICON_VERSION_4, wParam carries the anchor point of the menu.

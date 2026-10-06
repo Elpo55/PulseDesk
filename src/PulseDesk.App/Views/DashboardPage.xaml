@@ -159,6 +159,12 @@
                                 <TextBlock Text="{x:Bind ViewModel.AlertsText, Mode=OneWay}" />
                             </StackPanel>
                         </Button>
+                        <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Command="{x:Bind ViewModel.OpenGamingCommand}" ToolTipService.ToolTip="Recaps of your game sessions">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon FontSize="14" Glyph="&#xE7FC;" />
+                                <TextBlock MaxWidth="180" Text="{x:Bind ViewModel.GamingText, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
                 </Border>
             </Grid>

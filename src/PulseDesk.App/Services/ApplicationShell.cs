@@ -2,8 +2,10 @@ using Microsoft.Extensions.Logging;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using PulseDesk.App.Services.Tray;
+using PulseDesk.App.ViewModels;
 using PulseDesk.Core.Alerts;
 using PulseDesk.Core.Formatting;
+using PulseDesk.Core.Gaming;
 using PulseDesk.Core.Interfaces;
 using PulseDesk.Core.Models;
 using PulseDesk.Core.Settings;
@@ -14,7 +16,8 @@ namespace PulseDesk.App.Services;
 
 /// <summary>
 /// Owns the main window's life cycle: initial visibility, close behavior (quit or minimize to the
-/// notification area), the tray icon, and the switch to background mode while the window is hidden.
+/// notification area), the tray icon, notifications, and the switch to background mode while the window is hidden
+/// (or, during a game, while it is not the active window).
 /// </summary>
 public sealed partial class ApplicationShell : IDisposable
 {
@@ -28,10 +31,17 @@ public sealed partial class ApplicationShell : IDisposable
     private readonly NavigationService _navigation;
     private readonly DialogService _dialogs;
     private readonly AlertService _alerts;
+    private readonly GameSessionService _games;
+    private readonly GamingViewModel _gaming;
     private readonly StartupOptions _options;
     private readonly DispatcherQueue _dispatcher;
     private readonly ILogger<ApplicationShell> _logger;
     private TrayIcon? _tray;
+    private AppPage? _balloonPage;
+    private Guid? _balloonSession;
+    private bool _windowActive = true;
+    private bool _gameRunning;
+    private bool _behindGame;
     private long _lastTooltip;
     private bool _allowClose;
     private bool _placementApplied;
@@ -45,6 +55,8 @@ public sealed partial class ApplicationShell : IDisposable
         NavigationService navigation,
         DialogService dialogs,
         AlertService alerts,
+        GameSessionService games,
+        GamingViewModel gaming,
         StartupOptions options,
         DispatcherQueue dispatcher,
         ILogger<ApplicationShell> logger)
@@ -57,6 +69,8 @@ public sealed partial class ApplicationShell : IDisposable
         _navigation = navigation;
         _dialogs = dialogs;
         _alerts = alerts;
+        _games = games;
+        _gaming = gaming;
         _options = options;
         _dispatcher = dispatcher;
         _logger = logger;
@@ -75,10 +89,13 @@ public sealed partial class ApplicationShell : IDisposable
 
         _window.AppWindow.Closing += OnClosing;
         _window.AppWindow.Changed += OnWindowChanged;
+        _window.Activated += OnWindowActivated;
         _settings.Changed += OnSettingsChanged;
         _monitor.StateChanged += OnMonitorStateChanged;
         _monitor.MetricsUpdated += OnMetricsUpdated;
         _alerts.AlertRaised += OnAlertRaised;
+        _games.SessionsChanged += OnGamesChanged;
+        _games.RecapReady += OnRecapReady;
         CreateTray();
 
         _ = _monitor.StartAsync(CancellationToken.None);
@@ -136,6 +153,9 @@ public sealed partial class ApplicationShell : IDisposable
         _monitor.MetricsUpdated -= OnMetricsUpdated;
         _monitor.StateChanged -= OnMonitorStateChanged;
         _alerts.AlertRaised -= OnAlertRaised;
+        _games.SessionsChanged -= OnGamesChanged;
+        _games.RecapReady -= OnRecapReady;
+        _window.Activated -= OnWindowActivated;
         _settings.Changed -= OnSettingsChanged;
         _tray?.Dispose();
         _tray = null;
@@ -152,6 +172,7 @@ public sealed partial class ApplicationShell : IDisposable
             _tray.SettingsRequested += (_, _) => ShowPage(AppPage.Settings);
             _tray.PauseResumeRequested += (_, _) => TogglePause();
             _tray.ExitRequested += (_, _) => ExitRequested?.Invoke(this, EventArgs.Empty);
+            _tray.BalloonClicked += (_, _) => OnBalloonClicked();
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException)
         {
@@ -212,14 +233,75 @@ public sealed partial class ApplicationShell : IDisposable
         }
     }
 
-    /// <summary>Stops UI updates and slows on-screen-only metrics while the window is hidden or minimized.</summary>
+    /// <summary>
+    /// Stops UI updates and slows on-screen-only metrics while the window is hidden or minimized, and while a game runs
+    /// with another window (the game) in front: PulseDesk then takes as little as possible from the game.
+    /// </summary>
     private void UpdateActivity()
     {
         var appWindow = _window.AppWindow;
         var visible = appWindow.IsVisible
             && appWindow.Presenter is not OverlappedPresenter { State: OverlappedPresenterState.Minimized };
-        _hub.IsUiVisible = visible;
-        _monitor.SetActivity(visible ? MonitoringActivity.Foreground : MonitoringActivity.Background);
+        var behindGame = _gameRunning && !_windowActive && _settings.Current.Gaming.ReduceMonitoringDuringGames;
+        var active = visible && !behindGame;
+        if (visible && behindGame != _behindGame)
+        {
+            _logger.LogDebug(behindGame ? "A game is in front: window updates paused, detailed metrics sampled less often." : "Window updates resumed.");
+        }
+
+        _behindGame = visible && behindGame;
+        _hub.IsUiVisible = active;
+        _monitor.SetActivity(active ? MonitoringActivity.Foreground : MonitoringActivity.Background);
+    }
+
+    private void OnWindowActivated(object sender, Microsoft.UI.Xaml.WindowActivatedEventArgs args)
+    {
+        _windowActive = args.WindowActivationState != Microsoft.UI.Xaml.WindowActivationState.Deactivated;
+        UpdateActivity();
+    }
+
+    private void OnGamesChanged(object? sender, EventArgs e) =>
+        _dispatcher.TryEnqueue(() =>
+        {
+            var running = _games.IsGameRunning;
+            if (running != _gameRunning)
+            {
+                _gameRunning = running;
+                UpdateActivity();
+            }
+        });
+
+    /// <summary>Windows notification when a game recap is ready; clicking it opens the recap.</summary>
+    private void OnRecapReady(object? sender, GameRecap recap)
+    {
+        if (!_settings.Current.Gaming.NotifyRecap)
+        {
+            return;
+        }
+
+        var session = recap.Session;
+        _dispatcher.TryEnqueue(() =>
+        {
+            _balloonPage = AppPage.Gaming;
+            _balloonSession = session.Id;
+            _tray?.ShowInfo($"Game recap: {session.Name}", $"{MetricFormatter.DurationPrecise(session.Duration)} · {recap.Headline}. Click to open the recap.");
+        });
+    }
+
+    private void OnBalloonClicked()
+    {
+        if (_balloonPage is not { } page)
+        {
+            ShowMainWindow();
+            return;
+        }
+
+        if (page == AppPage.Gaming && _balloonSession is { } id)
+        {
+            _gaming.RequestSelection(id);
+        }
+
+        ShowPage(page);
     }
 
     private void OnSettingsChanged(object? sender, SettingsChangedEventArgs e)
@@ -227,6 +309,11 @@ public sealed partial class ApplicationShell : IDisposable
         if (e.Previous.General.Theme != e.Current.General.Theme)
         {
             _dispatcher.TryEnqueue(() => _theme.Apply(e.Current.General.Theme));
+        }
+
+        if (e.Previous.Gaming.ReduceMonitoringDuringGames != e.Current.Gaming.ReduceMonitoringDuringGames)
+        {
+            _dispatcher.TryEnqueue(UpdateActivity);
         }
     }
 
@@ -259,7 +346,12 @@ public sealed partial class ApplicationShell : IDisposable
             return;
         }
 
-        _dispatcher.TryEnqueue(() => _tray?.ShowInfo(alert.Title, $"{alert.Value}. Open PulseDesk › Alerts for details."));
+        _dispatcher.TryEnqueue(() =>
+        {
+            _balloonPage = AppPage.Alerts;
+            _balloonSession = null;
+            _tray?.ShowInfo(alert.Title, $"{alert.Value}. Click to open Alerts.");
+        });
     }
 
     private void UpdateTooltip(SystemSnapshot snapshot)

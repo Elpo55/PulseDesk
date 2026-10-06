@@ -79,6 +79,9 @@ the UI shows "Not available". The first failure is logged in full; repeats are l
 | Charts downsampled to about one point per two pixels (LTTB) | `Downsampler`, `TimeSeriesChart` |
 | Lightweight bars (render transform, no layout) and stable list rows (re-sorting changes content, not items) | `UsageBar`, `ProcessesViewModel.Rows` |
 | Only the visible page listens to updates | `PageViewModel.Activate/Deactivate` |
+| While a game runs and PulseDesk is not the active window: no UI updates, background sampling | `ApplicationShell.UpdateActivity`, `GamingSettings.ReduceMonitoringDuringGames` |
+| Game sessions read the existing snapshots (no extra collection); classification cached per executable; bounded timeline | `GameSessionTracker` |
+| A counter with no valid value for one sample (wrap-around) skips that sample instead of reporting the metric unavailable | `MetricSampleSkippedException`, `MetricsMonitor` |
 
 Measured on a Ryzen 9 7845HX laptop (24 logical processors), Release build: in the background
 PulseDesk uses about 1% of one core (0.05% of total capacity). With the window open, a page uses
@@ -108,6 +111,10 @@ PulseDesk uses about 1% of one core (0.05% of total capacity). With the window o
 | Startup programs | `Run` keys, Startup folders, `StartupApproved` | Enabled state as set in Settings › Apps › Startup |
 | Network adapters (Changes) | `NetworkInterface.GetAllNetworkInterfaces` | Physical types only; virtual adapters excluded |
 | Per-application network | — | Not available: requires administrator-level event tracing |
+| GPU usage per process (games) | PDH `\GPU Engine(*)\Utilization Percentage` (instance names carry `pid_N`) | Busiest engine per process, like Task Manager |
+| Games recognized by Windows | `HKCU\System\GameConfigStore\Children\*\MatchedExeFullPath` | Game Bar's list for the user; read-only |
+| Frame rate (FPS) | — | Not available: requires administrator-level event tracing or hooking into the game |
+| Sleep and resume | `PowerRegisterSuspendResumeNotification` | Pending history written before sleep; all metrics refreshed on resume |
 
 All performance counters are added by their English names (`PdhAddEnglishCounter`), so PulseDesk works
 on every Windows display language.
@@ -157,6 +164,8 @@ flowchart LR
 | App Impact: "which application weighs the most?" | `ProcessHistory`, `IAppImpactAnalyzer`, `AppImpactService` | App Impact |
 | Alerts: lasting or unusual conditions | `IAlertEngine`, `AlertEngine`, `AlertRule`, `AlertService` | Alerts |
 | Changes: "what changed?" | `IChangeDetectionService`, `BaselineComparer`, `ISystemInventoryProvider` | Changes |
+| Gaming: "how did my game session go?" | `GameClassifier`, `IGameLibrary`, `GameSessionTracker`, `GameRecapBuilder`, `GameSessionService` | Gaming |
+| Usual activity: now vs hour, day, 7 and 30 days | `UsageComparer`, `UsageComparisonService` | Diagnosis |
 
 Principles shared by all of them:
 

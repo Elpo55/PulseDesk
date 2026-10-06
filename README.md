@@ -37,6 +37,14 @@ PulseDesk does more than show numbers: it detects, explains and helps you unders
   devices, disk space, average usage), from daily snapshots of the PC
 - **Intelligent alerts**: only for problems that last or are unusual for this PC, one alert per condition, never spam;
   statuses New, Seen and Resolved; optional notifications
+- **Gaming recap**: game sessions are detected automatically when the game is identifiable (Windows' own list of your
+  games, or a game library folder such as Steam or Epic; you can also mark or unmark an application). When the game
+  closes, a recap shows averages and peaks (CPU, GPU, video memory, RAM, disk, network, the game's own usage), the
+  limits reached, the likely limiting factor, the busiest background applications and a comparison with your previous
+  sessions of the same game. **FPS is never estimated**: Windows offers no reliable source, so it is shown as
+  "Not available". While a game is in front, PulseDesk pauses its own window updates and samples less often
+- **Usual activity**: the diagnosis compares the current activity with the last hour, today, yesterday, the last 7 and
+  30 days and the usual level at this hour, once enough history exists (otherwise it says how much data is missing)
 - **CPU monitoring**: overall and per-logical-processor usage, effective clock speed, base and peak speed, cores, threads, caches
 - **Memory monitoring**: used, available, committed, system cache, kernel pools
 - **GPU monitoring**: usage per adapter (busiest engine, the way Task Manager computes it), dedicated and shared memory, busiest engines
@@ -47,7 +55,8 @@ PulseDesk does more than show numbers: it detects, explains and helps you unders
 - **Health indicators**: CPU and memory alerts must persist for a configurable time before they're reported, so short spikes don't trigger them; thresholds are configurable
 - **Local history**: aggregated history in a local SQLite database with automatic retention (configurable, deletable)
 - **Real-time charts**: 30 seconds to 30 minutes of history, kept in fixed-size in-memory ring buffers
-- **Windows tray support**: close to the notification area, pause/resume from the tray, start with Windows
+- **Windows tray support**: close to the notification area, pause/resume from the tray, start with Windows; pending
+  history is written before the PC sleeps, and every metric is refreshed when it resumes
 - **Light, dark and system themes** with the Windows 11 look (Mica, Fluent controls)
 - **No account**
 - **No telemetry by default**: nothing is ever uploaded
@@ -71,7 +80,7 @@ PulseDesk is local-first.
 
 PulseDesk never opens a network connection. "Internet available" comes from Windows' own
 connectivity checks, so PulseDesk generates no network traffic to measure it. Settings, logs and the local history
-(performance, application names, alerts, detected changes) are stored in `%LOCALAPPDATA%\PulseDesk` and stay on
+(performance, application names, alerts, detected changes, game sessions) are stored in `%LOCALAPPDATA%\PulseDesk` and stay on
 your PC. History recording can be turned off and the history deleted from Settings.
 
 ## Accuracy
@@ -119,7 +128,7 @@ certificate is needed. Useful options:
 | --- | --- |
 | `--demo` | Simulated metrics (clearly labeled), for UI work and screenshots |
 | `--tray` | Start hidden in the notification area |
-| `--page=Processes` | Open on a given page (`Dashboard`, `Diagnosis`, `Replay`, `AppImpact`, `Changes`, `Alerts`, `Performance`, `Processes`, `Storage`, `Network`, `System`, `Settings`) |
+| `--page=Processes` | Open on a given page (`Dashboard`, `Diagnosis`, `Replay`, `AppImpact`, `Changes`, `Alerts`, `Gaming`, `Performance`, `Processes`, `Storage`, `Network`, `System`, `Settings`) |
 
 Pass them after `--` with `dotnet run`, for example `dotnet run --project src/PulseDesk.App -- --demo`.
 

@@ -32,6 +32,7 @@ public static class SettingsValidator
             Alerts = Normalize(settings.Alerts ?? new AlertSettings()),
             SmartAlerts = Normalize(settings.SmartAlerts ?? new SmartAlertSettings()),
             History = Normalize(settings.History ?? new HistorySettings()),
+            Gaming = Normalize(settings.Gaming ?? new GamingSettings()),
             Diagnostics = Normalize(settings.Diagnostics ?? new DiagnosticsSettings()),
             Window = Normalize(settings.Window ?? new WindowSettings()),
         };
@@ -106,6 +107,60 @@ public static class SettingsValidator
             DetailRetentionDays = detail,
             SummaryRetentionDays = Math.Max(Math.Clamp(history.SummaryRetentionDays, 7, 365), detail),
         };
+    }
+
+    /// <summary>Most executables kept in each game list (a hand-edited file cannot grow without bound).</summary>
+    public const int MaxGameListEntries = 500;
+
+    private static GamingSettings Normalize(GamingSettings gaming)
+    {
+        var excluded = NormalizePaths(gaming.ExcludedGames, []);
+
+        // A path cannot be both: "not a game" wins, it is the safer choice.
+        var added = NormalizePaths(gaming.AddedGames, excluded);
+        return gaming with
+        {
+            MinimumSessionMinutes = Math.Clamp(gaming.MinimumSessionMinutes, 1, 30),
+            ExcludedGames = excluded,
+            AddedGames = added,
+        };
+    }
+
+    /// <summary>
+    /// Trimmed, distinct (case-insensitive) paths not in <paramref name="forbidden"/>. Returns the same instance when the
+    /// list is already clean (the common case: nothing to allocate).
+    /// </summary>
+    private static IReadOnlyList<string> NormalizePaths(IReadOnlyList<string>? paths, IReadOnlyList<string> forbidden)
+    {
+        if (paths is null)
+        {
+            return [];
+        }
+
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var clean = paths.Count <= MaxGameListEntries;
+        foreach (var path in paths)
+        {
+            if (string.IsNullOrWhiteSpace(path) || path.Trim().Length != path.Length || !seen.Add(path)
+                || forbidden.Contains(path, StringComparer.OrdinalIgnoreCase))
+            {
+                clean = false;
+                break;
+            }
+        }
+
+        if (clean)
+        {
+            return paths;
+        }
+
+        return paths
+            .Where(p => !string.IsNullOrWhiteSpace(p))
+            .Select(p => p.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Where(p => !forbidden.Contains(p, StringComparer.OrdinalIgnoreCase))
+            .Take(MaxGameListEntries)
+            .ToArray();
     }
 
     private static DiagnosticsSettings Normalize(DiagnosticsSettings diagnostics) => diagnostics with

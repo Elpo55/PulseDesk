@@ -46,6 +46,9 @@ public sealed class InsightNavigator(NavigationService navigation, AppImpactView
             case DiagnosisAction.Changes:
                 navigation.Navigate(AppPage.Changes);
                 break;
+            case DiagnosisAction.Gaming:
+                navigation.Navigate(AppPage.Gaming);
+                break;
         }
     }
 
@@ -61,6 +64,7 @@ public sealed class InsightNavigator(NavigationService navigation, AppImpactView
         DiagnosisAction.Diagnosis => "Open Diagnosis",
         DiagnosisAction.Alerts => "Open Alerts",
         DiagnosisAction.Changes => "Open Changes",
+        DiagnosisAction.Gaming => "Open Gaming",
         _ => string.Empty,
     };
 }

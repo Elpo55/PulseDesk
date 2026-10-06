@@ -23,6 +23,32 @@ public sealed class DashboardInsightsTests
     }
 
     [Fact]
+    public void GameRunning_IsMentionedWithALinkToGaming()
+    {
+        var recent = TestData.Series(T0, 120, _ => 10);
+        var game = new PulseDesk.Core.Gaming.LiveGameSession("path:GAME", "Space Game", @"D:\Games\Space\space.exe", T0, T0.AddSeconds(20), "Windows recognizes it.");
+
+        var insights = DashboardInsights.Build(Report(recent), [], recent, UsageBaseline.Empty, [game]);
+
+        var insight = Assert.Single(insights, i => i.Action == DiagnosisAction.Gaming);
+        Assert.Equal("Game running: Space Game (just started). A recap appears when it closes.", insight.Text);
+    }
+
+    [Fact]
+    public void RecentRecap_IsMentionedForTwoHours()
+    {
+        var recent = TestData.Series(T0, 120, _ => 10);
+        var session = Gaming.GameRecapBuilderTests.Session(start: T0.AddMinutes(-90)) with { End = T0.AddMinutes(-30) };
+        var recap = PulseDesk.Core.Gaming.GameRecapBuilder.Build(session, []);
+
+        var soon = DashboardInsights.Build(Report(recent), [], recent, UsageBaseline.Empty, lastGame: recap);
+        var later = DashboardInsights.Build(Report(recent) with { Timestamp = T0.AddHours(3) }, [], recent, UsageBaseline.Empty, lastGame: recap);
+
+        Assert.Contains(soon, i => i.Text == "Last game: Space Game (1h 00m) · No problem observed");
+        Assert.DoesNotContain(later, i => i.Action == DiagnosisAction.Gaming);
+    }
+
+    [Fact]
     public void Problems_ComeFirst_AndLargestConsumerIsNamed()
     {
         var apps = (IReadOnlyList<AppSample>)[TestData.App("browser.exe", 34, 2100)];

@@ -2,14 +2,16 @@ using Microsoft.Extensions.Logging;
 using PulseDesk.Core.Alerts;
 using PulseDesk.Core.Analysis;
 using PulseDesk.Core.Changes;
+using PulseDesk.Core.Gaming;
 using PulseDesk.Core.History;
 using PulseDesk.Core.Interfaces;
+using PulseDesk.Core.Monitoring;
 
 namespace PulseDesk.App.Services;
 
 /// <summary>
 /// Starts and stops the background analysis services (history, application impact, alerts, change
-/// detection) around the monitoring loop. They must exist before the first measurement, so the history
+/// detection, gaming sessions, sleep and resume) around the monitoring loop. They must exist before the first measurement, so the history
 /// starts with the first sample, and must flush before PulseDesk exits.
 /// </summary>
 public sealed class AnalysisServices(
@@ -19,6 +21,8 @@ public sealed class AnalysisServices(
     BaselineService baseline,
     AlertService alerts,
     ChangeDetectionService changes,
+    GameSessionService games,
+    PowerTransitionService power,
     ILogger<AnalysisServices> logger)
 {
     /// <summary>Opens the local history and subscribes every analysis service to the monitor.</summary>
@@ -30,11 +34,17 @@ public sealed class AnalysisServices(
         baseline.Start();
         await alerts.StartAsync(cancellationToken).ConfigureAwait(false);
         changes.Start();
+        games.Start();
+        power.Start();
     }
 
     /// <summary>Writes pending history and stops background work. Called after the monitor has stopped.</summary>
     public async Task StopAsync()
     {
+        power.Dispose();
+
+        // A game still running keeps what was measured until now.
+        await games.StopAsync().ConfigureAwait(false);
         await changes.DisposeAsync().ConfigureAwait(false);
         await alerts.StopAsync().ConfigureAwait(false);
         processHistory.BucketCompleted -= OnAppBucketCompleted;

@@ -15,9 +15,18 @@ public sealed class SimulatedMachine
     public const int LogicalProcessors = 16;
     public const ulong TotalMemory = 32UL * 1024 * 1024 * 1024;
 
+    /// <summary>Executable of the simulated game, which runs eight minutes out of every twelve.</summary>
+    public const string DemoGamePath = @"C:\Demo\Games\Demo Quest\DemoQuest.exe";
+
+    private const int DemoGameProcessId = 13000;
+    private static readonly TimeSpan GameCycle = TimeSpan.FromMinutes(12);
+    private static readonly TimeSpan GameStartsAt = TimeSpan.FromMinutes(1);
+    private static readonly TimeSpan GameLength = TimeSpan.FromMinutes(8);
+
     private readonly TimeProvider _time;
     private readonly Random _random;
     private readonly DateTimeOffset _bootTime;
+    private readonly DateTimeOffset _createdAt;
     private readonly List<SimulatedProcess> _processes;
     private readonly Lock _lock = new();
     private double _cpuNoise;
@@ -27,7 +36,8 @@ public sealed class SimulatedMachine
     {
         _time = timeProvider ?? TimeProvider.System;
         _random = new Random(seed);
-        _bootTime = _time.GetUtcNow() - new TimeSpan(3, 14, 21, 0);
+        _createdAt = _time.GetUtcNow();
+        _bootTime = _createdAt - new TimeSpan(3, 14, 21, 0);
         _processes = CreateProcesses(_time.GetUtcNow());
     }
 
@@ -38,12 +48,25 @@ public sealed class SimulatedMachine
 
     public DateTimeOffset BootTime => _bootTime;
 
+    /// <summary>Start of the simulated game in progress, or null while it is not running.</summary>
+    public DateTimeOffset? GameRunningSince
+    {
+        get
+        {
+            var now = _time.GetUtcNow();
+            var inCycle = TimeSpan.FromTicks((now - _createdAt).Ticks % GameCycle.Ticks);
+            return inCycle >= GameStartsAt && inCycle < GameStartsAt + GameLength ? now - (inCycle - GameStartsAt) : null;
+        }
+    }
+
+    private bool IsGameRunning => GameRunningSince is not null;
+
     public CpuMetrics SampleCpu()
     {
         lock (_lock)
         {
             _cpuNoise = (_cpuNoise * 0.7) + ((_random.NextDouble() - 0.5) * 12);
-            var usage = Wave(22, 14, 45) + _cpuNoise;
+            var usage = Wave(22, 14, 45) + _cpuNoise + (IsGameRunning ? 24 : 0);
             var perCore = Enumerable.Range(0, LogicalProcessors)
                 .Select(i => Clamp(usage + (Math.Sin(Phase / 7 + i) * 15) + ((_random.NextDouble() - 0.5) * 10)))
                 .ToArray();
@@ -64,7 +87,7 @@ public sealed class SimulatedMachine
 
     public MemoryMetrics SampleMemory()
     {
-        var usedShare = Wave(0.46, 0.06, 120);
+        var usedShare = Wave(0.46, 0.06, 120) + (IsGameRunning ? 0.17 : 0);
         var used = (ulong)(TotalMemory * Math.Clamp(usedShare, 0.05, 0.98));
         return new MemoryMetrics(TotalMemory, used, TotalMemory - used)
         {
@@ -78,7 +101,8 @@ public sealed class SimulatedMachine
 
     public IReadOnlyList<GpuMetrics> SampleGpus()
     {
-        var usage = Clamp(Wave(30, 25, 30));
+        var game = IsGameRunning;
+        var usage = game ? Clamp(Wave(92, 5, 17)) : Clamp(Wave(30, 25, 30));
         return
         [
             new GpuMetrics("demo-gpu-0", "Simulated GPU (demo)")
@@ -95,6 +119,7 @@ public sealed class SimulatedMachine
                     new GpuEngineUsage("Copy", Clamp(usage / 6)),
                     new GpuEngineUsage("VideoDecode", Clamp(Wave(5, 5, 20))),
                 ],
+                Processes = game ? [new GpuProcessUsage(DemoGameProcessId, Clamp(usage - 2))] : [],
             },
         ];
     }
@@ -153,7 +178,26 @@ public sealed class SimulatedMachine
     {
         lock (_lock)
         {
-            var metrics = _processes.Select(p => p.Sample(Phase, _random)).ToArray();
+            var metrics = _processes.Select(p => p.Sample(Phase, _random)).ToList();
+            if (GameRunningSince is { } since)
+            {
+                metrics.Add(new ProcessMetrics(new ProcessIdentity(DemoGameProcessId, since.UtcTicks), "DemoQuest.exe")
+                {
+                    ParentProcessId = 9300,
+                    StartTime = since,
+                    ExecutablePath = DemoGamePath,
+                    CpuPercent = Clamp(Wave(21, 6, 23)),
+                    PrivateWorkingSetBytes = (ulong)(Wave(5.4, 0.4, 90) * ByteSize.BytesPerGigabyte),
+                    WorkingSetBytes = (ulong)(6.1 * ByteSize.BytesPerGigabyte),
+                    PrivateBytes = (ulong)(6.5 * ByteSize.BytesPerGigabyte),
+                    IoReadBytesPerSecond = Math.Max(0, Wave(4, 4, 31)) * ByteSize.BytesPerMegabyte,
+                    IoWriteBytesPerSecond = 200_000,
+                    ThreadCount = 96,
+                    HandleCount = 1800,
+                    SessionId = 1,
+                });
+            }
+
             return new ProcessSnapshot(metrics)
             {
                 ThreadCount = metrics.Sum(m => m.ThreadCount),
@@ -165,6 +209,11 @@ public sealed class SimulatedMachine
     /// <summary>Path shown in process details for a simulated process.</summary>
     public string? GetProcessPath(ProcessIdentity identity)
     {
+        if (identity.ProcessId == DemoGameProcessId)
+        {
+            return DemoGamePath;
+        }
+
         lock (_lock)
         {
             var process = _processes.FirstOrDefault(p => p.Identity == identity);

@@ -1,8 +1,10 @@
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PulseDesk.App.Services;
 using PulseDesk.Core;
 using PulseDesk.Core.Formatting;
+using PulseDesk.Core.Gaming;
 using PulseDesk.Core.History;
 using PulseDesk.Core.Interfaces;
 using PulseDesk.Core.Models;
@@ -32,6 +34,7 @@ public sealed partial class SettingsViewModel : PageViewModel
     private readonly PulseDeskPaths _paths;
     private readonly HistoryRecorder _history;
     private readonly DialogService _dialogs;
+    private readonly GameSessionService _games;
     private bool _loading;
     private long _lastOverheadUpdate;
 
@@ -43,6 +46,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         PulseDeskPaths paths,
         HistoryRecorder history,
         DialogService dialogs,
+        GameSessionService games,
         StartupOptions options)
         : base(hub)
     {
@@ -52,6 +56,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         _paths = paths;
         _history = history;
         _dialogs = dialogs;
+        _games = games;
         IsDemoMode = options.DemoMode;
         _loading = true;
         StartupStatus = SelfCpu = SelfMemory = Throttle = HistoryStatus = string.Empty;
@@ -276,6 +281,121 @@ public sealed partial class SettingsViewModel : PageViewModel
         }
     }
 
+    // ---- Gaming -----------------------------------------------------------------------------------
+
+    [ObservableProperty]
+    public partial bool GamingEnabled { get; set; }
+
+    [ObservableProperty]
+    public partial bool DetectWindowsGames { get; set; }
+
+    [ObservableProperty]
+    public partial bool DetectLibraryGames { get; set; }
+
+    [ObservableProperty]
+    public partial double MinimumSessionMinutes { get; set; }
+
+    [ObservableProperty]
+    public partial bool NotifyRecap { get; set; }
+
+    [ObservableProperty]
+    public partial bool ReduceMonitoringDuringGames { get; set; }
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(AddGameCommand))]
+    public partial RunningAppOption? SelectedRunningApp { get; set; }
+
+    [ObservableProperty]
+    public partial bool HasAddedGames { get; set; }
+
+    [ObservableProperty]
+    public partial bool HasExcludedGames { get; set; }
+
+    /// <summary>Running applications with a known executable path, offered to be marked as games.</summary>
+    public ObservableCollection<RunningAppOption> RunningApps { get; } = [];
+
+    public ObservableCollection<GameListItemViewModel> AddedGames { get; } = [];
+
+    public ObservableCollection<GameListItemViewModel> ExcludedGames { get; } = [];
+
+    [RelayCommand]
+    private void RefreshRunningApps()
+    {
+        var windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+        var added = _settings.Current.Gaming.AddedGames;
+        var apps = (Hub.Snapshot.Processes?.Processes ?? [])
+            .Where(p => p.ExecutablePath is { Length: > 0 } path
+                && !path.StartsWith(windows, StringComparison.OrdinalIgnoreCase)
+                && !added.Contains(path, StringComparer.OrdinalIgnoreCase))
+            .DistinctBy(p => p.ExecutablePath, StringComparer.OrdinalIgnoreCase)
+            .Select(p => new RunningAppOption(p.ExecutablePath!, $"{p.Name} — {p.ExecutablePath}"))
+            .OrderBy(o => o.Label, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+        RunningApps.Clear();
+        foreach (var app in apps)
+        {
+            RunningApps.Add(app);
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanAddGame))]
+    private void AddGame()
+    {
+        if (SelectedRunningApp is { } app)
+        {
+            _games.MarkAsGame(app.Path);
+            SelectedRunningApp = null;
+            RefreshRunningApps();
+        }
+    }
+
+    private bool CanAddGame() => SelectedRunningApp is not null;
+
+    partial void OnGamingEnabledChanged(bool value) => Save(s => s with { Gaming = s.Gaming with { Enabled = value } });
+
+    partial void OnDetectWindowsGamesChanged(bool value) => Save(s => s with { Gaming = s.Gaming with { DetectWindowsGames = value } });
+
+    partial void OnDetectLibraryGamesChanged(bool value) => Save(s => s with { Gaming = s.Gaming with { DetectLibraryGames = value } });
+
+    partial void OnMinimumSessionMinutesChanged(double value) => SaveNumber(value, v => s => s with { Gaming = s.Gaming with { MinimumSessionMinutes = (int)v } });
+
+    partial void OnNotifyRecapChanged(bool value) => Save(s => s with { Gaming = s.Gaming with { NotifyRecap = value } });
+
+    partial void OnReduceMonitoringDuringGamesChanged(bool value) => Save(s => s with { Gaming = s.Gaming with { ReduceMonitoringDuringGames = value } });
+
+    /// <summary>Removes an executable from both game lists (back to automatic detection).</summary>
+    private void RemoveGameMark(string path) =>
+        _settings.Update(s => s with
+        {
+            Gaming = s.Gaming with
+            {
+                AddedGames = s.Gaming.AddedGames.Where(p => !string.Equals(p, path, StringComparison.OrdinalIgnoreCase)).ToArray(),
+                ExcludedGames = s.Gaming.ExcludedGames.Where(p => !string.Equals(p, path, StringComparison.OrdinalIgnoreCase)).ToArray(),
+            },
+        });
+
+    private void LoadGameLists(GamingSettings gaming)
+    {
+        void Sync(ObservableCollection<GameListItemViewModel> items, IReadOnlyList<string> paths)
+        {
+            if (items.Select(i => i.Path).SequenceEqual(paths, StringComparer.Ordinal))
+            {
+                return;
+            }
+
+            items.Clear();
+            foreach (var path in paths)
+            {
+                items.Add(new GameListItemViewModel(path, RemoveGameMark));
+            }
+        }
+
+        Sync(AddedGames, gaming.AddedGames);
+        Sync(ExcludedGames, gaming.ExcludedGames);
+        HasAddedGames = AddedGames.Count > 0;
+        HasExcludedGames = ExcludedGames.Count > 0;
+    }
+
     [RelayCommand]
     private void ResetAlerts() => _settings.Update(s => s with { Alerts = new AlertSettings() });
 
@@ -287,7 +407,7 @@ public sealed partial class SettingsViewModel : PageViewModel
     {
         var confirmed = await _dialogs.ConfirmAsync(
             "Delete the local history?",
-            "PulseDesk will delete the recorded performance history, application usage, events, alerts and detected changes from this PC. The usual-behavior baseline will be learned again. This cannot be undone.",
+            "PulseDesk will delete the recorded performance history, application usage, events, alerts, detected changes and game sessions from this PC. The usual-behavior baseline will be learned again. This cannot be undone.",
             "Delete history");
         if (!confirmed)
         {
@@ -311,6 +431,7 @@ public sealed partial class SettingsViewModel : PageViewModel
     {
         Load(_settings.Current);
         UpdateOverhead();
+        RefreshRunningApps();
         _ = UpdateHistoryStatusAsync();
     }
 
@@ -529,6 +650,15 @@ public sealed partial class SettingsViewModel : PageViewModel
             DetailRetentionDays = history.DetailRetentionDays;
             SummaryRetentionDays = history.SummaryRetentionDays;
 
+            var gaming = settings.Gaming;
+            GamingEnabled = gaming.Enabled;
+            DetectWindowsGames = gaming.DetectWindowsGames;
+            DetectLibraryGames = gaming.DetectLibraryGames;
+            MinimumSessionMinutes = gaming.MinimumSessionMinutes;
+            NotifyRecap = gaming.NotifyRecap;
+            ReduceMonitoringDuringGames = gaming.ReduceMonitoringDuringGames;
+            LoadGameLists(gaming);
+
             LogLevelIndex = (int)settings.Diagnostics.LogLevel;
         }
         finally
@@ -592,4 +722,21 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     private static IntervalOption Pick(IReadOnlyList<IntervalOption> options, int milliseconds) =>
         options.MinBy(o => Math.Abs(o.Milliseconds - milliseconds))!;
+}
+
+/// <summary>A running application that can be marked as a game.</summary>
+/// <param name="Path">Executable path.</param>
+/// <param name="Label">Name and path.</param>
+public sealed record RunningAppOption(string Path, string Label)
+{
+    public override string ToString() => Label;
+}
+
+/// <summary>An executable in one of the user's game lists.</summary>
+public sealed partial class GameListItemViewModel(string path, Action<string> remove)
+{
+    public string Path { get; } = path;
+
+    [RelayCommand]
+    private void Remove() => remove(Path);
 }

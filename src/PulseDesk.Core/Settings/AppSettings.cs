@@ -19,6 +19,8 @@ public sealed record AppSettings
 
     public HistorySettings History { get; init; } = new();
 
+    public GamingSettings Gaming { get; init; } = new();
+
     public DiagnosticsSettings Diagnostics { get; init; } = new();
 
     public WindowSettings Window { get; init; } = new();
@@ -192,6 +194,56 @@ public sealed record HistorySettings
 
     /// <summary>How long hourly summaries, events, alerts and changes are kept, in days.</summary>
     public int SummaryRetentionDays { get; init; } = 90;
+}
+
+/// <summary>
+/// Gaming sessions: how PulseDesk recognizes a game, and the applications the user marked as games or as not
+/// games. Executable paths are compared case-insensitively.
+/// </summary>
+public sealed record GamingSettings
+{
+    /// <summary>Follow game sessions and produce a recap when the game closes.</summary>
+    public bool Enabled { get; init; } = true;
+
+    /// <summary>Treat executables that Windows recognizes as games (Game Bar's list for this user) as games.</summary>
+    public bool DetectWindowsGames { get; init; } = true;
+
+    /// <summary>Treat executables installed in a game library folder (Steam, Epic, Xbox, GOG...) as likely games.</summary>
+    public bool DetectLibraryGames { get; init; } = true;
+
+    /// <summary>Sessions shorter than this are not kept (launchers that restart, quick checks).</summary>
+    public int MinimumSessionMinutes { get; init; } = 2;
+
+    /// <summary>Show a Windows notification when a recap is ready.</summary>
+    public bool NotifyRecap { get; init; } = true;
+
+    /// <summary>
+    /// While a game runs and PulseDesk is not the active window, stop the window's live updates and sample detailed
+    /// metrics less often, so PulseDesk takes as little as possible from the game. Recording continues.
+    /// </summary>
+    public bool ReduceMonitoringDuringGames { get; init; } = true;
+
+    /// <summary>Executables the user marked as games.</summary>
+    public IReadOnlyList<string> AddedGames { get; init; } = [];
+
+    /// <summary>Executables the user marked as not games: never followed, whatever the detection says.</summary>
+    public IReadOnlyList<string> ExcludedGames { get; init; } = [];
+
+    // Lists compare by content: a record compares them by reference, so settings read back from disk would never
+    // equal the ones written, and "no change" would not be detected.
+    public bool Equals(GamingSettings? other) =>
+        other is not null
+        && Enabled == other.Enabled
+        && DetectWindowsGames == other.DetectWindowsGames
+        && DetectLibraryGames == other.DetectLibraryGames
+        && MinimumSessionMinutes == other.MinimumSessionMinutes
+        && NotifyRecap == other.NotifyRecap
+        && ReduceMonitoringDuringGames == other.ReduceMonitoringDuringGames
+        && AddedGames.SequenceEqual(other.AddedGames, StringComparer.Ordinal)
+        && ExcludedGames.SequenceEqual(other.ExcludedGames, StringComparer.Ordinal);
+
+    public override int GetHashCode() =>
+        HashCode.Combine(Enabled, DetectWindowsGames, DetectLibraryGames, MinimumSessionMinutes, NotifyRecap, ReduceMonitoringDuringGames, AddedGames.Count, ExcludedGames.Count);
 }
 
 /// <summary>Minimum level written to the local log files.</summary>

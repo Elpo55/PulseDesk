@@ -99,13 +99,10 @@ public sealed class AlertService : IAsyncDisposable
             _logger.LogWarning(ex, "Previous alerts could not be loaded.");
         }
 
-        // Conditions of a previous session cannot still be known to be ongoing: they ended at the last observation.
-        var loaded = stored
-            .Select(a => a.IsActive ? a with { Status = AlertStatus.Resolved, ResolvedAt = a.UpdatedAt } : a)
-            .ToArray();
+        // The engine decides what an alert still active at the end of the previous session becomes.
         lock (_lock)
         {
-            _engine.Load(loaded);
+            _engine.Load(stored);
             _started = true;
         }
 

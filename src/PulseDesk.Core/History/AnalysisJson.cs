@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using PulseDesk.Core.Alerts;
 using PulseDesk.Core.Changes;
+using PulseDesk.Core.Gaming;
 
 namespace PulseDesk.Core.History;
 
@@ -24,6 +25,10 @@ public static class AnalysisJson
 
     public static DetectedChange? DeserializeChange(string json) => TryDeserialize(json, AnalysisJsonContext.Default.DetectedChange);
 
+    public static string Serialize(GameSession session) => JsonSerializer.Serialize(session, AnalysisJsonContext.Default.GameSession);
+
+    public static GameSession? DeserializeGameSession(string json) => TryDeserialize(json, AnalysisJsonContext.Default.GameSession);
+
     private static T? TryDeserialize<T>(string json, System.Text.Json.Serialization.Metadata.JsonTypeInfo<T> type)
         where T : class
     {
@@ -45,4 +50,5 @@ public static class AnalysisJson
 [JsonSerializable(typeof(Alert))]
 [JsonSerializable(typeof(SystemBaseline))]
 [JsonSerializable(typeof(DetectedChange))]
+[JsonSerializable(typeof(GameSession))]
 internal sealed partial class AnalysisJsonContext : JsonSerializerContext;

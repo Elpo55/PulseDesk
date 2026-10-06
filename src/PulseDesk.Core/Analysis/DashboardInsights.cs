@@ -2,6 +2,7 @@ using System.Globalization;
 using PulseDesk.Core.Alerts;
 using PulseDesk.Core.Diagnosis;
 using PulseDesk.Core.Formatting;
+using PulseDesk.Core.Gaming;
 using PulseDesk.Core.History;
 
 namespace PulseDesk.Core.Analysis;
@@ -47,17 +48,44 @@ public static class DashboardInsights
         return state;
     }
 
+    /// <summary>A finished game session is mentioned for this long after it ended.</summary>
+    public static readonly TimeSpan RecentGameRecap = TimeSpan.FromHours(2);
+
+    /// <param name="report">Latest diagnosis.</param>
+    /// <param name="alerts">Current alerts.</param>
+    /// <param name="recent">Recent history snapshots.</param>
+    /// <param name="baseline">Usual behavior.</param>
+    /// <param name="games">Game sessions in progress.</param>
+    /// <param name="lastGame">Recap of the last game session, if any.</param>
     public static IReadOnlyList<Insight> Build(
         DiagnosisReport report,
         IReadOnlyList<Alert> alerts,
         IReadOnlyList<MetricSnapshot> recent,
-        UsageBaseline baseline)
+        UsageBaseline baseline,
+        IReadOnlyList<LiveGameSession>? games = null,
+        GameRecap? lastGame = null)
     {
         ArgumentNullException.ThrowIfNull(report);
         ArgumentNullException.ThrowIfNull(alerts);
         ArgumentNullException.ThrowIfNull(recent);
         ArgumentNullException.ThrowIfNull(baseline);
         var insights = new List<Insight>();
+        if (games is { Count: > 0 })
+        {
+            var game = games[0];
+            var since = game.Duration < TimeSpan.FromMinutes(1) ? "just started" : $"for {MetricFormatter.DurationPrecise(game.Duration)}";
+            insights.Add(new Insight($"Game running: {game.Name} ({since}). A recap appears when it closes.", DiagnosisSeverity.Normal, DiagnosisAction.Gaming)
+            {
+                IsNote = true,
+            });
+        }
+        else if (lastGame is { } recap && report.Timestamp - recap.Session.End <= RecentGameRecap)
+        {
+            insights.Add(new Insight($"Last game: {recap.Session.Name} ({MetricFormatter.DurationPrecise(recap.Session.Duration)}) · {recap.Headline}", recap.Severity >= DiagnosisSeverity.Warning ? DiagnosisSeverity.Info : DiagnosisSeverity.Normal, DiagnosisAction.Gaming)
+            {
+                IsNote = recap.Severity < DiagnosisSeverity.Warning,
+            });
+        }
 
         foreach (var result in report.Results.Where(r => r.Severity >= DiagnosisSeverity.Info).Take(3))
         {

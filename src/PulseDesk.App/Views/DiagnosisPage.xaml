@@ -109,6 +109,65 @@
                 </Grid>
             </Border>
 
+            <!-- Compared with the history -->
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="6">
+                    <TextBlock Style="{StaticResource CardHeaderTextStyle}" Text="Compared with your usual activity" />
+                    <TextBlock Text="{x:Bind ViewModel.ComparisonSummary, Mode=OneWay}" TextWrapping="Wrap" />
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto" HorizontalScrollMode="Auto" VerticalScrollBarVisibility="Disabled" VerticalScrollMode="Disabled" Visibility="{x:Bind ViewModel.HasComparisonRows, Mode=OneWay}">
+                        <StackPanel MinWidth="720">
+                            <Grid Padding="0,4" ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="1.4*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="1.2*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource LabelTextStyle}" Text="Metric" />
+                                <TextBlock Grid.Column="1" Style="{StaticResource LabelTextStyle}" Text="Now" ToolTipService.ToolTip="Average of the last 15 minutes" />
+                                <TextBlock Grid.Column="2" Style="{StaticResource LabelTextStyle}" Text="Last hour" />
+                                <TextBlock Grid.Column="3" Style="{StaticResource LabelTextStyle}" Text="Today" />
+                                <TextBlock Grid.Column="4" Style="{StaticResource LabelTextStyle}" Text="Yesterday" />
+                                <TextBlock Grid.Column="5" Style="{StaticResource LabelTextStyle}" Text="7 days" />
+                                <TextBlock Grid.Column="6" Style="{StaticResource LabelTextStyle}" Text="30 days" />
+                                <TextBlock Grid.Column="7" Style="{StaticResource LabelTextStyle}" Text="Usual at this hour" ToolTipService.ToolTip="Same hour of the day over the last 30 days (today excluded)" />
+                            </Grid>
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.ComparisonRows}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:ComparisonRowViewModel">
+                                        <Grid Padding="0,4" ColumnSpacing="8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="1.4*" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="1.2*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{x:Bind Name, Mode=OneWay}" />
+                                            <TextBlock Grid.Column="1" Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind Now.Text, Mode=OneWay}" ToolTipService.ToolTip="{x:Bind Now.Tooltip, Mode=OneWay}" />
+                                            <TextBlock Grid.Column="2" Text="{x:Bind LastHour.Text, Mode=OneWay}" ToolTipService.ToolTip="{x:Bind LastHour.Tooltip, Mode=OneWay}" />
+                                            <TextBlock Grid.Column="3" Text="{x:Bind Today.Text, Mode=OneWay}" ToolTipService.ToolTip="{x:Bind Today.Tooltip, Mode=OneWay}" />
+                                            <TextBlock Grid.Column="4" Text="{x:Bind Yesterday.Text, Mode=OneWay}" ToolTipService.ToolTip="{x:Bind Yesterday.Tooltip, Mode=OneWay}" />
+                                            <TextBlock Grid.Column="5" Text="{x:Bind Last7Days.Text, Mode=OneWay}" ToolTipService.ToolTip="{x:Bind Last7Days.Tooltip, Mode=OneWay}" />
+                                            <TextBlock Grid.Column="6" Text="{x:Bind Last30Days.Text, Mode=OneWay}" ToolTipService.ToolTip="{x:Bind Last30Days.Tooltip, Mode=OneWay}" />
+                                            <TextBlock Grid.Column="7" Text="{x:Bind Usual.Text, Mode=OneWay}" ToolTipService.ToolTip="{x:Bind Usual.Tooltip, Mode=OneWay}" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </ScrollViewer>
+                    <TextBlock Style="{StaticResource LabelTextStyle}" Text="Averages of the local history. A period without enough measured time shows a dash (hover it to see how much data exists): PulseDesk never fills the gap with an estimate." TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
             <!-- Problems detected -->
             <StackPanel Spacing="0" Visibility="{x:Bind ViewModel.HasProblems, Mode=OneWay}">
                 <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Problems detected" />

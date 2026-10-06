@@ -15,6 +15,13 @@ public abstract class AlertRule
 {
     public abstract string Id { get; }
 
+    /// <summary>
+    /// True for conditions describing a lasting state of the PC (low disk space) rather than an activity. An alert of such
+    /// a rule still active when PulseDesk closed continues on the next start if the condition is still met, instead of
+    /// being raised again as a new alert every time PulseDesk starts.
+    /// </summary>
+    public virtual bool IsPersistentState => false;
+
     /// <summary>Conditions currently met (empty when everything is fine).</summary>
     public abstract IEnumerable<AlertCondition> Evaluate(AlertContext context);
 
@@ -350,6 +357,8 @@ public sealed class UnusualActivityAlertRule : AlertRule
 public sealed class LowDiskSpaceAlertRule : AlertRule
 {
     public override string Id => "storage.low";
+
+    public override bool IsPersistentState => true;
 
     public override IEnumerable<AlertCondition> Evaluate(AlertContext context)
     {

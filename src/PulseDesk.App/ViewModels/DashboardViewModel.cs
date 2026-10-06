@@ -7,6 +7,7 @@ using PulseDesk.Core.Alerts;
 using PulseDesk.Core.Analysis;
 using PulseDesk.Core.Diagnosis;
 using PulseDesk.Core.Formatting;
+using PulseDesk.Core.Gaming;
 using PulseDesk.Core.Interfaces;
 using PulseDesk.Core.Metrics;
 using PulseDesk.Core.Models;
@@ -17,7 +18,7 @@ namespace PulseDesk.App.ViewModels;
 
 /// <summary>
 /// The default page: "how is my PC?" at a glance. An overall status, the key metrics with mini-graphs, the
-/// insights worth knowing now, and one-click access to Diagnosis, Replay, Changes, App Impact and Alerts.
+/// insights worth knowing now, and one-click access to Diagnosis, Replay, Changes, App Impact, Alerts and Gaming.
 /// </summary>
 public sealed partial class DashboardViewModel : PageViewModel
 {
@@ -33,6 +34,7 @@ public sealed partial class DashboardViewModel : PageViewModel
     private readonly BaselineService _baseline;
     private readonly IPerformanceHistory _history;
     private readonly InsightNavigator _navigator;
+    private readonly GameSessionService _games;
     private SystemInformation? _information;
     private long _lastInsights;
     private bool _insightsRunning;
@@ -46,7 +48,8 @@ public sealed partial class DashboardViewModel : PageViewModel
         AlertService alerts,
         BaselineService baseline,
         IPerformanceHistory history,
-        InsightNavigator navigator)
+        InsightNavigator navigator,
+        GameSessionService games)
         : base(hub)
     {
         _settings = settings;
@@ -57,6 +60,8 @@ public sealed partial class DashboardViewModel : PageViewModel
         _baseline = baseline;
         _history = history;
         _navigator = navigator;
+        _games = games;
+        GamingText = "Gaming";
         StatusText = HealthGlyphs.Text(PcHealthState.Unknown);
         StatusDetail = DiagnosisReport.Empty.Headline;
         StatusGlyph = HealthGlyphs.Unknown;
@@ -97,6 +102,9 @@ public sealed partial class DashboardViewModel : PageViewModel
 
     [ObservableProperty]
     public partial string AlertsText { get; set; }
+
+    [ObservableProperty]
+    public partial string GamingText { get; set; }
 
     [ObservableProperty]
     public partial TimeSeriesData? CpuSpark { get; set; }
@@ -198,16 +206,24 @@ public sealed partial class DashboardViewModel : PageViewModel
     [RelayCommand]
     private void OpenAlerts() => _navigation.Navigate(AppPage.Alerts);
 
+    [RelayCommand]
+    private void OpenGaming() => _navigation.Navigate(AppPage.Gaming);
+
     protected override async void OnActivated()
     {
         SelectedWindow = ChartWindowOption.FromSeconds(_settings.Current.Monitoring.ChartWindowSeconds);
         _alerts.Changed += OnAlertsChanged;
+        _games.SessionsChanged += OnAlertsChanged;
         _ = RefreshInsightsAsync();
         _information ??= await _systemInfo.GetAsync(CancellationToken.None);
         UpdateSubtitle(Hub.Snapshot);
     }
 
-    protected override void OnDeactivated() => _alerts.Changed -= OnAlertsChanged;
+    protected override void OnDeactivated()
+    {
+        _alerts.Changed -= OnAlertsChanged;
+        _games.SessionsChanged -= OnAlertsChanged;
+    }
 
     protected override void Update(SystemSnapshot snapshot, MetricKind updated)
     {
@@ -315,7 +331,9 @@ public sealed partial class DashboardViewModel : PageViewModel
         var unseen = alerts.Count(a => a.Status == AlertStatus.New);
         AlertsText = unseen > 0 ? $"Alerts ({unseen} new)" : active > 0 ? $"Alerts ({active} active)" : "Alerts";
 
-        var insights = DashboardInsights.Build(report, alerts, _history.GetRecent(TimeSpan.FromMinutes(10)), _baseline.Current);
+        var games = _games.ActiveSessions;
+        GamingText = games.Count > 0 ? $"Gaming · {games[0].Name}" : "Gaming";
+        var insights = DashboardInsights.Build(report, alerts, _history.GetRecent(TimeSpan.FromMinutes(10)), _baseline.Current, games, _games.LatestRecap);
         CollectionSync.Resize(Insights, insights.Count, _ => new InsightItemViewModel(i => _navigator.Open(i.Action, i.AppKey)), (item, i) => item.Set(insights[i]));
     }
 

@@ -19,15 +19,18 @@ public sealed partial class DiagnosisViewModel : PageViewModel
     private static readonly TimeSpan AutoRefreshInterval = TimeSpan.FromSeconds(10);
 
     private readonly DiagnosisService _diagnosis;
+    private readonly UsageComparisonService _comparison;
     private readonly InsightNavigator _navigator;
     private readonly ILogger<DiagnosisViewModel> _logger;
     private readonly Dictionary<string, DiagnosisItemViewModel> _items = new(StringComparer.Ordinal);
     private long _lastRun;
 
-    public DiagnosisViewModel(UiMetricsHub hub, DiagnosisService diagnosis, InsightNavigator navigator, ILogger<DiagnosisViewModel> logger)
+    public DiagnosisViewModel(UiMetricsHub hub, DiagnosisService diagnosis, UsageComparisonService comparison, InsightNavigator navigator, ILogger<DiagnosisViewModel> logger)
         : base(hub)
     {
         _diagnosis = diagnosis;
+        _comparison = comparison;
+        ComparisonSummary = UsageComparison.Empty.Summary;
         _navigator = navigator;
         _logger = logger;
         Headline = DiagnosisReport.Empty.Headline;
@@ -46,6 +49,15 @@ public sealed partial class DiagnosisViewModel : PageViewModel
     public ObservableCollection<string> Recommendations { get; } = [];
 
     public ObservableCollection<string> NotAnalyzed { get; } = [];
+
+    /// <summary>Current activity compared with the last hour, today, yesterday, 7 and 30 days, and the usual level at this hour.</summary>
+    public ObservableCollection<ComparisonRowViewModel> ComparisonRows { get; } = [];
+
+    [ObservableProperty]
+    public partial string ComparisonSummary { get; set; }
+
+    [ObservableProperty]
+    public partial bool HasComparisonRows { get; set; }
 
     [ObservableProperty]
     public partial string Headline { get; set; }
@@ -98,6 +110,7 @@ public sealed partial class DiagnosisViewModel : PageViewModel
         try
         {
             Apply(await _diagnosis.RunAsync(CancellationToken.None));
+            ApplyComparison(await _comparison.CompareAsync(CancellationToken.None));
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
@@ -183,6 +196,13 @@ public sealed partial class DiagnosisViewModel : PageViewModel
         {
             target.RemoveAt(target.Count - 1);
         }
+    }
+
+    private void ApplyComparison(UsageComparison comparison)
+    {
+        ComparisonSummary = comparison.Summary;
+        CollectionSync.Resize(ComparisonRows, comparison.Metrics.Count, _ => new ComparisonRowViewModel(), (row, i) => row.Set(comparison.Metrics[i]));
+        HasComparisonRows = ComparisonRows.Count > 0;
     }
 
     private static string Key(DiagnosisResult result) => result.RuleId;

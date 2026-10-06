@@ -197,20 +197,30 @@ public sealed partial class AppImpactViewModel : PageViewModel
         _ = ShowDetailAsync(SelectedIndex >= 0 ? selectedKey : null);
     }
 
+    /// <remarks>Called without awaiting: every exception is handled here so none goes unobserved.</remarks>
     private async Task ShowDetailAsync(string? key)
     {
         _detailLoad?.Cancel();
         _detailLoad?.Dispose();
         _detailLoad = null;
-        if (key is null || !_results.TryGetValue(key, out var result))
+        try
         {
-            HasSelection = false;
-            Detail.Clear();
+            if (key is null || !_results.TryGetValue(key, out var result))
+            {
+                HasSelection = false;
+                Detail.Clear();
+                return;
+            }
+
+            HasSelection = true;
+            Detail.Apply(result, Summary);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            _logger.LogWarning(ex, "Application details could not be shown.");
             return;
         }
 
-        HasSelection = true;
-        Detail.Apply(result, Summary);
         var load = _detailLoad = new CancellationTokenSource();
         try
         {

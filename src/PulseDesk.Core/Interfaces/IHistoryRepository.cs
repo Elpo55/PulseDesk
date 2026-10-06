@@ -1,6 +1,7 @@
 using PulseDesk.Core.Alerts;
 using PulseDesk.Core.Analysis;
 using PulseDesk.Core.Changes;
+using PulseDesk.Core.Gaming;
 using PulseDesk.Core.History;
 
 namespace PulseDesk.Core.Interfaces;
@@ -56,6 +57,12 @@ public interface IHistoryRepository
 
     /// <summary>Changes detected since <paramref name="since"/>, oldest first.</summary>
     Task<IReadOnlyList<DetectedChange>> GetChangesAsync(DateTimeOffset since, CancellationToken cancellationToken);
+
+    /// <summary>Inserts or replaces a gaming session (by id).</summary>
+    Task SaveGameSessionAsync(GameSession session, CancellationToken cancellationToken);
+
+    /// <summary>Gaming sessions started since <paramref name="since"/>, oldest first.</summary>
+    Task<IReadOnlyList<GameSession>> GetGameSessionsAsync(DateTimeOffset since, CancellationToken cancellationToken);
 
     /// <summary>Every application recorded in the history, with when it was first and last seen.</summary>
     Task<IReadOnlyList<KnownApp>> GetKnownAppsAsync(CancellationToken cancellationToken);
