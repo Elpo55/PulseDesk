@@ -46,6 +46,17 @@ public sealed class SettingsSerializerTests
     }
 
     [Fact]
+    public void Deserialize_PropertyAddedByANewerVersion_KeepsItsDefault_WhenItsSectionExists()
+    {
+        // A file written before "intensity" existed: the section is there, the new property is not.
+        const string json = """{ "monitoring": { "cpuIntervalMs": 1000, "gpuEnabled": true } }""";
+
+        Assert.True(SettingsSerializer.TryDeserialize(json, out var settings, out _));
+
+        Assert.Equal((true, 2.0, 15, MonitoringIntensity.Balanced), (settings.Monitoring.NetworkEnabled, settings.Monitoring.MaxSelfCpuPercent, settings.Monitoring.StorageIntervalSeconds, settings.Monitoring.Intensity));
+    }
+
+    [Fact]
     public void Deserialize_UnknownPropertiesCommentsAndTrailingCommas_AreTolerated()
     {
         const string json = """

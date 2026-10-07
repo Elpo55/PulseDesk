@@ -6,6 +6,7 @@ using Sysora.Core.Gaming;
 using Sysora.Core.History;
 using Sysora.Core.Interfaces;
 using Sysora.Core.Monitoring;
+using Sysora.Core.Troubleshooting;
 
 namespace Sysora.App.Services;
 
@@ -23,6 +24,7 @@ public sealed class AnalysisServices(
     ChangeDetectionService changes,
     GameSessionService games,
     PowerTransitionService power,
+    TroubleshootingService troubleshooting,
     ILogger<AnalysisServices> logger)
 {
     /// <summary>Opens the local history and subscribes every analysis service to the monitor.</summary>
@@ -42,6 +44,9 @@ public sealed class AnalysisServices(
     public async Task StopAsync()
     {
         power.Dispose();
+
+        // An investigation in progress keeps what it measured: its report is written while the history is still open.
+        await troubleshooting.DisposeAsync().ConfigureAwait(false);
 
         // A game still running keeps what was measured until now.
         await games.StopAsync().ConfigureAwait(false);

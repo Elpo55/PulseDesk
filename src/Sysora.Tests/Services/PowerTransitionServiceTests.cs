@@ -124,6 +124,12 @@ public sealed class PowerTransitionServiceTests : IAsyncLifetime
         {
         }
 
+        public bool IsInvestigating { get; private set; }
+
+        public Sysora.Core.Monitoring.MonitoringScheduleInfo ScheduleInfo => Sysora.Core.Monitoring.MonitoringScheduleInfo.Unknown;
+
+        public void SetInvestigationMode(bool enabled) => IsInvestigating = enabled;
+
         public void RequestRefresh(MetricKind kinds) => Refreshed |= kinds;
     }
 }

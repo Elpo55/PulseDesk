@@ -7,7 +7,9 @@ using Sysora.Core.Alerts;
 using Sysora.Core.Analysis;
 using Sysora.Core.Diagnosis;
 using Sysora.Core.Formatting;
+using Sysora.Core.Changes;
 using Sysora.Core.Gaming;
+using Sysora.Core.Health;
 using Sysora.Core.Interfaces;
 using Sysora.Core.Metrics;
 using Sysora.Core.Models;
@@ -24,7 +26,6 @@ public sealed partial class DashboardViewModel : PageViewModel
 {
     private const int TopCount = 5;
     private static readonly TimeSpan SparklineWindow = TimeSpan.FromMinutes(2);
-    private static readonly TimeSpan InsightRefreshInterval = TimeSpan.FromSeconds(15);
 
     private readonly SettingsService _settings;
     private readonly ISystemInfoProvider _systemInfo;
@@ -35,6 +36,9 @@ public sealed partial class DashboardViewModel : PageViewModel
     private readonly IPerformanceHistory _history;
     private readonly InsightNavigator _navigator;
     private readonly GameSessionService _games;
+    private readonly PcHealthService _health;
+    private readonly RecurringProblemService _recurring;
+    private readonly SinceYesterdayService _sinceYesterday;
     private SystemInformation? _information;
     private long _lastInsights;
     private bool _insightsRunning;
@@ -49,9 +53,22 @@ public sealed partial class DashboardViewModel : PageViewModel
         BaselineService baseline,
         IPerformanceHistory history,
         InsightNavigator navigator,
-        GameSessionService games)
+        GameSessionService games,
+        PcHealthService health,
+        RecurringProblemService recurring,
+        SinceYesterdayService sinceYesterday)
         : base(hub)
     {
+        _health = health;
+        _recurring = recurring;
+        _sinceYesterday = sinceYesterday;
+        HealthScoreText = "—";
+        HealthGradeText = PcHealthReport.GradeText(PcHealthGrade.Unknown);
+        HealthDetail = PcHealthReport.Empty.Summary;
+        HealthBrushKey = "StatusUnknownBrush";
+        HealthGlyph = InsightDisplay.InfoGlyph;
+        SinceYesterdayHeadline = SinceYesterdaySummary.Loading.Headline;
+        SinceYesterdayDetail = string.Empty;
         _settings = settings;
         _systemInfo = systemInfo;
         _navigation = navigation;
@@ -75,6 +92,42 @@ public sealed partial class DashboardViewModel : PageViewModel
         ProcessCountText = string.Empty;
         SelectedWindow = ChartWindowOption.FromSeconds(settings.Current.Monitoring.ChartWindowSeconds);
     }
+
+    [ObservableProperty]
+    public partial string HealthScoreText { get; set; }
+
+    [ObservableProperty]
+    public partial string HealthGradeText { get; set; }
+
+    [ObservableProperty]
+    public partial string HealthDetail { get; set; }
+
+    [ObservableProperty]
+    public partial string HealthBrushKey { get; set; }
+
+    [ObservableProperty]
+    public partial string HealthGlyph { get; set; }
+
+    [ObservableProperty]
+    public partial string SinceYesterdayHeadline { get; set; }
+
+    [ObservableProperty]
+    public partial string SinceYesterdayDetail { get; set; }
+
+    [ObservableProperty]
+    public partial int SignificantChanges { get; set; }
+
+    [ObservableProperty]
+    public partial int MinorChanges { get; set; }
+
+    [ObservableProperty]
+    public partial bool HasSignificantChanges { get; set; }
+
+    [ObservableProperty]
+    public partial bool HasMinorChanges { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsMostlyUnchanged { get; set; }
 
     public MetricTileViewModel Cpu { get; } = new();
 
@@ -209,6 +262,15 @@ public sealed partial class DashboardViewModel : PageViewModel
     [RelayCommand]
     private void OpenGaming() => _navigation.Navigate(AppPage.Gaming);
 
+    [RelayCommand]
+    private void OpenPcHealth() => _navigation.Navigate(AppPage.PcHealth);
+
+    [RelayCommand]
+    private void OpenTimeline() => _navigation.Navigate(AppPage.Timeline);
+
+    [RelayCommand]
+    private void OpenTroubleshooting() => _navigation.Navigate(AppPage.Troubleshooting);
+
     protected override async void OnActivated()
     {
         SelectedWindow = ChartWindowOption.FromSeconds(_settings.Current.Monitoring.ChartWindowSeconds);
@@ -303,9 +365,17 @@ public sealed partial class DashboardViewModel : PageViewModel
         try
         {
             var report = await _diagnosis.RunAsync(CancellationToken.None);
+            var health = await _health.RefreshAsync(CancellationToken.None);
             if (IsActive)
             {
-                ApplyInsights(report);
+                ApplyHealth(health);
+                ApplyInsights(report, health);
+            }
+
+            var since = await _sinceYesterday.GetAsync(force: false, CancellationToken.None);
+            if (IsActive)
+            {
+                ApplySinceYesterday(since);
             }
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
@@ -319,7 +389,39 @@ public sealed partial class DashboardViewModel : PageViewModel
         }
     }
 
-    private void ApplyInsights(DiagnosisReport report)
+    /// <summary>Insights are refreshed less often with the Minimal intensity.</summary>
+    private TimeSpan InsightRefreshInterval => MonitoringProfile.For(_settings.Current.Monitoring.Intensity).InsightRefreshInterval;
+
+    private void ApplyHealth(PcHealthReport health)
+    {
+        HealthScoreText = health.Score is { } score ? $"{score}/100" : "—";
+        HealthGradeText = PcHealthReport.GradeText(health.Grade);
+        HealthDetail = health.Summary;
+        HealthBrushKey = HealthDisplay.BrushKey(health.Grade);
+        HealthGlyph = health.Grade switch
+        {
+            PcHealthGrade.Good => InsightDisplay.NormalGlyph,
+            PcHealthGrade.NeedsAttention => InsightDisplay.WarningGlyph,
+            PcHealthGrade.Poor => InsightDisplay.CriticalGlyph,
+            _ => InsightDisplay.InfoGlyph,
+        };
+    }
+
+    private void ApplySinceYesterday(SinceYesterdaySummary summary)
+    {
+        SinceYesterdayHeadline = summary.Headline;
+        SignificantChanges = summary.Significant;
+        MinorChanges = summary.Minor;
+        HasSignificantChanges = summary.Significant > 0;
+        HasMinorChanges = summary.Minor > 0;
+        IsMostlyUnchanged = summary.HasReference && summary.MostlyUnchanged;
+        SinceYesterdayDetail = !summary.HasReference
+            ? "Sysora compares with a snapshot from yesterday; the first one is taken a minute after it starts."
+            : summary.Items.Count == 0 ? $"Nothing changed in the areas compared ({string.Join(", ", summary.UnchangedAreas).ToLowerInvariant()})."
+            : string.Join(" · ", summary.Items.Take(2).Select(i => i.Title));
+    }
+
+    private void ApplyInsights(DiagnosisReport report, PcHealthReport health)
     {
         var alerts = _alerts.Alerts;
         var state = DashboardInsights.State(report, alerts);
@@ -333,7 +435,7 @@ public sealed partial class DashboardViewModel : PageViewModel
 
         var games = _games.ActiveSessions;
         GamingText = games.Count > 0 ? $"Gaming · {games[0].Name}" : "Gaming";
-        var insights = DashboardInsights.Build(report, alerts, _history.GetRecent(TimeSpan.FromMinutes(10)), _baseline.Current, games, _games.LatestRecap);
+        var insights = DashboardInsights.Build(report, alerts, _history.GetRecent(TimeSpan.FromMinutes(10)), _baseline.Current, games, _games.LatestRecap, health, _recurring.Latest);
         CollectionSync.Resize(Insights, insights.Count, _ => new InsightItemViewModel(i => _navigator.Open(i.Action, i.AppKey)), (item, i) => item.Set(insights[i]));
     }
 

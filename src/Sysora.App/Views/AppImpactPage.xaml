@@ -50,7 +50,14 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
+            <Button AutomationProperties.Name="Export" Grid.Column="3" VerticalAlignment="Center" Command="{x:Bind ViewModel.ExportCommand}" ToolTipService.ToolTip="Save the ranking as an HTML report or JSON data">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon FontSize="14" Glyph="&#xEDE1;" />
+                        <TextBlock Text="Export" />
+                    </StackPanel>
+            </Button>
             <StackPanel>
                 <TextBlock Style="{StaticResource PageTitleTextStyle}" Text="App Impact" />
                 <TextBlock Style="{StaticResource PageSubtitleTextStyle}" Text="Which applications weigh the most on your PC" />
@@ -191,6 +198,7 @@
                             </StackPanel>
 
                             <TextBlock Text="{x:Bind ViewModel.Detail.Explanation, Mode=OneWay}" TextWrapping="Wrap" />
+                            <Button Command="{x:Bind ViewModel.WhyNowCommand}" Content="Why now?" ToolTipService.ToolTip="When did the PC's CPU or memory rise, and what changed at the same time" />
                             <StackPanel Spacing="2">
                                 <TextBlock Style="{StaticResource LabelTextStyle}" Text="{x:Bind ViewModel.Detail.StatusText, Mode=OneWay}" />
                                 <TextBlock Style="{StaticResource LabelTextStyle}" Text="{x:Bind ViewModel.Detail.ConfidenceText, Mode=OneWay}" />

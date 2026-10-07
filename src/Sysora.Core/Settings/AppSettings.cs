@@ -66,9 +66,25 @@ public sealed record GeneralSettings
     public bool TrayHintShown { get; init; }
 }
 
+/// <summary>How much Sysora collects: a real trade-off between precision and its own consumption.</summary>
+public enum MonitoringIntensity
+{
+    /// <summary>Gaming or low consumption: fewer samples, fewer scans, fewer secondary computations.</summary>
+    Minimal,
+
+    /// <summary>The default balance.</summary>
+    Balanced,
+
+    /// <summary>Advanced diagnostics: more frequent samples where it helps, more context per sample.</summary>
+    Detailed,
+}
+
 /// <summary>Collection preferences. Intervals are validated by <see cref="SettingsValidator"/>.</summary>
 public sealed record MonitoringSettings
 {
+    /// <summary>Overall intensity, applied on top of the intervals below.</summary>
+    public MonitoringIntensity Intensity { get; init; } = MonitoringIntensity.Balanced;
+
     public int CpuIntervalMs { get; init; } = 1000;
 
     public int MemoryIntervalMs { get; init; } = 1000;

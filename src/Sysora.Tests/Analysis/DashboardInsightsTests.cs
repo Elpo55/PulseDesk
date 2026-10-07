@@ -106,6 +106,79 @@ public sealed class DashboardInsightsTests
         Assert.Equal("Active alert: CPU usage unusually high", insight.Text);
     }
 
+    [Fact]
+    public void RepeatedAlerts_AreCountedOverTheLast24Hours()
+    {
+        var recent = TestData.Series(T0, 60, _ => 10);
+        var now = recent[^1].Timestamp;
+        var alerts = new[]
+        {
+            TestData.Alert("disk.busy", now.AddHours(-20), lasted: TimeSpan.FromMinutes(4), title: "Disk C: busy for 4m"),
+            TestData.Alert("disk.busy", now.AddHours(-6), lasted: TimeSpan.FromMinutes(3), title: "Disk C: busy for 3m"),
+            TestData.Alert("disk.busy", now.AddHours(-2), lasted: TimeSpan.FromMinutes(5), title: "Disk C: busy for 5m"),
+            TestData.Alert("disk.busy", now.AddHours(-30), lasted: TimeSpan.FromMinutes(5)),
+        };
+
+        var insight = Assert.Single(DashboardInsights.Build(Report(recent), alerts, recent, UsageBaseline.Empty), i => i.Text.StartsWith("This is the", StringComparison.Ordinal));
+
+        Assert.Equal("This is the third busy disk alert in the last 24 hours (latest: Disk C: busy for 5m).", insight.Text);
+        Assert.Equal(DiagnosisAction.Alerts, insight.Action);
+    }
+
+    [Fact]
+    public void RecentlyResolvedWarning_IsReportedAsARecovery_UnlessItCameBack()
+    {
+        var recent = TestData.Series(T0, 60, _ => 10);
+        var now = recent[^1].Timestamp;
+        var resolved = TestData.Alert("cpu.sustained", now.AddMinutes(-20), lasted: TimeSpan.FromMinutes(8), title: "Sustained high CPU usage");
+
+        var recovered = DashboardInsights.Build(Report(recent), [resolved], recent, UsageBaseline.Empty);
+        var cameBack = DashboardInsights.Build(Report(recent), [resolved, TestData.Alert("cpu.sustained", now.AddMinutes(-1))], recent, UsageBaseline.Empty);
+
+        Assert.Contains(recovered, i => i.Text.StartsWith("Your PC recovered after the last problem (Sustained high CPU usage)", StringComparison.Ordinal));
+        Assert.DoesNotContain(cameBack, i => i.Text.StartsWith("Your PC recovered", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RecurringProblem_IsMentionedWithItsTimePattern()
+    {
+        var recent = TestData.Series(T0, 60, _ => 10);
+        var problem = new RecurringProblem
+        {
+            Key = "memory.sustained",
+            Kind = RecurringProblemKind.HighMemory,
+            Title = "High memory usage",
+            Description = "High memory usage occurred 6 times in the last 7 days.",
+            Occurrences = 6,
+            Days = 5,
+            First = T0.AddDays(-6),
+            Last = T0.AddDays(-1),
+            TimePattern = "Most events happened between 19:00 and 22:00 (5 of 6)",
+            Confidence = ConfidenceLevel.High,
+        };
+        var recurring = new RecurringProblemReport(T0, true, TimeSpan.FromDays(7), [problem], problem.Description);
+
+        var insights = DashboardInsights.Build(Report(recent), [], recent, UsageBaseline.Empty, recurring: recurring);
+
+        Assert.Contains(insights, i => i.Text == "Recurring: High memory usage occurred 6 times in the last 7 days. Most events happened between 19:00 and 22:00 (5 of 6)." && i.Action == DiagnosisAction.PcHealth);
+    }
+
+    [Fact]
+    public void QuietPc_WithinItsUsualRange_SaysSo()
+    {
+        var recent = TestData.Series(T0, 600, _ => 20, _ => 45);
+        var baseline = new UsageBaseline(BaselineStatus.Ready, 2000, T0.AddDays(-7), T0, new Dictionary<HistoryMetric, MetricBaseline>
+        {
+            [HistoryMetric.Cpu] = new(HistoryMetric.Cpu, 22, 15, 30, 45, 2000),
+            [HistoryMetric.Memory] = new(HistoryMetric.Memory, 45, 40, 50, 70, 2000),
+        });
+
+        var insights = DashboardInsights.Build(Report(recent, baseline), [], recent, baseline);
+
+        Assert.Equal("No significant issue detected", insights[0].Text);
+        Assert.Equal("CPU and memory usage are within your usual range for this PC.", insights[1].Text);
+    }
+
     private static DiagnosisReport Report(IReadOnlyList<MetricSnapshot> recent, UsageBaseline? baseline = null)
     {
         var snapshot = TestData.System(recent[^1].Timestamp, recent[^1].CpuPercent ?? 0);

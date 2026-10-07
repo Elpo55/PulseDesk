@@ -62,6 +62,8 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <StackPanel>
                         <TextBlock Style="{StaticResource PageTitleTextStyle}" Text="Replay" />
@@ -90,6 +92,12 @@
                     </Button>
                     <Button Grid.Column="4" VerticalAlignment="Center" AutomationProperties.Name="Zoom out" Command="{x:Bind ViewModel.ZoomOutCommand}" ToolTipService.ToolTip="Zoom out (longer period)">
                         <FontIcon FontSize="14" Glyph="&#xE71F;" />
+                    </Button>
+                    <Button Grid.Column="5" VerticalAlignment="Center" AutomationProperties.Name="Compare before and after the cursor" Command="{x:Bind ViewModel.CompareAroundCursorCommand}" ToolTipService.ToolTip="Compare the 15 minutes before and after the cursor">
+                        <FontIcon FontSize="14" Glyph="&#xE81E;" />
+                    </Button>
+                    <Button Grid.Column="6" VerticalAlignment="Center" AutomationProperties.Name="Export" Command="{x:Bind ViewModel.ExportCommand}" ToolTipService.ToolTip="Save this period as an HTML report or JSON data">
+                        <FontIcon FontSize="14" Glyph="&#xEDE1;" />
                     </Button>
                 </Grid>
 

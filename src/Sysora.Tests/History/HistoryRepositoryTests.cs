@@ -126,6 +126,57 @@ public sealed class HistoryRepositoryTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task SystemDriveFreeSpace_IsStoredAndRolledUp()
+    {
+        var minutes = Enumerable.Range(0, 60).Select(i => Minute(T0.AddMinutes(i), 10) with { SystemDriveFree = new AggregateValue(100.0 + i, 100.0 + i, 60) }).ToList();
+        await _repository.AppendAsync(new HistoryBatch(minutes, []), Token);
+        await _repository.RunMaintenanceAsync(new HistoryRetention(TimeSpan.FromDays(7), TimeSpan.FromDays(90)), T0.AddHours(1).AddMinutes(10), Token);
+
+        var minute = (await _repository.GetSystemUsageAsync(T0, T0.AddMinutes(1), HistoryResolution.Minute, Token))[0];
+        var hour = Assert.Single(await _repository.GetSystemUsageAsync(T0, T0.AddHours(1), HistoryResolution.Hour, Token));
+
+        Assert.Equal(100, minute.SystemDriveFree!.Value.Average);
+        Assert.Equal(129.5, hour.SystemDriveFree!.Value.Average, 6);
+        Assert.Equal(TestData.TotalMemory, hour.MemoryTotalBytes);
+    }
+
+    [Fact]
+    public async Task DatabaseOfAnEarlierVersion_GetsTheNewColumns_AndKeepsItsData()
+    {
+        var directory = Directory.CreateTempSubdirectory("sysora-tests-");
+        var file = Path.Combine(directory.FullName, "history.db");
+        try
+        {
+            // The system_usage table as created by Sysora 1.1 (no free-space column).
+            await using (var old = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={file};Pooling=False"))
+            {
+                await old.OpenAsync(Token);
+                await using var command = old.CreateCommand();
+                var metrics = string.Join(", ", new[] { "cpu", "mem", "disk", "rx", "tx", "gpu", "proc" }.Select(m => $"{m}_avg REAL, {m}_max REAL, {m}_n INTEGER NOT NULL DEFAULT 0"));
+                command.CommandText = $"""
+                    CREATE TABLE system_usage(resolution INTEGER NOT NULL, start INTEGER NOT NULL, samples INTEGER NOT NULL, seconds REAL NOT NULL, {metrics}, mem_total INTEGER, PRIMARY KEY(resolution, start)) WITHOUT ROWID;
+                    INSERT INTO system_usage(resolution, start, samples, seconds, cpu_avg, cpu_max, cpu_n) VALUES(60, {T0.ToUnixTimeMilliseconds()}, 60, 59, 42, 50, 60);
+                    """;
+                await command.ExecuteNonQueryAsync(Token);
+            }
+
+            await using var repository = new HistoryRepository(file, NullLogger<HistoryRepository>.Instance);
+            await repository.AppendAsync(new HistoryBatch([Minute(T0.AddMinutes(1), 10) with { SystemDriveFree = new AggregateValue(5, 5, 60) }], []), Token);
+            var stored = await repository.GetSystemUsageAsync(T0, T0.AddHours(1), HistoryResolution.Minute, Token);
+
+            Assert.Equal(2, stored.Count);
+            Assert.Equal(42, stored[0].Cpu!.Value.Average);
+            Assert.Null(stored[0].SystemDriveFree);
+            Assert.Equal(5, stored[1].SystemDriveFree!.Value.Average);
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            directory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task AppUsage_IsSummarizedOverAPeriod_WithTimeWeightedAverages()
     {
         await _repository.AppendAsync(Apps(T0, ("a.exe", 10, 300)), Token);

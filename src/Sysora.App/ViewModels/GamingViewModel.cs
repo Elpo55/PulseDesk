@@ -35,15 +35,22 @@ public sealed partial class GamingViewModel : PageViewModel
     private long _lastLive;
     private bool _reloadQueued;
 
+    private readonly InsightNavigator _navigator;
+    private readonly ReportExportService _export;
+
     public GamingViewModel(
         UiMetricsHub hub,
         GameSessionService games,
         SettingsService settings,
         NavigationService navigation,
+        InsightNavigator navigator,
+        ReportExportService export,
         DispatcherQueue dispatcher,
         ILogger<GamingViewModel> logger)
         : base(hub)
     {
+        _navigator = navigator;
+        _export = export;
         _games = games;
         _settings = settings;
         _navigation = navigation;
@@ -139,6 +146,35 @@ public sealed partial class GamingViewModel : PageViewModel
         {
             _games.MarkNotAGame(path);
             UpdateLive();
+        }
+    }
+
+    [RelayCommand]
+    private Task ExportRecap()
+    {
+        if (SelectedIndex < 0 || SelectedIndex >= _recaps.Count)
+        {
+            return Task.CompletedTask;
+        }
+
+        var recap = _recaps[SelectedIndex];
+        return _export.ExportAsync(system => Sysora.Core.Reports.ReportBuilder.GameSession(recap, DateTimeOffset.Now, system));
+    }
+
+    [RelayCommand]
+    private void CompareBeforeDuring() => CompareSelected(Sysora.Core.Analysis.ComparisonPreset.GameBeforeVsDuring);
+
+    [RelayCommand]
+    private void CompareBeforeAfter() => CompareSelected(Sysora.Core.Analysis.ComparisonPreset.GameBeforeVsAfter);
+
+    [RelayCommand]
+    private void CompareWithPrevious() => CompareSelected(Sysora.Core.Analysis.ComparisonPreset.GameVsPreviousGame);
+
+    private void CompareSelected(Sysora.Core.Analysis.ComparisonPreset preset)
+    {
+        if (SelectedIndex >= 0 && SelectedIndex < _recaps.Count)
+        {
+            _navigator.OpenCompare(new Sysora.Core.Analysis.ComparisonRequest(preset) { SessionId = _recaps[SelectedIndex].Session.Id });
         }
     }
 

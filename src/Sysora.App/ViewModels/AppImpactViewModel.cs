@@ -30,9 +30,17 @@ public sealed partial class AppImpactViewModel : PageViewModel
     private bool _syncingSelection;
     private string? _pendingSelection;
 
-    public AppImpactViewModel(UiMetricsHub hub, AppImpactService service, ILogger<AppImpactViewModel> logger)
+    private readonly NavigationService _navigation;
+    private readonly NavigationRequests _requests;
+    private readonly ReportExportService _export;
+    private AppImpactReport? _report;
+
+    public AppImpactViewModel(UiMetricsHub hub, AppImpactService service, NavigationService navigation, NavigationRequests requests, ReportExportService export, ILogger<AppImpactViewModel> logger)
         : base(hub)
     {
+        _navigation = navigation;
+        _requests = requests;
+        _export = export;
         _service = service;
         _logger = logger;
         Summary = Note = string.Empty;
@@ -164,8 +172,31 @@ public sealed partial class AppImpactViewModel : PageViewModel
         }
     }
 
+    [RelayCommand]
+    private Task Export()
+    {
+        if (_report is not { } report)
+        {
+            return Task.CompletedTask;
+        }
+
+        return _export.ExportAsync(system => Sysora.Core.Reports.ReportBuilder.AppImpact(report, DateTimeOffset.Now, system));
+    }
+
+    /// <summary>"Why now?" for the resource that weighs the most in the selected application's score.</summary>
+    [RelayCommand]
+    private void WhyNow()
+    {
+        var key = SelectedIndex >= 0 && SelectedIndex < Items.Count ? Items[SelectedIndex].Key : null;
+        var memory = key is not null && _results.TryGetValue(key, out var result)
+            && result.Score.Components.FirstOrDefault(c => c.Resource == "Memory")?.Normalized > result.Score.Components.FirstOrDefault(c => c.Resource == "CPU")?.Normalized;
+        _requests.WhyNow(memory ? WhyNowMetric.Memory : WhyNowMetric.Cpu);
+        _navigation.Navigate(AppPage.Diagnosis);
+    }
+
     private void Apply(AppImpactReport report)
     {
+        _report = report;
         var selectedKey = _pendingSelection ?? (SelectedIndex >= 0 && SelectedIndex < Items.Count ? Items[SelectedIndex].Key : null);
         _pendingSelection = null;
         var top = report.Apps.Take(MaxRows).ToList();

@@ -13,11 +13,13 @@ namespace Sysora.App.ViewModels;
 public sealed partial class StorageViewModel : PageViewModel
 {
     private readonly SettingsService _settings;
+    private readonly NavigationService _navigation;
 
-    public StorageViewModel(UiMetricsHub hub, SettingsService settings)
+    public StorageViewModel(UiMetricsHub hub, SettingsService settings, NavigationService navigation)
         : base(hub)
     {
         _settings = settings;
+        _navigation = navigation;
         Summary = MetricFormatter.Pending;
     }
 
@@ -31,6 +33,9 @@ public sealed partial class StorageViewModel : PageViewModel
 
     [RelayCommand]
     private void Refresh() => Hub.Monitor.RequestRefresh(MetricKind.Storage | MetricKind.DiskActivity);
+
+    [RelayCommand]
+    private void OpenLargeFiles() => _navigation.Navigate(AppPage.LargeFiles);
 
     protected override void Update(SystemSnapshot snapshot, MetricKind updated)
     {

@@ -49,6 +49,12 @@ public sealed record AppIdentity(string Key, string Name, string? ExecutablePath
 /// <param name="IoBytesPerSecond">Combined read and write I/O rate.</param>
 public sealed record AppGroup(AppIdentity Identity, int InstanceCount, double CpuPercent, ulong PrivateWorkingSetBytes, double IoBytesPerSecond)
 {
+    /// <summary>Start time of the application's oldest process, when Windows reports it.</summary>
+    public DateTimeOffset? StartedAt { get; init; }
+
+    /// <summary>True when at least one of its processes runs in a user session (not a service).</summary>
+    public bool InUserSession { get; init; }
+
     /// <summary>Converts the group to a compact history sample.</summary>
     public History.AppSample ToSample() =>
         new(Identity.Key, Identity.Name, InstanceCount, CpuPercent, PrivateWorkingSetBytes, IoBytesPerSecond);
@@ -103,13 +109,22 @@ public sealed class AppGrouper
             accumulator.Cpu += process.CpuPercent ?? 0;
             accumulator.Memory += process.PrivateWorkingSetBytes;
             accumulator.Io += process.IoBytesPerSecond ?? 0;
+            accumulator.UserSession |= process.SessionId > 0;
+            if (process.StartTime is { } started && (accumulator.Started is null || started < accumulator.Started))
+            {
+                accumulator.Started = started;
+            }
         }
 
         var result = new AppGroup[_groups.Count];
         var i = 0;
         foreach (var accumulator in _groups.Values)
         {
-            result[i++] = new AppGroup(accumulator.Identity!, accumulator.Count, accumulator.Cpu, accumulator.Memory, accumulator.Io);
+            result[i++] = new AppGroup(accumulator.Identity!, accumulator.Count, accumulator.Cpu, accumulator.Memory, accumulator.Io)
+            {
+                StartedAt = accumulator.Started,
+                InUserSession = accumulator.UserSession,
+            };
         }
 
         _groups.Clear();
@@ -151,5 +166,7 @@ public sealed class AppGrouper
         public double Cpu;
         public ulong Memory;
         public double Io;
+        public DateTimeOffset? Started;
+        public bool UserSession;
     }
 }

@@ -1,10 +1,42 @@
 namespace Sysora.Core.Monitoring;
 
-/// <summary>Sysora's own resource usage, as measured by the monitor.</summary>
+/// <summary>Sysora's own resource usage, as measured by the monitor every <see cref="SelfUsageGovernor.MeasurementPeriod"/>.</summary>
 /// <param name="CpuPercent">Share of total CPU capacity used by Sysora over the last measurement period.</param>
 /// <param name="WorkingSetBytes">Physical memory currently mapped by the Sysora process.</param>
 /// <param name="ThrottleFactor">Current slowdown applied to collection intervals (1 = none).</param>
-public sealed record SelfUsage(double? CpuPercent, long WorkingSetBytes, double ThrottleFactor);
+public sealed record SelfUsage(double? CpuPercent, long WorkingSetBytes, double ThrottleFactor)
+{
+    /// <summary>When the values were measured.</summary>
+    public DateTimeOffset? MeasuredAt { get; init; }
+
+    /// <summary>Memory held by .NET objects (managed heap).</summary>
+    public long ManagedHeapBytes { get; init; }
+
+    /// <summary>Rate of .NET allocations over the last period.</summary>
+    public double? AllocatedBytesPerSecond { get; init; }
+
+    /// <summary>Garbage collections during the last period, per generation (0, 1, 2).</summary>
+    public int Gen0Collections { get; init; }
+
+    public int Gen1Collections { get; init; }
+
+    public int Gen2Collections { get; init; }
+
+    /// <summary>Collection rounds of the monitoring loop per minute over the last period.</summary>
+    public double? CollectionRoundsPerMinute { get; init; }
+
+    /// <summary>Processes in the latest process sample (each one is analyzed).</summary>
+    public int? ProcessesAnalyzed { get; init; }
+
+    /// <summary>Sysora's own write rate (files and devices), from its entry in the process sample.</summary>
+    public double? WriteBytesPerSecond { get; init; }
+
+    /// <summary>Threads of the Sysora process, from its entry in the process sample.</summary>
+    public int? ThreadCount { get; init; }
+
+    /// <summary>True when Sysora has stayed above its CPU budget for a minute or more.</summary>
+    public bool OverBudgetSustained { get; init; }
+}
 
 /// <summary>
 /// Keeps Sysora within its CPU budget. Every measurement period it compares Sysora's own CPU usage

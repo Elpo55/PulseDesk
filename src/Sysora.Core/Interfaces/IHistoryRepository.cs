@@ -3,6 +3,7 @@ using Sysora.Core.Analysis;
 using Sysora.Core.Changes;
 using Sysora.Core.Gaming;
 using Sysora.Core.History;
+using Sysora.Core.Troubleshooting;
 
 namespace Sysora.Core.Interfaces;
 
@@ -63,6 +64,12 @@ public interface IHistoryRepository
 
     /// <summary>Gaming sessions started since <paramref name="since"/>, oldest first.</summary>
     Task<IReadOnlyList<GameSession>> GetGameSessionsAsync(DateTimeOffset since, CancellationToken cancellationToken);
+
+    /// <summary>Inserts or replaces the report of a troubleshooting investigation (by id).</summary>
+    Task SaveTroubleshootingReportAsync(TroubleshootingReport report, CancellationToken cancellationToken);
+
+    /// <summary>Troubleshooting reports of investigations started since <paramref name="since"/>, oldest first.</summary>
+    Task<IReadOnlyList<TroubleshootingReport>> GetTroubleshootingReportsAsync(DateTimeOffset since, CancellationToken cancellationToken);
 
     /// <summary>Every application recorded in the history, with when it was first and last seen.</summary>
     Task<IReadOnlyList<KnownApp>> GetKnownAppsAsync(CancellationToken cancellationToken);

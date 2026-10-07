@@ -81,6 +81,10 @@ the UI shows "Not available". The first failure is logged in full; repeats are l
 | Only the visible page listens to updates | `PageViewModel.Activate/Deactivate` |
 | While a game runs and Sysora is not the active window: no UI updates, background sampling | `ApplicationShell.UpdateActivity`, `GamingSettings.ReduceMonitoringDuringGames` |
 | Game sessions read the existing snapshots (no extra collection); classification cached per executable; bounded timeline | `GameSessionTracker` |
+| Monitoring intensity: Minimal multiplies intervals (×2 real time, ×3 processes/GPU/disks, ×4 free space), keeps 3 applications per sample instead of 5 and evaluates alerts every 10 s; Detailed halves them (never below 0.5 s, 1 s for processes) and keeps 8 | `MonitoringProfile`, `MetricsMonitor`, `PerformanceHistory`, `AlertService` |
+| Sysora measures its own CPU, memory, allocations, garbage collections, writes and collection rounds every 10 s (counter reads only) and warns once if it stays above its CPU budget for a minute | `MetricsMonitor.MeasureSelf`, `SelfImpactAssessor` |
+| Advanced analyses run only when their page or the dashboard is visible, off the UI thread, with caches (recurring problems 10 min, since yesterday 30 min) | `PcHealthService`, `RecurringProblemService`, `SinceYesterdayService` |
+| Large-file scans run only on request, one at a time, cancellable, at background priority; the last result is kept in memory | `LargeFileService`, `FileSystemLargeFileScanner` |
 | A counter with no valid value for one sample (wrap-around) skips that sample instead of reporting the metric unavailable | `MetricSampleSkippedException`, `MetricsMonitor` |
 
 Measured on a Ryzen 9 7845HX laptop (24 logical processors), Release build: in the background
@@ -115,6 +119,10 @@ Sysora uses about 1% of one core (0.05% of total capacity). With the window open
 | Games recognized by Windows | `HKCU\System\GameConfigStore\Children\*\MatchedExeFullPath` | Game Bar's list for the user; read-only |
 | Frame rate (FPS) | — | Not available: requires administrator-level event tracing or hooking into the game |
 | Sleep and resume | `PowerRegisterSuspendResumeNotification` | Pending history written before sleep; all metrics refreshed on resume |
+| Free space over time (Windows volume) | `GetDiskFreeSpaceEx`, kept in the per-minute history | Used by Compare; history written by earlier versions has no value (shown as not available) |
+| Application launches | Process start time and session from `NtQuerySystemInformation` | Reported when confirmed at the next sample, in a user session, outside the Windows folder |
+| Large files | Folder listings (`FindFirstFileEx` through `FileSystemEnumerable`) | Logical size, as Explorer shows it; nothing is opened |
+| Sysora's own usage | `Environment.CpuUsage`, `GC` counters, its own entry in the process list | Measured every 10 seconds |
 
 All performance counters are added by their English names (`PdhAddEnglishCounter`), so Sysora works
 on every Windows display language.
@@ -166,6 +174,15 @@ flowchart LR
 | Changes: "what changed?" | `IChangeDetectionService`, `BaselineComparer`, `ISystemInventoryProvider` | Changes |
 | Gaming: "how did my game session go?" | `GameClassifier`, `IGameLibrary`, `GameSessionTracker`, `GameRecapBuilder`, `GameSessionService` | Gaming |
 | Usual activity: now vs hour, day, 7 and 30 days | `UsageComparer`, `UsageComparisonService` | Diagnosis |
+| PC Health: "in what state is my PC?" | `PcHealthScorer`, `PcHealthService` | PC Health, Dashboard |
+| Why now: "why is this happening now?" | `WhyNowAnalyzer`, `WhyNowService` | Diagnosis |
+| Before / after | `StateComparer`, `StateComparisonService` | Compare |
+| Since yesterday | `SinceYesterdayBuilder`, `SinceYesterdayService` | Changes, Dashboard |
+| Recurring problems | `RecurringProblemDetector`, `RecurringProblemService` | PC Health, Diagnosis |
+| Global timeline | `TimelineBuilder`, `TimelineService` | Timeline |
+| Troubleshooting mode | `TroubleshootingRecorder`, `TroubleshootingService` | Troubleshooting |
+| Large files | `LargeFileScanEngine`, `ILargeFileScanner`, `LargeFileService` | Large files |
+| Reports | `ReportBuilder`, `ReportWriter` | every analysis page (Export) |
 
 Principles shared by all of them:
 
@@ -179,6 +196,50 @@ Principles shared by all of them:
   instead of creating a new one, and are limited per hour.
 - **Applications are identified by executable path.** Processes sharing only a name (several `Update.exe`) are kept
   apart; protected processes whose path is not accessible are identified by name and flagged as such.
+
+### Advanced analysis
+
+The advanced analysis functions compute on demand from what the services above already keep: none of them adds a
+collection or a timer of its own (troubleshooting temporarily raises the collection rate, see below).
+
+```mermaid
+flowchart LR
+    PH["PerformanceHistory"] --> Health["PcHealthScorer"]
+    Alerts["AlertService"] --> Health
+    Base["BaselineService"] --> Health
+    DB[("history.db")] --> Rec["RecurringProblemDetector"]
+    Rec --> Health
+    PH --> Why["WhyNowAnalyzer"]
+    DB --> Why
+    PH --> Cmp["StateComparer"]
+    DB --> Cmp
+    Changes["ChangeDetectionService"] --> Since["SinceYesterdayBuilder"]
+    Cmp --> Since
+    DB --> TL["TimelineBuilder"]
+    PH --> TL
+    PH --> TS["TroubleshootingRecorder"]
+    Health & Why & Cmp & Since & TL & TS --> Rep["ReportBuilder → HTML / JSON"]
+```
+
+- **Observed, inferred, unknown.** Every statement of Why now, recurring problems and investigations is a `Finding` with a
+  `FindingBasis`. Correlations ("Likely contributor", "Associated with") carry a confidence; what cannot be observed says so
+  ("Cause unknown", "Not available: Windows does not report network usage per application…").
+- **PC Health** starts at 100 and each area takes off documented points (shown next to it). Time-based areas use 15-minute
+  averages, so a short spike barely moves the score; an area that cannot be measured is not counted.
+- **Why now** buckets the in-memory history (and one hour of per-minute averages before it) into 30-second steps, finds where
+  the metric left its earlier level, and compares the top applications before and after that moment.
+- **Before / after** reads each period from the most detailed source available: per-second measurements in memory, then the
+  per-minute history, then hourly summaries. Only metrics measured in both periods are compared.
+- **Timeline** merges stored and in-memory events (application launches and closings, games, alerts, connectivity, devices,
+  sleep, investigations), detected changes (dated between snapshots, marked ≈) and spikes derived from the per-minute history.
+- **Troubleshooting** switches the monitor to the Detailed intensity (`IMetricsMonitor.SetInvestigationMode`) without the
+  background slowdown, records each snapshot at a constant cost (bounded timeline, applications and events), and returns to
+  the user's intensity when the time is up, when stopped, or when Sysora exits. Reports are kept in the `documents` table.
+- **Large files** walks folder listings only (`FileSystemEnumerable`: no file is opened) on a dedicated thread in Windows'
+  background mode (lower CPU and I/O priority). Links and junctions are not followed, online-only cloud files are skipped,
+  unreadable folders are counted and reported. The largest files are kept in a fixed-size heap.
+- **Reports** have readable sections and a `data` element with the complete analysis (source-generated JSON). HTML reports are
+  self-contained (no external resource) and print to PDF from any browser.
 
 ### History and storage
 
@@ -247,8 +308,7 @@ The dashboard and the other pages don't need to change to keep working.
 
 ### Planned modules
 
-The architecture leaves room for export (all analysis records are serializable), monitoring profiles
-(`MonitoringSettings`), plugins or a local API. A future integration with Windows Orchestrator ("if CPU > 90% for
+The architecture leaves room for plugins or a local API (export and monitoring profiles now exist). A future integration with Windows Orchestrator ("if CPU > 90% for
 30 s, run a scenario") would consume `AlertService.AlertRaised` or `IMetricsMonitor.MetricsUpdated`, without touching
 the UI. See `IMPLEMENTATION_NOTES.md` for the limitations and next steps of the analysis modules.
 

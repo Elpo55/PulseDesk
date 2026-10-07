@@ -37,9 +37,23 @@ public sealed partial class ReplayViewModel : PageViewModel
     private long _lastLoad;
     private bool _settingSlider;
 
-    public ReplayViewModel(UiMetricsHub hub, ReplayService replay, ILogger<ReplayViewModel> logger)
+    private readonly NavigationRequests _requests;
+    private readonly InsightNavigator _navigator;
+    private readonly ReportExportService _export;
+
+    public ReplayViewModel(UiMetricsHub hub, ReplayService replay, NavigationRequests requests, InsightNavigator navigator, ReportExportService export, ILogger<ReplayViewModel> logger)
         : base(hub)
     {
+        _requests = requests;
+        _navigator = navigator;
+        _export = export;
+        _requests.Requested += (_, kind) =>
+        {
+            if (kind == NavigationRequestKind.ReplayPeriod && IsActive)
+            {
+                TakeRequest();
+            }
+        };
         _replay = replay;
         _logger = logger;
         Ranges =
@@ -194,7 +208,59 @@ public sealed partial class ReplayViewModel : PageViewModel
     [RelayCommand]
     private void ZoomOut() => Zoom(+1);
 
-    protected override void OnActivated() => _ = LoadAsync();
+    [RelayCommand]
+    private Task Export()
+    {
+        if (_data is not { } data)
+        {
+            return Task.CompletedTask;
+        }
+
+        return _export.ExportAsync(system => Sysora.Core.Reports.ReportBuilder.Replay(data, DateTimeOffset.Now, system));
+    }
+
+    /// <summary>Compares the 15 minutes before and after the cursor (or now).</summary>
+    [RelayCommand]
+    private void CompareAroundCursor()
+    {
+        var time = IsLive ? _data?.To ?? DateTimeOffset.UtcNow : _cursor ?? _data?.To ?? DateTimeOffset.UtcNow;
+        _navigator.OpenCompare(new Sysora.Core.Analysis.ComparisonRequest(Sysora.Core.Analysis.ComparisonPreset.AroundTime) { Time = time });
+    }
+
+    protected override void OnActivated()
+    {
+        if (!TakeRequest())
+        {
+            _ = LoadAsync();
+        }
+    }
+
+    /// <summary>Shows a period asked by another page (an alert, a timeline entry, an investigation), cursor in its middle.</summary>
+    private bool TakeRequest()
+    {
+        if (_requests.TakeReplay() is not { } period)
+        {
+            return false;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var to = period.To > now ? now : period.To;
+        var length = to - period.From;
+        var range = Ranges.FirstOrDefault(r => r.Length >= length) ?? Ranges[^1];
+        IsLive = false;
+        _end = to;
+        _cursor = period.From + ((to - period.From) / 2);
+        if (Range == range)
+        {
+            _ = LoadAsync();
+        }
+        else
+        {
+            Range = range;
+        }
+
+        return true;
+    }
 
     protected override void OnDeactivated()
     {

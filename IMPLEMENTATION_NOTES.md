@@ -245,3 +245,195 @@ every metric is refreshed at once. Game sessions exclude the time asleep from th
   only repeated skips count as a failure. Same for transient empty disk counter samples.
 - A history database damaged while open is now set aside and recreated (previously only detected at open).
 - The game classifier no longer mistakes titles containing "crash" (for example *Crash Bandicoot*) for crash reporters.
+
+---
+
+# Advanced diagnostics, insights and storage analysis
+
+This round adds twelve functions on top of the existing pipeline. Each one reuses what the existing services already
+collect and keep (in-memory history, minute and hourly history, events, alerts, snapshots, game sessions); the only new
+collection is the on-demand large-file scan, and the only changes to the sampling rate are the ones the user chooses
+(monitoring intensity) or starts (troubleshooting).
+
+| Function | Question it answers | Core types | Page |
+| --- | --- | --- | --- |
+| PC Health | In what state is my PC? | `PcHealthScorer`, `PcHealthService` | PC Health, Dashboard |
+| Insights | What is worth knowing now? | `DashboardInsights` (extended) | Dashboard |
+| Why now? | Why is this happening now? | `WhyNowAnalyzer`, `WhyNowService` | Diagnosis (also from Alerts and App Impact) |
+| Before / after | How does this period compare with that one? | `StateComparer`, `StateComparisonService` | Compare (also from Timeline, Replay, Gaming) |
+| Since yesterday | What changed since yesterday? | `SinceYesterdayBuilder`, `SinceYesterdayService` | Changes, Dashboard |
+| Recurring problems | Does this keep happening? | `RecurringProblemDetector`, `RecurringProblemService` | PC Health, Diagnosis, Insights |
+| Timeline | What happened, in order? | `TimelineBuilder`, `TimelineService` | Timeline |
+| Troubleshooting | What happens while the problem occurs? | `TroubleshootingRecorder`, `TroubleshootingService` | Troubleshooting |
+| Sysora impact | Is Sysora itself a problem? | `SelfUsage` (extended), `SelfImpactAssessor` | Settings, PC Health |
+| Monitoring intensity | How much should Sysora collect? | `MonitoringIntensity`, `MonitoringProfile` | Settings |
+| Large files | What takes the most space? | `LargeFileScanEngine`, `ILargeFileScanner`, `LargeFileService` | Large files (also from Storage and PC Health) |
+| Report export | Can I keep or share this? | `ReportBuilder`, `ReportWriter` | Export on every analysis page |
+
+## Explainability: observed, inferred, unknown
+
+`Finding` (label, text, `FindingBasis` Observed / Inferred / Unknown, optional confidence) is the shared statement record of
+Why now, recurring problems and investigations, rendered with a badge in the UI and in reports. Correlations are worded as
+such ("Likely contributor", "Possible contributor", "Associated with", "Evidence suggests"); when no single application
+accounts for a change the analysis says "Cause unknown"; when Windows cannot provide something (per-application network,
+GPU per application in the history, temperatures, FPS) it says "Not available" and why.
+
+## PC Health score
+
+Starts at 100; each area takes off points from fixed, displayed thresholds; areas that cannot be measured are not counted.
+
+| Area | Measured | Points taken off |
+| --- | --- | --- |
+| CPU | 15-minute average | 0 below 50%, linear up to 15 at 100% |
+| Memory | 15-minute average, commit charge | 0 below 60%, linear up to 20 at 95%; +3 when the commit charge stays above 90% |
+| Storage | Free space of fixed volumes | 16 when the Windows volume is above the critical level, 8 above the warning level (Settings › Health thresholds); 4 per other volume above critical |
+| Disk activity | 15-minute average of the busiest disk | 0 below 40%, linear up to 10 at 90% |
+| GPU | Usage (informational), dedicated video memory | 5 when video memory is 95% full (a busy GPU alone is normal while gaming) |
+| Temperatures | Only if a driver reports them | 5 at 85 °C, 10 at 95 °C; otherwise "Not available" and not counted |
+| Stability | Recurring problems over 7 days | 4 per recurring problem (max 12); "Not available" until 2 days of history |
+| Recent anomalies | Alerts raised in the last 24 hours | 2 per warning, 4 per critical (max 10); alerts "usual for this PC" take nothing off |
+| Usual behavior | 15-minute averages vs the baseline | 3 per metric above max(P95, median + margin) (max 6); "Not available" until the baseline is ready |
+
+A score needs 2 minutes of measurements; before that the page says how much data exists.
+
+## Why now?
+
+The in-memory history (per second) and one hour of per-minute averages before it are averaged into 30-second steps.
+The current level (last minute) is compared with the 20th percentile of the earlier steps; a change counts from 15 points
+(CPU, disk, GPU), 8% of physical memory (memory) or 5 Mbit/s and twice the earlier level (network). The start is the first
+step of the run above halfway between both levels (one dip tolerated). Applications are compared over the three minutes
+before the start and the last minute: the one whose usage rose the most is a "likely contributor" when it accounts for 35%
+or more of the rise (high confidence from 60%), "possible" from 15%, otherwise the cause is reported unknown. The analysis
+also lists events from two minutes before the start (launches, games, alerts, connectivity, devices, resume), other metrics
+that rose at the same time, the usual range and similar alerts over 7 days.
+
+## Before / after, since yesterday
+
+`StateComparisonService` loads each period from per-second measurements when the in-memory buffer covers it, else per-minute
+history (within the detail retention), else hourly summaries. Rows show both values, the difference (percentage points for
+percentages, amounts otherwise), the relative change for amounts and an importance level. Presets: now vs 1 hour ago, now vs
+yesterday at this time, today vs yesterday, before vs during / before vs after a game, a game vs the previous session, before
+vs after a moment (timeline entry, replay cursor) and two moments.
+
+To compare free space over time, the free space of the Windows volume is now part of each history snapshot and of the
+minute and hourly aggregates (`sysfree_*` columns). Existing databases get the columns when opened (`ALTER TABLE`; existing
+rows keep a count of 0 and read as "not measured").
+
+"Since yesterday" combines the comparison with yesterday's snapshot (applications, startup programs, Windows, firmware,
+memory, devices, disk space), today's activity vs yesterday's, and the alert counts of both days. An area is called
+unchanged only when both snapshots could compare it; otherwise it is listed as not compared.
+
+## Recurring problems
+
+Alerts of the last 7 days are grouped by rule (and by application for per-application CPU alerts); losses of Internet access
+reported by Windows are merged into episodes. A problem is recurring with at least 3 episodes on 2 different days, in a
+history covering at least 2 days (high confidence from 5 episodes on 3 days). A time-of-day pattern is given when 60% of at
+least 4 episodes fall in the same 3-hour slot; an associated application when it took part (alert or high-usage event in the
+10 minutes before) in at least half of the episodes. With less history: "Not enough historical data."
+
+## Timeline
+
+Merges stored and in-memory events, detected changes (dated between snapshots, marked ≈, with their earliest time) and
+spikes derived from the per-minute history ("CPU usage high" from a 60% minute average, "back to normal" below 40%; memory
+at 90% / 85%; a gap in the data ends a spike without claiming a return to normal). New event kinds: `AppStarted` (an
+application whose first process started within 2 minutes, confirmed at the next process sample, in a user session, outside
+the Windows folder, not a background helper, at most once per 30 minutes per application; its closing is reported with how
+long it ran), `InvestigationStarted`, `InvestigationEnded`. Each entry opens Replay at that time, a 15-minute before / after
+comparison, or the page with more context.
+
+## Troubleshooting mode
+
+`IMetricsMonitor.SetInvestigationMode(true)` applies the Detailed profile and disables the background slowdown (the CPU
+budget still applies). The recorder keeps running statistics, a timeline of 10-second steps (at most 400, merged two by two
+beyond), at most 300 applications and 500 events: constant cost per snapshot. The investigation ends by itself (2 to 30
+minutes, at most 60), when stopped, or when Sysora exits (report kept as "ended when Sysora closed"); collection returns to the
+user's intensity first. The report (anomalies, correlations such as "the busiest application in 12 of the 15 high-CPU
+moments", likely explanations, applications, events, unknowns, recommendations) is saved in the `documents` table (kind
+`troubleshooting`) when history recording is on, appears on the Timeline and can be opened in Replay or exported. A Windows
+notification says when it is complete if Sysora is not in front.
+
+## Monitoring intensity and Sysora's own impact
+
+| Intensity | CPU, memory, network | Processes, GPU, disks | Free space | Applications per sample (per criterion) | Alert evaluation | Dashboard insights |
+| --- | --- | --- | --- | --- | --- | --- |
+| Minimal | ×2 | ×3 | ×4 | 3 | 10 s | 30 s |
+| Balanced (default) | ×1 | ×1 | ×1 | 5 | 5 s | 15 s |
+| Detailed | ×0.5 (≥ 0.5 s) | ×0.5 (≥ 1 s) | ×0.5 (≥ 5 s) | 8 | 5 s | 10 s |
+
+Multipliers apply to the configured intervals; the background slowdown and the CPU budget still apply on top.
+`MetricsMonitor.ScheduleInfo` exposes the intervals in effect. Every 10 seconds (the existing governor period) Sysora also
+records its .NET heap, allocation rate, garbage collections, collection rounds per minute, its own write rate and threads
+(from its own entry in the process list) and whether it has stayed above its CPU budget for a minute (logged once).
+Settings › Diagnostics shows "Sysora impact" with these values and any warning.
+
+## Large files
+
+Read-only by construction: the engine only lists folders (`FileSystemEnumerable` returns name, size, date and attributes from
+the listing; no file is opened, nothing is written). Runs only on request, one scan at a time, cancellable (partial results
+are kept and labeled), on a dedicated thread in Windows' background mode (`THREAD_MODE_BACKGROUND_BEGIN`: lower CPU and I/O
+priority). Memory is bounded: the 500 largest files in a fixed-size heap, at most 5,000 folders and 1,000 extensions in the
+groups. Junctions and symbolic links are not followed; online-only cloud files are skipped (they are not stored on the PC);
+`System Volume Information` and the component store (`WinSxS`, hard links counted twice) are excluded with the reason shown.
+Folders Windows refuses to list are counted with examples ("their content is unknown, not absent"). Categories come from the
+name, location and extension; page file, hibernation file, Windows Installer cache, game data and virtual disks carry a
+caution. Actions: show in File Explorer, copy the path. Demo mode scans a made-up tree.
+
+## Report export
+
+`ReportDocument` (title, period, PC description without user or computer name, summary, sections with facts, tables and
+findings, missing data, notes) plus `data`: the complete analysis as source-generated JSON (typed values, timestamps,
+enumerations as names; replay points without per-sample applications to keep files small). HTML reports are self-contained
+(inline styles, light and dark, print-friendly; only `& < > " '` are escaped so the page stays readable UTF-8) and print to
+PDF from any browser; no PDF writer was added (it would need a third-party library). The user picks HTML or JSON in the
+save dialog; the file is written off the UI thread and a message offers to open its folder.
+
+## Navigation and integration
+
+The menu is grouped: Dashboard, PC Health, Timeline; *Investigate*: Diagnosis, Troubleshooting, Replay, Compare, App Impact,
+Changes, Alerts, Gaming; *Details*: Performance, Processes, Storage, Large files, Network, System. Cross-links go through
+`InsightNavigator` and `NavigationRequests` (a request handed to the target page when it opens, so page view models do not
+depend on each other): Diagnosis → Why now and Timeline; Alert → Replay and Why now; Gaming → Compare and export; App Impact
+→ Why now; Timeline → Replay, Compare and the page of each entry; Replay → Compare; PC Health → Alerts, Large files,
+Diagnosis; Troubleshooting → Replay; Storage → Large files; Dashboard → PC Health, Since yesterday, Timeline, Troubleshooting.
+
+## Performance
+
+Nothing new runs on the monitoring loop except constant work per sample (launch detection compares the applications with
+the previous sample; free space is one more value per snapshot) and, every 10 seconds, a few counter reads for Sysora's own
+impact. Every advanced analysis runs on demand, off the UI thread, only while its page or the dashboard is visible, with
+caches where the data changes slowly (recurring problems 10 minutes, since yesterday 30 minutes, the large-file result for
+the session). Lists that can grow are bounded (events, applications and steps of an investigation, files and folders of a
+scan, timeline entries); long lists are virtualized (Timeline, Large files).
+
+Measured on the same PC (Ryzen 9 7845HX, 24 logical processors), Release builds, demo mode hidden in the tray, 60-second
+warm-up then 3 minutes, previous commit and this version run back to back:
+
+| Build | CPU (share of total capacity) | CPU (one core) | Private memory | Working set |
+| --- | --- | --- | --- | --- |
+| Previous commit | 0.016% | 0.37% | 114 MB | 202 MB |
+| This version | 0.011% | 0.27% | 116 MB | 204 MB |
+
+The CPU difference is within run-to-run noise: no measurable increase. During a troubleshooting investigation, collection
+follows the Detailed intensity (CPU and memory every 0.5 s, processes every second) for its duration only.
+
+## Fixes
+
+- **Settings added in a newer version were read as zero.** Settings are records with `init` properties, which the
+  source-generated serializer sets all at once: a property missing from a section present in the file got `default(T)`
+  (false, 0, the first enum value) instead of its declared default. For example the CPU budget would have been 0 (no limit)
+  for anyone upgrading from a version without it, and the new monitoring intensity would have been Minimal. The stored file
+  is now laid over the serialized defaults before it is read (`SettingsSerializer`), with a regression test.
+- Tests now run with the invariant culture (`xunit.runner.json`), so formatted values do not depend on the machine's region.
+
+## Limitations
+
+- PC Health, Why now and Before / after can only use what Sysora measured: no temperature without a driver that reports it,
+  no per-application network, no GPU usage per application in the history (only the game's, in gaming sessions).
+- Free space history starts with this version; comparisons over older periods show it as not available.
+- Application launches are detected from process samples (every 2 s by default, 6 s with Minimal): an application that ran
+  for less than one sampling interval is not reported, by design.
+- "Since yesterday" and Changes depend on snapshots; a change between two snapshots is dated by that interval.
+- Large files reports logical sizes (as Explorer); compressed or sparse files may use less space on disk.
+- Diagnoses themselves are not stored (they are recomputed); investigations are the stored form of a diagnosis over time.
+- Analysis documents in the history (alerts, sessions, changes) are also records with `init` properties: a property added
+  to them in a future version should be given a value when old documents are read (none was added in this round).

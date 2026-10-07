@@ -179,12 +179,23 @@
                                 <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind ViewModel.Recap.Detection, Mode=OneWay}" />
                                 <TextBlock IsTextSelectionEnabled="True" Style="{StaticResource LabelTextStyle}" Text="{x:Bind ViewModel.Recap.ExecutablePath, Mode=OneWay}" />
                             </StackPanel>
-                            <Button
-                                Grid.Column="2"
-                                VerticalAlignment="Top"
-                                Command="{x:Bind ViewModel.MarkSelectedNotAGameCommand}"
-                                Content="Not a game"
-                                ToolTipService.ToolTip="Stop following this application as a game (past sessions are kept)" />
+                            <StackPanel Grid.Column="2" VerticalAlignment="Top" Spacing="6">
+                                <DropDownButton HorizontalAlignment="Stretch" Content="Compare">
+                                    <DropDownButton.Flyout>
+                                        <MenuFlyout Placement="Bottom">
+                                            <MenuFlyoutItem Command="{x:Bind ViewModel.CompareBeforeDuringCommand}" Text="Before vs during the game" />
+                                            <MenuFlyoutItem Command="{x:Bind ViewModel.CompareBeforeAfterCommand}" Text="Before vs after the game" />
+                                            <MenuFlyoutItem Command="{x:Bind ViewModel.CompareWithPreviousCommand}" Text="With the previous session" />
+                                        </MenuFlyout>
+                                    </DropDownButton.Flyout>
+                                </DropDownButton>
+                                <Button HorizontalAlignment="Stretch" Command="{x:Bind ViewModel.ExportRecapCommand}" Content="Export recap" ToolTipService.ToolTip="Save this recap as an HTML report or JSON data" />
+                                <Button
+                                    HorizontalAlignment="Stretch"
+                                    Command="{x:Bind ViewModel.MarkSelectedNotAGameCommand}"
+                                    Content="Not a game"
+                                    ToolTipService.ToolTip="Stop following this application as a game (past sessions are kept)" />
+                            </StackPanel>
                         </Grid>
                     </Border>
 

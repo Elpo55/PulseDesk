@@ -43,9 +43,18 @@ public sealed class MetricsMonitor : IMetricsMonitor, IAsyncDisposable
     private readonly Dictionary<MetricKind, int> _failures = [];
     private readonly Dictionary<MetricKind, int> _skips = [];
 
+    /// <summary>Consecutive measurements above the CPU budget before Sysora warns about its own usage (one minute).</summary>
+    public const int SustainedOverBudgetMeasurements = 6;
+
     private SystemSnapshot _current = SystemSnapshot.Empty;
     private SelfUsage _selfUsage = new(null, 0, 1.0);
     private MonitoringActivity _activity = MonitoringActivity.Foreground;
+    private MonitoringScheduleInfo _scheduleInfo = MonitoringScheduleInfo.Unknown;
+    private bool _investigating;
+    private long _rounds;
+    private SelfCounters? _lastSelf;
+    private int _overBudget;
+    private bool _overBudgetLogged;
     private CancellationTokenSource? _runCts;
     private CancellationTokenSource? _sleepCts;
     private TaskCompletionSource _resumed = NewSignal();
@@ -92,6 +101,19 @@ public sealed class MetricsMonitor : IMetricsMonitor, IAsyncDisposable
     public MetricHistory History { get; } = new(HistoryCapacity);
 
     public SelfUsage SelfUsage => Volatile.Read(ref _selfUsage);
+
+    public MonitoringScheduleInfo ScheduleInfo => Volatile.Read(ref _scheduleInfo);
+
+    public bool IsInvestigating
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _investigating;
+            }
+        }
+    }
 
     public bool IsRunning
     {
@@ -235,6 +257,27 @@ public sealed class MetricsMonitor : IMetricsMonitor, IAsyncDisposable
         Wake();
     }
 
+    public void SetInvestigationMode(bool enabled)
+    {
+        lock (_lock)
+        {
+            if (_investigating == enabled)
+            {
+                return;
+            }
+
+            _investigating = enabled;
+            ConfigureSchedule(_settings.Current.Monitoring);
+            if (enabled)
+            {
+                _schedule.MarkDue(MetricKind.All, Elapsed);
+            }
+        }
+
+        _logger.LogInformation(enabled ? "Investigation started: detailed collection." : "Investigation ended: back to the {Intensity} intensity.", _settings.Current.Monitoring.Intensity);
+        Wake();
+    }
+
     public void RequestRefresh(MetricKind kinds)
     {
         lock (_lock)
@@ -351,6 +394,7 @@ public sealed class MetricsMonitor : IMetricsMonitor, IAsyncDisposable
             return;
         }
 
+        Interlocked.Increment(ref _rounds);
         var timestamp = _time.GetUtcNow();
         snapshot = snapshot with { Timestamp = timestamp, Unavailable = unavailable };
         Volatile.Write(ref _current, snapshot);
@@ -521,7 +565,7 @@ public sealed class MetricsMonitor : IMetricsMonitor, IAsyncDisposable
             _lastMeasurement = _governor.MeasurementCount;
         }
 
-        Volatile.Write(ref _selfUsage, new SelfUsage(_governor.LastCpuPercent, Environment.WorkingSet, factor));
+        Volatile.Write(ref _selfUsage, MeasureSelf(factor));
         if (factorChanged)
         {
             _logger.LogInformation(
@@ -565,29 +609,86 @@ public sealed class MetricsMonitor : IMetricsMonitor, IAsyncDisposable
         Wake();
     }
 
-    /// <summary>Applies settings, background mode and the self-usage factor to the schedule. Caller holds the lock.</summary>
+    /// <summary>
+    /// Applies settings, intensity, background mode, an ongoing investigation and the self-usage factor to the schedule.
+    /// Caller holds the lock.
+    /// </summary>
     private void ConfigureSchedule(MonitoringSettings settings)
     {
         var now = Elapsed;
-        var slowDown = _activity == MonitoringActivity.Background && settings.ReduceActivityWhenHidden;
+        var profile = MonitoringProfile.For(_investigating ? MonitoringIntensity.Detailed : settings.Intensity);
 
-        TimeSpan Effective(TimeSpan interval, double backgroundFactor) =>
-            interval * _governor.Factor * (slowDown ? backgroundFactor : 1.0);
+        // An investigation needs its context even while the window is hidden: no background slowdown then.
+        var slowDown = _activity == MonitoringActivity.Background && settings.ReduceActivityWhenHidden && !_investigating;
+        var intervals = new Dictionary<MetricKind, TimeSpan>();
 
-        _schedule.Configure(MetricKind.Cpu, Effective(TimeSpan.FromMilliseconds(settings.CpuIntervalMs), 1), now);
-        _schedule.Configure(MetricKind.Memory, Effective(TimeSpan.FromMilliseconds(settings.MemoryIntervalMs), 1), now);
-        _schedule.Configure(MetricKind.Processes, Effective(TimeSpan.FromMilliseconds(settings.ProcessIntervalMs), 5), now);
-        _schedule.Configure(MetricKind.DiskActivity, Effective(TimeSpan.FromMilliseconds(settings.DiskActivityIntervalMs), 5), now);
-        _schedule.Configure(MetricKind.Storage, Effective(TimeSpan.FromSeconds(settings.StorageIntervalSeconds), 2), now);
-        _schedule.Configure(MetricKind.System, Effective(SystemInterval, 2), now);
-        _schedule.Configure(
-            MetricKind.Gpu,
-            settings.GpuEnabled ? Effective(TimeSpan.FromMilliseconds(settings.GpuIntervalMs), 5) : null,
-            now);
-        _schedule.Configure(
-            MetricKind.Network,
-            settings.NetworkEnabled ? Effective(TimeSpan.FromMilliseconds(settings.NetworkIntervalMs), 5) : null,
-            now);
+        TimeSpan? Configure(MetricKind kind, TimeSpan? interval, double backgroundFactor)
+        {
+            TimeSpan? effective = interval is { } value
+                ? profile.Apply(kind, value) * _governor.Factor * (slowDown ? backgroundFactor : 1.0)
+                : null;
+            _schedule.Configure(kind, effective, now);
+            if (effective is { } e)
+            {
+                intervals[kind] = e;
+            }
+
+            return effective;
+        }
+
+        Configure(MetricKind.Cpu, TimeSpan.FromMilliseconds(settings.CpuIntervalMs), 1);
+        Configure(MetricKind.Memory, TimeSpan.FromMilliseconds(settings.MemoryIntervalMs), 1);
+        Configure(MetricKind.Processes, TimeSpan.FromMilliseconds(settings.ProcessIntervalMs), 5);
+        Configure(MetricKind.DiskActivity, TimeSpan.FromMilliseconds(settings.DiskActivityIntervalMs), 5);
+        Configure(MetricKind.Storage, TimeSpan.FromSeconds(settings.StorageIntervalSeconds), 2);
+        Configure(MetricKind.System, SystemInterval, 2);
+        Configure(MetricKind.Gpu, settings.GpuEnabled ? TimeSpan.FromMilliseconds(settings.GpuIntervalMs) : null, 5);
+        Configure(MetricKind.Network, settings.NetworkEnabled ? TimeSpan.FromMilliseconds(settings.NetworkIntervalMs) : null, 5);
+        Volatile.Write(ref _scheduleInfo, new MonitoringScheduleInfo(profile.Intensity, _investigating, slowDown, _governor.Factor, intervals));
+    }
+
+    /// <summary>
+    /// Sysora's own usage over the last measurement period: CPU (from the governor), memory, .NET allocations and garbage
+    /// collections, collection rounds, and its own entry in the latest process sample. Called once per period, so it costs
+    /// a few counter reads every ten seconds.
+    /// </summary>
+    private SelfUsage MeasureSelf(double factor)
+    {
+        var elapsed = Elapsed;
+        var counters = new SelfCounters(elapsed, GC.GetTotalAllocatedBytes(precise: false), GC.CollectionCount(0), GC.CollectionCount(1), GC.CollectionCount(2), Interlocked.Read(ref _rounds));
+        var previous = _lastSelf;
+        _lastSelf = counters;
+        var seconds = previous is { } p ? (elapsed - p.Elapsed).TotalSeconds : 0;
+
+        var budget = _settings.Current.Monitoring.MaxSelfCpuPercent;
+        var cpu = _governor.LastCpuPercent;
+        _overBudget = budget > 0 && cpu > budget ? _overBudget + 1 : 0;
+        var sustained = _overBudget >= SustainedOverBudgetMeasurements;
+        if (sustained && !_overBudgetLogged)
+        {
+            _overBudgetLogged = true;
+            _logger.LogWarning("Sysora has used more than its CPU budget ({Budget}%) for a minute ({Cpu:0.00}% now); collection intervals are stretched.", budget, cpu);
+        }
+        else if (!sustained)
+        {
+            _overBudgetLogged = false;
+        }
+
+        var self = Current.Processes?.Processes.FirstOrDefault(process => process.ProcessId == Environment.ProcessId);
+        return new SelfUsage(cpu, Environment.WorkingSet, factor)
+        {
+            MeasuredAt = _time.GetUtcNow(),
+            ManagedHeapBytes = GC.GetTotalMemory(forceFullCollection: false),
+            AllocatedBytesPerSecond = previous is { } a && seconds > 0 ? (counters.Allocated - a.Allocated) / seconds : null,
+            Gen0Collections = previous is { } g0 ? counters.Gen0 - g0.Gen0 : 0,
+            Gen1Collections = previous is { } g1 ? counters.Gen1 - g1.Gen1 : 0,
+            Gen2Collections = previous is { } g2 ? counters.Gen2 - g2.Gen2 : 0,
+            CollectionRoundsPerMinute = previous is { } r && seconds > 0 ? (counters.Rounds - r.Rounds) * 60 / seconds : null,
+            ProcessesAnalyzed = Current.Processes?.ProcessCount,
+            WriteBytesPerSecond = self?.IoWriteBytesPerSecond,
+            ThreadCount = self?.ThreadCount is > 0 and var threads ? threads : null,
+            OverBudgetSustained = sustained,
+        };
     }
 
     private async Task SleepAsync(TimeSpan duration, CancellationToken cancellationToken)
@@ -648,6 +749,9 @@ public sealed class MetricsMonitor : IMetricsMonitor, IAsyncDisposable
     }
 
     private static TaskCompletionSource NewSignal() => new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    /// <summary>Counters read at a self-usage measurement, to compute rates over the next period.</summary>
+    private readonly record struct SelfCounters(TimeSpan Elapsed, long Allocated, int Gen0, int Gen1, int Gen2, long Rounds);
 
     /// <summary>Outcome of one provider call: a value to apply, a skipped sample, or a failure (neither).</summary>
     private readonly record struct CollectResult(Func<SystemSnapshot, SystemSnapshot>? Apply, bool Skipped);

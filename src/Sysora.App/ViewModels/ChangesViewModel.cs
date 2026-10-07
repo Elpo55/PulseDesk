@@ -17,15 +17,21 @@ public sealed partial class ChangesViewModel : PageViewModel
     private static readonly TimeSpan TimelineLength = TimeSpan.FromDays(30);
 
     private readonly ChangeDetectionService _changes;
+    private readonly SinceYesterdayService _sinceYesterday;
+    private readonly ReportExportService _export;
     private readonly InsightNavigator _navigator;
     private readonly ILogger<ChangesViewModel> _logger;
     private readonly DispatcherQueue _dispatcher;
     private CancellationTokenSource? _load;
 
-    public ChangesViewModel(UiMetricsHub hub, ChangeDetectionService changes, InsightNavigator navigator, DispatcherQueue dispatcher, ILogger<ChangesViewModel> logger)
+    public ChangesViewModel(UiMetricsHub hub, ChangeDetectionService changes, SinceYesterdayService sinceYesterday, ReportExportService export, InsightNavigator navigator, DispatcherQueue dispatcher, ILogger<ChangesViewModel> logger)
         : base(hub)
     {
         _changes = changes;
+        _sinceYesterday = sinceYesterday;
+        _export = export;
+        SinceHeadline = SinceYesterdaySummary.Loading.Headline;
+        SinceNote = SinceUnchanged = SinceNotCompared = string.Empty;
         _navigator = navigator;
         _dispatcher = dispatcher;
         _logger = logger;
@@ -35,6 +41,39 @@ public sealed partial class ChangesViewModel : PageViewModel
     public IReadOnlyList<string> Views { get; } = ["Timeline (last 30 days)", "Since this morning", "Since yesterday", "Since 7 days ago", "Since 30 days ago"];
 
     public ObservableCollection<ChangeGroupViewModel> Groups { get; } = [];
+
+    /// <summary>"What changed since yesterday?" in a few lines.</summary>
+    public ObservableCollection<SinceYesterdayItemViewModel> SinceItems { get; } = [];
+
+    [ObservableProperty]
+    public partial string SinceHeadline { get; set; }
+
+    [ObservableProperty]
+    public partial string SinceNote { get; set; }
+
+    [ObservableProperty]
+    public partial string SinceUnchanged { get; set; }
+
+    [ObservableProperty]
+    public partial string SinceNotCompared { get; set; }
+
+    [ObservableProperty]
+    public partial int SignificantCount { get; set; }
+
+    [ObservableProperty]
+    public partial int MinorCount { get; set; }
+
+    [ObservableProperty]
+    public partial bool HasSignificant { get; set; }
+
+    [ObservableProperty]
+    public partial bool HasMinor { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsMostlyUnchanged { get; set; }
+
+    [ObservableProperty]
+    public partial bool HasSinceNotCompared { get; set; }
 
     [ObservableProperty]
     public partial int ViewIndex { get; set; }
@@ -60,12 +99,50 @@ public sealed partial class ChangesViewModel : PageViewModel
         IsLoading = true;
         await _changes.RecordAsync(CancellationToken.None);
         await LoadAsync();
+        await LoadSinceYesterdayAsync(force: true);
+    }
+
+    [RelayCommand]
+    private async Task Export()
+    {
+        var timeline = await _changes.GetTimelineAsync(DateTimeOffset.UtcNow - TimelineLength, CancellationToken.None);
+        var since = _sinceYesterday.Latest;
+        await _export.ExportAsync(system => Sysora.Core.Reports.ReportBuilder.Changes(timeline, since, DateTimeOffset.Now, system));
     }
 
     protected override void OnActivated()
     {
         _changes.Changed += OnSnapshotRecorded;
         _ = LoadAsync();
+        _ = LoadSinceYesterdayAsync(force: false);
+    }
+
+    private async Task LoadSinceYesterdayAsync(bool force)
+    {
+        try
+        {
+            var summary = await _sinceYesterday.GetAsync(force, CancellationToken.None);
+            SinceHeadline = summary.Headline;
+            SinceNote = summary.Note;
+            SignificantCount = summary.Significant;
+            MinorCount = summary.Minor;
+            HasSignificant = summary.Significant > 0;
+            HasMinor = summary.Minor > 0;
+            IsMostlyUnchanged = summary.HasReference && summary.MostlyUnchanged;
+            SinceUnchanged = summary.UnchangedAreas.Count > 0 ? $"Unchanged: {string.Join(", ", summary.UnchangedAreas)}." : string.Empty;
+            SinceNotCompared = string.Join(Environment.NewLine, summary.NotCompared.Select(n => $"Not compared — {n}"));
+            HasSinceNotCompared = summary.NotCompared.Count > 0;
+            SinceItems.Clear();
+            foreach (var item in summary.Items)
+            {
+                SinceItems.Add(new SinceYesterdayItemViewModel(item, i => _navigator.Open(i.Action, i.AppKey)));
+            }
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            _logger.LogWarning(ex, "The comparison with yesterday failed.");
+            SinceHeadline = "The comparison with yesterday could not be made.";
+        }
     }
 
     protected override void OnDeactivated() => _changes.Changed -= OnSnapshotRecorded;

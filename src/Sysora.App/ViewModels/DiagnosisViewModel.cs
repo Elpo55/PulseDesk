@@ -7,6 +7,7 @@ using Sysora.Core.Analysis;
 using Sysora.Core.Diagnosis;
 using Sysora.Core.Formatting;
 using Sysora.Core.Models;
+using Sysora.Core.Reports;
 
 namespace Sysora.App.ViewModels;
 
@@ -20,19 +21,48 @@ public sealed partial class DiagnosisViewModel : PageViewModel
 
     private readonly DiagnosisService _diagnosis;
     private readonly UsageComparisonService _comparison;
+    private readonly WhyNowService _whyNow;
+    private readonly RecurringProblemService _recurring;
+    private readonly NavigationRequests _requests;
+    private readonly ReportExportService _export;
     private readonly InsightNavigator _navigator;
     private readonly ILogger<DiagnosisViewModel> _logger;
     private readonly Dictionary<string, DiagnosisItemViewModel> _items = new(StringComparer.Ordinal);
+    private DiagnosisReport _report = DiagnosisReport.Empty;
+    private UsageComparison? _usage;
+    private WhyNowExplanation? _explanation;
+    private CancellationTokenSource? _whyNowLoad;
     private long _lastRun;
 
-    public DiagnosisViewModel(UiMetricsHub hub, DiagnosisService diagnosis, UsageComparisonService comparison, InsightNavigator navigator, ILogger<DiagnosisViewModel> logger)
+    public DiagnosisViewModel(
+        UiMetricsHub hub,
+        DiagnosisService diagnosis,
+        UsageComparisonService comparison,
+        WhyNowService whyNow,
+        RecurringProblemService recurring,
+        NavigationRequests requests,
+        ReportExportService export,
+        InsightNavigator navigator,
+        ILogger<DiagnosisViewModel> logger)
         : base(hub)
     {
         _diagnosis = diagnosis;
         _comparison = comparison;
+        _whyNow = whyNow;
+        _recurring = recurring;
+        _requests = requests;
+        _export = export;
         ComparisonSummary = UsageComparison.Empty.Summary;
         _navigator = navigator;
         _logger = logger;
+        WhyNowHeadline = WhyNowSummary = WhyNowStarted = WhyNowChange = WhyNowDuration = WhyNowContributor = WhyNowSimilar = WhyNowUsual = RecurringText = string.Empty;
+        _requests.Requested += (_, kind) =>
+        {
+            if (kind == NavigationRequestKind.WhyNow && IsActive && _requests.TakeWhyNow() is { } metric)
+            {
+                StartWhyNow(metric);
+            }
+        };
         Headline = DiagnosisReport.Empty.Headline;
         Summary = DiagnosisReport.Empty.Summary;
         AnalyzedText = BaselineText = string.Empty;
@@ -92,8 +122,173 @@ public sealed partial class DiagnosisViewModel : PageViewModel
     [RelayCommand]
     private Task Run() => RunAsync();
 
+    // ---- Why now? -------------------------------------------------------------------------------
 
-    protected override void OnActivated() => _ = RunAsync();
+    public IReadOnlyList<string> WhyNowMetrics { get; } = ["CPU", "Memory", "Disk", "GPU", "Network"];
+
+    public ObservableCollection<FindingItemViewModel> WhyNowFindings { get; } = [];
+
+    public ObservableCollection<string> WhyNowEvents { get; } = [];
+
+    [ObservableProperty]
+    public partial int WhyNowIndex { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsWhyNowRunning { get; set; }
+
+    [ObservableProperty]
+    public partial bool HasWhyNow { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsWhyNowSignificant { get; set; }
+
+    [ObservableProperty]
+    public partial string WhyNowHeadline { get; set; }
+
+    [ObservableProperty]
+    public partial string WhyNowSummary { get; set; }
+
+    [ObservableProperty]
+    public partial string WhyNowStarted { get; set; }
+
+    [ObservableProperty]
+    public partial string WhyNowChange { get; set; }
+
+    [ObservableProperty]
+    public partial string WhyNowDuration { get; set; }
+
+    [ObservableProperty]
+    public partial string WhyNowContributor { get; set; }
+
+    [ObservableProperty]
+    public partial string WhyNowSimilar { get; set; }
+
+    [ObservableProperty]
+    public partial string WhyNowUsual { get; set; }
+
+    [ObservableProperty]
+    public partial bool HasWhyNowEvents { get; set; }
+
+    /// <summary>Recurring problems of the last days, in one line, linking to PC Health.</summary>
+    [ObservableProperty]
+    public partial string RecurringText { get; set; }
+
+    [RelayCommand]
+    private Task AnalyzeWhyNow() => WhyNowAsync((WhyNowMetric)Math.Clamp(WhyNowIndex, 0, 4));
+
+    [RelayCommand]
+    private Task Export()
+    {
+        var report = _report;
+        var usage = _usage;
+        return _export.ExportAsync(system => ReportBuilder.Diagnosis(report, usage, DateTimeOffset.Now, system));
+    }
+
+    [RelayCommand]
+    private Task ExportWhyNow()
+    {
+        if (_explanation is not { } explanation)
+        {
+            return Task.CompletedTask;
+        }
+
+        return _export.ExportAsync(system => ReportBuilder.WhyNow(explanation, DateTimeOffset.Now, system));
+    }
+
+    [RelayCommand]
+    private void OpenRecurring() => _navigator.Open(DiagnosisAction.PcHealth);
+
+    [RelayCommand]
+    private void OpenTimeline() => _navigator.Open(DiagnosisAction.Timeline);
+
+    /// <summary>Selects a metric and explains it (from a finding's "Why now?" button or another page).</summary>
+    public void StartWhyNow(WhyNowMetric metric)
+    {
+        WhyNowIndex = (int)metric;
+        _ = WhyNowAsync(metric);
+    }
+
+    private async Task WhyNowAsync(WhyNowMetric metric)
+    {
+        _whyNowLoad?.Cancel();
+        _whyNowLoad?.Dispose();
+        var load = _whyNowLoad = new CancellationTokenSource();
+        IsWhyNowRunning = true;
+        try
+        {
+            var explanation = await _whyNow.ExplainAsync(metric, load.Token);
+            if (!load.IsCancellationRequested)
+            {
+                ApplyWhyNow(explanation);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Another metric was chosen.
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            _logger.LogWarning(ex, "Why now could not be analyzed.");
+            WhyNowHeadline = "The analysis could not be completed. See the log for details.";
+        }
+        finally
+        {
+            if (_whyNowLoad == load)
+            {
+                IsWhyNowRunning = false;
+            }
+        }
+    }
+
+    private void ApplyWhyNow(WhyNowExplanation explanation)
+    {
+        _explanation = explanation;
+        HasWhyNow = true;
+        IsWhyNowSignificant = explanation.IsSignificant;
+        WhyNowHeadline = explanation.Headline;
+        WhyNowSummary = explanation.Summary;
+        WhyNowStarted = explanation.Started is { } started
+            ? started.ToLocalTime().ToString("T", System.Globalization.CultureInfo.CurrentCulture)
+            : explanation.StartedBeforeData ? "Before the analyzed data" : "—";
+        WhyNowChange = (explanation.BeforeText, explanation.NowText) switch
+        {
+            ({ } before, { } now) => $"{before} → {now}",
+            (null, { } now) => now,
+            _ => "—",
+        };
+        WhyNowDuration = explanation.Duration is { } duration ? (explanation.StartedBeforeData ? "At least " : string.Empty) + MetricFormatter.DurationPrecise(duration) : "—";
+        WhyNowContributor = explanation.ContributorText;
+        WhyNowSimilar = explanation.SimilarText;
+        WhyNowUsual = explanation.UsualText ?? "Usual range not known yet.";
+        WhyNowFindings.Clear();
+        foreach (var finding in explanation.Findings)
+        {
+            WhyNowFindings.Add(FindingItemViewModel.From(finding));
+        }
+
+        WhyNowEvents.Clear();
+        foreach (var associated in explanation.AssociatedEvents)
+        {
+            WhyNowEvents.Add($"{associated.Timestamp.ToLocalTime().ToString("T", System.Globalization.CultureInfo.CurrentCulture)} · {associated.Title}");
+        }
+
+        foreach (var simultaneous in explanation.Simultaneous)
+        {
+            WhyNowEvents.Add(simultaneous);
+        }
+
+        HasWhyNowEvents = WhyNowEvents.Count > 0;
+    }
+
+
+    protected override void OnActivated()
+    {
+        _ = RunAsync();
+        if (_requests.TakeWhyNow() is { } metric)
+        {
+            StartWhyNow(metric);
+        }
+    }
 
     protected override void Update(SystemSnapshot snapshot, MetricKind updated)
     {
@@ -111,6 +306,8 @@ public sealed partial class DiagnosisViewModel : PageViewModel
         {
             Apply(await _diagnosis.RunAsync(CancellationToken.None));
             ApplyComparison(await _comparison.CompareAsync(CancellationToken.None));
+            var recurring = await _recurring.GetAsync(force: false, CancellationToken.None);
+            RecurringText = recurring.Time == DateTimeOffset.MinValue ? string.Empty : recurring.Summary;
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
@@ -125,6 +322,7 @@ public sealed partial class DiagnosisViewModel : PageViewModel
 
     private void Apply(DiagnosisReport report)
     {
+        _report = report;
         Headline = report.Headline;
         Summary = report.Summary;
         (StateGlyph, StateBrushKey) = HealthGlyphs.For(report.State);
@@ -166,7 +364,13 @@ public sealed partial class DiagnosisViewModel : PageViewModel
             var key = Key(r);
             if (!_items.TryGetValue(key, out var item))
             {
-                item = new DiagnosisItemViewModel(i => _navigator.Open(i.Action, i.AppKey));
+                item = new DiagnosisItemViewModel(i => _navigator.Open(i.Action, i.AppKey), i =>
+                {
+                    if (i.WhyNowMetric is { } metric)
+                    {
+                        StartWhyNow(metric);
+                    }
+                });
                 _items[key] = item;
             }
 
@@ -200,6 +404,7 @@ public sealed partial class DiagnosisViewModel : PageViewModel
 
     private void ApplyComparison(UsageComparison comparison)
     {
+        _usage = comparison;
         ComparisonSummary = comparison.Summary;
         CollectionSync.Resize(ComparisonRows, comparison.Metrics.Count, _ => new ComparisonRowViewModel(), (row, i) => row.Set(comparison.Metrics[i]));
         HasComparisonRows = ComparisonRows.Count > 0;
@@ -226,10 +431,12 @@ public sealed partial class DiagnosisViewModel : PageViewModel
 public sealed partial class DiagnosisItemViewModel : ObservableObject
 {
     private readonly Action<DiagnosisItemViewModel> _open;
+    private readonly Action<DiagnosisItemViewModel>? _whyNow;
 
-    public DiagnosisItemViewModel(Action<DiagnosisItemViewModel> open)
+    public DiagnosisItemViewModel(Action<DiagnosisItemViewModel> open, Action<DiagnosisItemViewModel>? whyNow = null)
     {
         _open = open;
+        _whyNow = whyNow;
         Title = Description = Glyph = BrushKey = Observed = Reference = Explanation = Recommendation = ConfidenceText = TimeText = ActionLabel = string.Empty;
     }
 
@@ -281,11 +488,22 @@ public sealed partial class DiagnosisItemViewModel : ObservableObject
     [ObservableProperty]
     public partial bool IsExpanded { get; set; }
 
+    /// <summary>Metric "Why now?" can explain for this finding, when there is one.</summary>
+    public WhyNowMetric? WhyNowMetric { get; private set; }
+
+    [ObservableProperty]
+    public partial bool CanExplainWhyNow { get; set; }
+
     [RelayCommand]
     private void Open() => _open(this);
 
+    [RelayCommand]
+    private void WhyNow() => _whyNow?.Invoke(this);
+
     public void Set(DiagnosisResult result)
     {
+        WhyNowMetric = result.Severity > DiagnosisSeverity.Normal ? InsightNavigator.WhyNowFor(result.Category) : null;
+        CanExplainWhyNow = WhyNowMetric is not null && _whyNow is not null;
         Title = result.Title;
         Description = result.Description;
         (Glyph, BrushKey) = HealthGlyphs.For(result.Severity);

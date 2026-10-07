@@ -8,6 +8,7 @@ using Sysora.Core.Changes;
 using Sysora.Core.Gaming;
 using Sysora.Core.History;
 using Sysora.Core.Interfaces;
+using Sysora.Core.Troubleshooting;
 
 namespace Sysora.Infrastructure.Storage;
 
@@ -27,13 +28,14 @@ public sealed class HistoryRepository : IHistoryRepository, IAsyncDisposable, ID
     private const string BaselineDocument = "baseline";
     private const string ChangeDocument = "change";
     private const string GameDocument = "game";
+    private const string TroubleshootingDocument = "troubleshooting";
     private const string InMemoryLocation = "In memory (demo mode: nothing is written to disk)";
 
     /// <summary>Hourly roll-ups wait this long after the hour, so late writes (shutdown flush) are included.</summary>
     private static readonly TimeSpan RollupDelay = TimeSpan.FromMinutes(5);
 
     /// <summary>Metric column prefixes of the system_usage table, in <see cref="SystemUsageAggregate"/> order.</summary>
-    private static readonly string[] MetricColumns = ["cpu", "mem", "disk", "rx", "tx", "gpu", "proc"];
+    private static readonly string[] MetricColumns = ["cpu", "mem", "disk", "rx", "tx", "gpu", "proc", "sysfree"];
 
     private readonly string? _filePath;
     private readonly ILogger<HistoryRepository> _logger;
@@ -122,7 +124,8 @@ public sealed class HistoryRepository : IHistoryRepository, IAsyncDisposable, ID
                     NetworkSend = ReadAggregate(reader, 15),
                     Gpu = ReadAggregate(reader, 18),
                     ProcessCount = ReadAggregate(reader, 21),
-                    MemoryTotalBytes = reader.IsDBNull(24) ? null : (ulong)reader.GetInt64(24),
+                    SystemDriveFree = ReadAggregate(reader, 24),
+                    MemoryTotalBytes = reader.IsDBNull(27) ? null : (ulong)reader.GetInt64(27),
                 });
             }
 
@@ -311,6 +314,18 @@ public sealed class HistoryRepository : IHistoryRepository, IAsyncDisposable, ID
         (await GetDocumentsAsync(GameDocument, since, cancellationToken).ConfigureAwait(false))
             .Select(AnalysisJson.DeserializeGameSession)
             .OfType<GameSession>()
+            .ToArray();
+
+    public Task SaveTroubleshootingReportAsync(TroubleshootingReport report, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(report);
+        return SaveDocumentsAsync(TroubleshootingDocument, [(report.Id.ToString("N"), report.Start, AnalysisJson.Serialize(report))], replace: true, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<TroubleshootingReport>> GetTroubleshootingReportsAsync(DateTimeOffset since, CancellationToken cancellationToken) =>
+        (await GetDocumentsAsync(TroubleshootingDocument, since, cancellationToken).ConfigureAwait(false))
+            .Select(AnalysisJson.DeserializeTroubleshootingReport)
+            .OfType<TroubleshootingReport>()
             .ToArray();
 
     public Task<IReadOnlyList<KnownApp>> GetKnownAppsAsync(CancellationToken cancellationToken) =>
@@ -600,6 +615,32 @@ public sealed class HistoryRepository : IHistoryRepository, IAsyncDisposable, ID
             CREATE INDEX IF NOT EXISTS documents_by_time ON documents(kind, time);
             INSERT OR IGNORE INTO meta(key, value) VALUES('schema_version', '{SchemaVersion}');
             """);
+        AddMissingMetricColumns(connection);
+    }
+
+    /// <summary>
+    /// Adds the columns of metrics introduced after a database was created (for example the free space of the Windows
+    /// volume). Existing rows keep NULL values with a count of 0, which reads as "not measured" — never as 0.
+    /// </summary>
+    private static void AddMissingMetricColumns(SqliteConnection connection)
+    {
+        var existing = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "PRAGMA table_info(system_usage)";
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                existing.Add(reader.GetString(1));
+            }
+        }
+
+        foreach (var metric in MetricColumns.Where(m => !existing.Contains($"{m}_n")))
+        {
+            Execute(connection, $"ALTER TABLE system_usage ADD COLUMN {metric}_avg REAL");
+            Execute(connection, $"ALTER TABLE system_usage ADD COLUMN {metric}_max REAL");
+            Execute(connection, $"ALTER TABLE system_usage ADD COLUMN {metric}_n INTEGER NOT NULL DEFAULT 0");
+        }
     }
 
     private static void UpsertSystemUsage(SqliteConnection connection, SqliteTransaction transaction, SystemUsageAggregate aggregate)
@@ -638,6 +679,7 @@ public sealed class HistoryRepository : IHistoryRepository, IAsyncDisposable, ID
         AddAggregate(command, "tx", aggregate.NetworkSend);
         AddAggregate(command, "gpu", aggregate.Gpu);
         AddAggregate(command, "proc", aggregate.ProcessCount);
+        AddAggregate(command, "sysfree", aggregate.SystemDriveFree);
         command.Parameters.AddWithValue("$mem_total", aggregate.MemoryTotalBytes is { } total ? (long)total : DBNull.Value);
         command.ExecuteNonQuery();
     }

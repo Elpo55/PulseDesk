@@ -56,6 +56,41 @@ internal static class TestData
     /// <summary>An application sample.</summary>
     public static AppSample App(string name, double cpu, double memoryMb, double io = 0) =>
         new("name:" + name.ToUpperInvariant(), name, 1, cpu, (ulong)(memoryMb * 1024 * 1024), io);
+
+    /// <summary>An alert raised at <paramref name="raised"/> (resolved after <paramref name="lasted"/> when given).</summary>
+    public static Sysora.Core.Alerts.Alert Alert(
+        string ruleId,
+        DateTimeOffset raised,
+        Sysora.Core.Alerts.AlertSeverity severity = Sysora.Core.Alerts.AlertSeverity.Warning,
+        TimeSpan? lasted = null,
+        string? appKey = null,
+        string? key = null,
+        string? title = null) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            RuleId = ruleId,
+            Key = key ?? (appKey is null ? ruleId : $"{ruleId}:{appKey}"),
+            Title = title ?? ruleId,
+            Severity = severity,
+            Status = lasted is null ? Sysora.Core.Alerts.AlertStatus.New : Sysora.Core.Alerts.AlertStatus.Resolved,
+            RaisedAt = raised,
+            UpdatedAt = raised + (lasted ?? TimeSpan.Zero),
+            ResolvedAt = lasted is { } duration ? raised + duration : null,
+            Metric = ruleId,
+            Value = "test",
+            Context = string.Empty,
+            Explanation = string.Empty,
+            AppKey = appKey,
+        };
+
+    /// <summary>A fixed volume.</summary>
+    public static StorageMetrics Volume(string letter, double totalGb, double freeGb, bool system = false) =>
+        StorageMetrics.FromTotalAndFree(letter + "\\", (ulong)(totalGb * (1UL << 30)), (ulong)(freeGb * (1UL << 30))) with
+        {
+            Kind = DriveKind.Fixed,
+            IsSystemDrive = system,
+        };
 }
 
 /// <summary>A settings store that keeps nothing (tests never touch the user's settings file).</summary>

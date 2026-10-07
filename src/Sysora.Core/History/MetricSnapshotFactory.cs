@@ -43,6 +43,7 @@ public static class MetricSnapshotFactory
                 : null,
             GpuPercent = snapshot.Gpus?.Where(g => g.UsagePercent is not null).Select(g => g.UsagePercent).Max(),
             ProcessCount = snapshot.Processes?.ProcessCount,
+            SystemDriveFreeBytes = snapshot.SystemDrive?.FreeBytes,
             TopApps = topApps,
         };
     }

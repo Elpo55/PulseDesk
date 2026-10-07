@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using Sysora.Core.Alerts;
 using Sysora.Core.Changes;
 using Sysora.Core.Gaming;
+using Sysora.Core.Troubleshooting;
 
 namespace Sysora.Core.History;
 
@@ -29,6 +30,10 @@ public static class AnalysisJson
 
     public static GameSession? DeserializeGameSession(string json) => TryDeserialize(json, AnalysisJsonContext.Default.GameSession);
 
+    public static string Serialize(TroubleshootingReport report) => JsonSerializer.Serialize(report, AnalysisJsonContext.Default.TroubleshootingReport);
+
+    public static TroubleshootingReport? DeserializeTroubleshootingReport(string json) => TryDeserialize(json, AnalysisJsonContext.Default.TroubleshootingReport);
+
     private static T? TryDeserialize<T>(string json, System.Text.Json.Serialization.Metadata.JsonTypeInfo<T> type)
         where T : class
     {
@@ -51,4 +56,5 @@ public static class AnalysisJson
 [JsonSerializable(typeof(SystemBaseline))]
 [JsonSerializable(typeof(DetectedChange))]
 [JsonSerializable(typeof(GameSession))]
+[JsonSerializable(typeof(TroubleshootingReport))]
 internal sealed partial class AnalysisJsonContext : JsonSerializerContext;

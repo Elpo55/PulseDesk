@@ -46,6 +46,7 @@ public static class SettingsValidator
 
     private static MonitoringSettings Normalize(MonitoringSettings monitoring) => monitoring with
     {
+        Intensity = DefinedOr(monitoring.Intensity, MonitoringIntensity.Balanced),
         CpuIntervalMs = Math.Clamp(monitoring.CpuIntervalMs, MinIntervalMs, 10_000),
         MemoryIntervalMs = Math.Clamp(monitoring.MemoryIntervalMs, MinIntervalMs, 10_000),
         NetworkIntervalMs = Math.Clamp(monitoring.NetworkIntervalMs, MinIntervalMs, 10_000),

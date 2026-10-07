@@ -28,6 +28,34 @@ account, no server, no telemetry, and it works offline.
 
 Sysora does more than show numbers: it detects, explains and helps you understand what happens on your PC.
 
+- **PC Health**: "In what state is my PC?" A score out of 100 where every point taken off is explained: CPU, memory,
+  storage, disk activity, GPU, temperatures, stability (recurring problems), recent anomalies and your usual behavior,
+  from 15-minute averages so a short spike barely counts. An area that cannot be measured is shown as "Not available"
+  and left out of the score
+- **Why now?**: when CPU, memory, disk, GPU or network rises, Sysora finds when it started, from what level, the likely
+  contributor (with how much of the increase it accounts for), what happened at the same time and how often it happened
+  before. Every statement is labeled *observed*, *inferred* or *unknown*; a cause is never stated as certain
+- **Compare (before / after)**: now vs 1 hour ago, now vs yesterday, today vs yesterday, before / during / after a game,
+  a game vs the previous one, before vs after any moment, or two moments; values, difference, relative change and importance
+- **Since yesterday**: significant and minor changes since yesterday's snapshot (applications, startup programs, Windows,
+  devices, disk space, activity, alerts), with the areas that did not change and those that could not be compared
+- **Recurring problems**: problems that came back on several days (high CPU or memory, busy disk, an application, lost
+  Internet access), with when they tend to happen and the application most often involved, once enough history exists
+- **Timeline**: everything important in one list with real timestamps: applications started and closed, games, alerts,
+  spikes and returns to normal, detected changes, sleep, network and devices, investigations. Each entry opens Replay at
+  that moment, a before / after comparison or the page with more context
+- **Troubleshooting mode**: investigate a problem for 2 to 30 minutes with detailed collection (even with the window
+  hidden), then read the anomalies, the applications involved, the correlations, what is unknown and what to try.
+  Collection returns to normal by itself
+- **Large files**: on demand, read-only, cancellable scan of a volume or folder for the files taking the most space,
+  grouped by type, extension or folder. Folders Windows refuses to list are reported, never counted as empty. Sysora never
+  moves, changes or deletes a file
+- **Report export**: PC Health, Diagnosis, Why now, Replay, game recaps, App Impact, Alerts, Changes, comparisons, the
+  Timeline, investigations and Large files as a readable HTML page (prints to PDF) or structured JSON
+- **Monitoring intensity**: Minimal (gaming, battery), Balanced or Detailed, with real differences in sampling, data kept
+  per sample and evaluation frequency
+- **Sysora impact**: Sysora's own CPU, memory, .NET allocations, garbage collections, disk writes and collection rate, with a
+  warning if it ever stays above its CPU budget
 - **Diagnosis**: "Why is my PC slow?" Deterministic rules check CPU, memory, disks, GPU, network, applications and
   uptime, and explain each finding with the data behind it, a comparison with your usual activity and a confidence level
 - **Replay**: look back at the last minutes (every second) or hours (per minute): charts with a cursor, the values and
@@ -129,7 +157,7 @@ certificate is needed. Useful options:
 | --- | --- |
 | `--demo` | Simulated metrics (clearly labeled), for UI work and screenshots |
 | `--tray` | Start hidden in the notification area |
-| `--page=Processes` | Open on a given page (`Dashboard`, `Diagnosis`, `Replay`, `AppImpact`, `Changes`, `Alerts`, `Gaming`, `Performance`, `Processes`, `Storage`, `Network`, `System`, `Settings`) |
+| `--page=Processes` | Open on a given page (`Dashboard`, `PcHealth`, `Timeline`, `Diagnosis`, `Troubleshooting`, `Replay`, `Compare`, `AppImpact`, `Changes`, `Alerts`, `Gaming`, `Performance`, `Processes`, `Storage`, `LargeFiles`, `Network`, `System`, `Settings`) |
 
 Pass them after `--` with `dotnet run`, for example `dotnet run --project src/Sysora.App -- --demo`.
 
@@ -141,8 +169,10 @@ dotnet test --project src/Sysora.Tests
 
 The unit tests cover the Core logic (ring buffers, history, formatting, trends, thresholds, anomaly
 detection, health, settings serialization, the monitoring loop, diagnosis, alerts, app impact, change detection,
-replay), the SQLite history (in memory) and the pure parsing helpers of the Windows layer. They use simulated data
-and never depend on the machine's hardware.
+replay, PC Health, why now, comparisons, since yesterday, recurring problems, timeline, troubleshooting, monitoring
+intensity, Sysora's own impact, insights, large-file scans and reports), the SQLite history (in memory and on disk,
+including schema upgrades) and the pure parsing helpers of the Windows layer. They use simulated data, a fixed culture
+and fake clocks, and never depend on the machine's hardware.
 
 ## Project structure
 
@@ -162,13 +192,14 @@ to contribute.
 
 ## Roadmap
 
-Done: local history with retention, notifications for lasting problems, Diagnosis, Replay, App Impact, Changes and
-intelligent alerts (see [IMPLEMENTATION_NOTES.md](IMPLEMENTATION_NOTES.md)). Planned next:
+Done: local history with retention, notifications for lasting problems, Diagnosis, Replay, App Impact, Changes,
+intelligent alerts, gaming recaps, PC Health, Why now, Compare, Since yesterday, recurring problems, Timeline,
+Troubleshooting, Large files, report export and monitoring intensity (see [IMPLEMENTATION_NOTES.md](IMPLEMENTATION_NOTES.md)).
+Planned next:
 
 1. **Advanced GPU metrics**: temperature and clock speed through the documented D3DKMT adapter statistics, where drivers expose them
-2. **Storage analyzer**: on-demand, read-only folder sizes
-3. Per-process network usage, export of a diagnosis or a replay period, change detection for drivers and services,
-   monitoring profiles, an optional local API (for example for Windows Orchestrator)
+2. Per-process network usage (optional, administrator-level event tracing), change detection for drivers and services
+3. An optional local API (for example for Windows Orchestrator)
 
 ## License
 

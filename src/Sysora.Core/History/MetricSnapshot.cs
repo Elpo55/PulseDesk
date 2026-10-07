@@ -49,6 +49,9 @@ public sealed record MetricSnapshot
     /// <summary>Number of running processes.</summary>
     public int? ProcessCount { get; init; }
 
+    /// <summary>Free space on the volume Windows runs from, in bytes.</summary>
+    public double? SystemDriveFreeBytes { get; init; }
+
     /// <summary>
     /// Applications using the most resources at that time (by CPU, memory and I/O). The same list instance is
     /// shared by consecutive snapshots until processes are sampled again.
@@ -65,6 +68,7 @@ public sealed record MetricSnapshot
         HistoryMetric.NetworkSend => NetworkSendBitsPerSecond,
         HistoryMetric.Gpu => GpuPercent,
         HistoryMetric.ProcessCount => ProcessCount,
+        HistoryMetric.SystemDriveFree => SystemDriveFreeBytes,
         _ => null,
     };
 }
@@ -88,4 +92,7 @@ public enum HistoryMetric
     NetworkSend,
     Gpu,
     ProcessCount,
+
+    /// <summary>Free space on the Windows volume, bytes.</summary>
+    SystemDriveFree,
 }

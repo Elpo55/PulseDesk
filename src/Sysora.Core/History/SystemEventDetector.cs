@@ -31,10 +31,55 @@ public sealed class SystemEventDetector
     /// <summary>Minimum time between two events of the same kind for the same application.</summary>
     public static readonly TimeSpan AppEventInterval = TimeSpan.FromMinutes(5);
 
+    /// <summary>An application is reported as started only when its first process started this recently.</summary>
+    public static readonly TimeSpan StartRecency = TimeSpan.FromMinutes(2);
+
+    /// <summary>Minimum time between two "started" events for the same application (an application that restarts often stays quiet).</summary>
+    public static readonly TimeSpan AppStartInterval = TimeSpan.FromMinutes(30);
+
+    /// <summary>Most started applications followed at once, so their closing can be reported.</summary>
+    public const int MaxFollowedStarts = 200;
+
+    /// <summary>Background helpers that start and stop constantly: never reported as application launches.</summary>
+    private static readonly HashSet<string> IgnoredLaunches = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "conhost.exe", "dllhost.exe", "rundll32.exe", "backgroundTaskHost.exe", "RuntimeBroker.exe", "WerFault.exe",
+        "SearchProtocolHost.exe", "SearchFilterHost.exe", "smartscreen.exe", "taskhostw.exe", "WmiPrvSE.exe",
+        "TextInputHost.exe", "ShellExperienceHost.exe", "StartMenuExperienceHost.exe", "SystemSettingsBroker.exe",
+        "CompPkgSrv.exe", "consent.exe", "sihost.exe", "ctfmon.exe", "msedgewebview2.exe", "crashpad_handler.exe",
+    };
+
+    private static readonly string WindowsDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+
+    /// <summary>Title of the event recorded when Windows reports Internet access again.</summary>
+    public const string InternetAvailableTitle = "Internet access available";
+
+    /// <summary>Title of the event recorded when Windows reports limited Internet access.</summary>
+    public const string InternetLimitedTitle = "Internet access limited";
+
+    /// <summary>Title of the event recorded when only the local network remains reachable.</summary>
+    public const string InternetLostTitle = "Internet access lost (local network only)";
+
+    /// <summary>Title of the event recorded when Windows reports no network connection.</summary>
+    public const string NetworkLostTitle = "Network connection lost";
+
+    /// <summary>True for a connectivity event that reports a loss or a limitation of Internet access.</summary>
+    public static bool IsConnectivityLoss(SystemEvent systemEvent)
+    {
+        ArgumentNullException.ThrowIfNull(systemEvent);
+        return systemEvent.Kind == SystemEventKind.ConnectivityChanged
+            && systemEvent.Title is InternetLimitedTitle or InternetLostTitle or NetworkLostTitle;
+    }
+
     private readonly HashSet<string> _highCpu = new(StringComparer.Ordinal);
     private readonly HashSet<string> _highMemory = new(StringComparer.Ordinal);
     private readonly Dictionary<(string Key, SystemEventKind Kind), DateTimeOffset> _lastAppEvent = [];
     private Dictionary<string, AppGroup> _notable = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, PendingStart> _pendingStarts = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, (DateTimeOffset Started, string Name)> _followed = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, DateTimeOffset> _lastStart = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _present = new(StringComparer.Ordinal);
+    private bool _processesSampled;
     private NetworkConnectivity? _connectivity;
     private HashSet<string>? _volumes;
     private MetricKind? _unavailable;
@@ -105,10 +150,10 @@ public sealed class SystemEventDetector
         {
             var title = connectivity switch
             {
-                NetworkConnectivity.InternetAccess => "Internet access available",
-                NetworkConnectivity.ConstrainedInternetAccess => "Internet access limited",
-                NetworkConnectivity.LocalAccess => "Internet access lost (local network only)",
-                _ => "Network connection lost",
+                NetworkConnectivity.InternetAccess => InternetAvailableTitle,
+                NetworkConnectivity.ConstrainedInternetAccess => InternetLimitedTitle,
+                NetworkConnectivity.LocalAccess => InternetLostTitle,
+                _ => NetworkLostTitle,
             };
             events.Add(new SystemEvent(time, SystemEventKind.ConnectivityChanged, title, "As reported by Windows"));
         }
@@ -175,16 +220,25 @@ public sealed class SystemEventDetector
             }
         }
 
+        DetectStarts(apps, present, time, events);
+
         foreach (var (key, last) in _notable)
         {
             if (!present.ContainsKey(key))
             {
+                var ran = _followed.Remove(key, out var followed) ? $"Ran for {MetricFormatter.DurationCompact(time - followed.Started)}. " : string.Empty;
                 events.Add(new SystemEvent(time, SystemEventKind.AppExited, $"{last.Identity.Name} exited",
-                    Invariant($"Was using {last.CpuPercent:0.#}% CPU and {MetricFormatter.Bytes(last.PrivateWorkingSetBytes)} of memory"))
+                    Invariant($"{ran}Was using {last.CpuPercent:0.#}% CPU and {MetricFormatter.Bytes(last.PrivateWorkingSetBytes)} of memory"))
                 { AppKey = key });
                 _highCpu.Remove(key);
                 _highMemory.Remove(key);
             }
+        }
+
+        foreach (var (key, (started, name)) in _followed.Count == 0 ? [] : _followed.Where(f => !present.ContainsKey(f.Key) && !_notable.ContainsKey(f.Key)).ToArray())
+        {
+            _followed.Remove(key);
+            events.Add(new SystemEvent(time, SystemEventKind.AppExited, $"{name} closed", $"Ran for {MetricFormatter.DurationCompact(time - started)}") { AppKey = key });
         }
 
         _notable = apps
@@ -198,6 +252,64 @@ public sealed class SystemEventDetector
             _lastAppEvent.Remove(entry);
         }
     }
+
+    /// <summary>
+    /// Applications that started since the previous process sample: confirmed one sample later (a process that ran for
+    /// a second is not a launch), only in a user session, outside the Windows folder, and not background helpers. The
+    /// very first sample only records what is running: those applications were started before Sysora saw them.
+    /// </summary>
+    private void DetectStarts(IReadOnlyList<AppGroup> apps, Dictionary<string, AppGroup> present, DateTimeOffset time, List<SystemEvent> events)
+    {
+        foreach (var (key, pending) in _pendingStarts.Count == 0 ? [] : _pendingStarts.ToArray())
+        {
+            _pendingStarts.Remove(key);
+            if (!present.TryGetValue(key, out var app)
+                || (_lastStart.TryGetValue(key, out var last) && pending.FirstSeen - last < AppStartInterval))
+            {
+                continue;
+            }
+
+            _lastStart[key] = pending.FirstSeen;
+            if (_followed.Count < MaxFollowedStarts)
+            {
+                _followed[key] = (pending.StartedAt, app.Identity.Name);
+            }
+
+            var where = app.Identity.ExecutablePath is { } path ? Path.GetDirectoryName(path) : null;
+            events.Add(new SystemEvent(pending.FirstSeen, SystemEventKind.AppStarted, $"{app.Identity.Name} started", where) { AppKey = key });
+        }
+
+        if (_processesSampled)
+        {
+            foreach (var app in apps)
+            {
+                var key = app.Identity.Key;
+                if (!_present.Contains(key) && IsLaunch(app, time))
+                {
+                    _pendingStarts[key] = new PendingStart(time, app.StartedAt!.Value);
+                }
+            }
+        }
+
+        _processesSampled = true;
+        _present.Clear();
+        _present.UnionWith(present.Keys);
+        if (_lastStart.Count > 0)
+        {
+            foreach (var stale in _lastStart.Where(e => time - e.Value > AppStartInterval).Select(e => e.Key).ToArray())
+            {
+                _lastStart.Remove(stale);
+            }
+        }
+    }
+
+    private static bool IsLaunch(AppGroup app, DateTimeOffset time) =>
+        app.InUserSession
+        && app.StartedAt is { } started
+        && time - started <= StartRecency
+        && app.Identity.ExecutablePath is { } path
+        && !IgnoredLaunches.Contains(app.Identity.Name)
+        && (WindowsDirectory.Length == 0 || !path.StartsWith(WindowsDirectory, StringComparison.OrdinalIgnoreCase));
 
     private bool AllowAppEvent(string key, SystemEventKind kind, DateTimeOffset time)
     {
@@ -220,4 +332,6 @@ public sealed class SystemEventDetector
     };
 
     private static string Invariant(FormattableString text) => text.ToString(CultureInfo.InvariantCulture);
+
+    private readonly record struct PendingStart(DateTimeOffset FirstSeen, DateTimeOffset StartedAt);
 }

@@ -49,6 +49,11 @@ public enum DiagnosisAction
     Alerts,
     Changes,
     Gaming,
+    PcHealth,
+    Timeline,
+    Compare,
+    Troubleshooting,
+    LargeFiles,
 }
 
 /// <summary>Overall state of the PC, as shown on the dashboard.</summary>

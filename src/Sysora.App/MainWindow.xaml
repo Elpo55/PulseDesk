@@ -72,14 +72,42 @@
                         <FontIcon Glyph="&#xE80F;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
+                <NavigationViewItem AutomationProperties.AutomationId="NavPcHealth" Content="PC Health" Tag="PcHealth">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xEB51;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem AutomationProperties.AutomationId="NavTimeline" Content="Timeline" Tag="Timeline">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE823;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItemSeparator />
+                <NavigationViewItemHeader Content="Investigate" />
                 <NavigationViewItem AutomationProperties.AutomationId="NavDiagnosis" Content="Diagnosis" Tag="Diagnosis">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE95E;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
+                <NavigationViewItem AutomationProperties.AutomationId="NavTroubleshooting" Content="Troubleshooting" Tag="Troubleshooting">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE90F;" />
+                    </NavigationViewItem.Icon>
+                    <NavigationViewItem.InfoBadge>
+                        <InfoBadge
+                            AutomationProperties.Name="Investigation in progress"
+                            Style="{StaticResource AttentionDotInfoBadgeStyle}"
+                            Visibility="{x:Bind ViewModel.IsInvestigating, Mode=OneWay}" />
+                    </NavigationViewItem.InfoBadge>
+                </NavigationViewItem>
                 <NavigationViewItem AutomationProperties.AutomationId="NavReplay" Content="Replay" Tag="Replay">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE81C;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem AutomationProperties.AutomationId="NavCompare" Content="Compare" Tag="Compare">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE81E;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
                 <NavigationViewItem AutomationProperties.AutomationId="NavAppImpact" Content="App Impact" Tag="AppImpact">
@@ -131,6 +159,11 @@
                         <FontIcon Glyph="&#xEDA2;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
+                <NavigationViewItem AutomationProperties.AutomationId="NavLargeFiles" Content="Large files" Tag="LargeFiles">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE8B7;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
                 <NavigationViewItem AutomationProperties.AutomationId="NavNetwork" Content="Network" Tag="Network">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE968;" />
@@ -143,7 +176,22 @@
                 </NavigationViewItem>
             </NavigationView.MenuItems>
 
-            <Frame x:Name="ContentFrame" />
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <InfoBar
+                    Margin="24,8,24,0"
+                    IsOpen="{x:Bind ViewModel.IsMessageOpen, Mode=TwoWay}"
+                    Message="{x:Bind ViewModel.MessageText, Mode=OneWay}"
+                    Severity="{x:Bind ViewModel.MessageSeverity, Mode=OneWay}">
+                    <InfoBar.ActionButton>
+                        <Button Command="{x:Bind ViewModel.OpenMessageFolderCommand}" Content="Open folder" Visibility="{x:Bind ViewModel.HasMessageFolder, Mode=OneWay}" />
+                    </InfoBar.ActionButton>
+                </InfoBar>
+                <Frame x:Name="ContentFrame" Grid.Row="1" />
+            </Grid>
         </NavigationView>
     </Grid>
 </Window>

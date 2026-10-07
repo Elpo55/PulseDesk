@@ -59,7 +59,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         _games = games;
         IsDemoMode = options.DemoMode;
         _loading = true;
-        StartupStatus = SelfCpu = SelfMemory = Throttle = HistoryStatus = string.Empty;
+        StartupStatus = HistoryStatus = IntensityDescription = EffectiveIntervals = SelfImpactHeadline = SelfImpactWarnings = string.Empty;
         ReplayDuration = ReplayDurations[2];
         RealtimeInterval = RealtimeIntervals[1];
         DetailInterval = DetailIntervals[1];
@@ -126,6 +126,17 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     [ObservableProperty]
     public partial bool IsPaused { get; set; }
+
+    /// <summary>0 = Minimal, 1 = Balanced, 2 = Detailed.</summary>
+    [ObservableProperty]
+    public partial int IntensityIndex { get; set; }
+
+    [ObservableProperty]
+    public partial string IntensityDescription { get; set; }
+
+    /// <summary>The intervals in effect right now (intensity, background mode, investigation, CPU budget).</summary>
+    [ObservableProperty]
+    public partial string EffectiveIntervals { get; set; }
 
     [ObservableProperty]
     public partial IntervalOption RealtimeInterval { get; set; }
@@ -259,14 +270,17 @@ public sealed partial class SettingsViewModel : PageViewModel
     [ObservableProperty]
     public partial int LogLevelIndex { get; set; }
 
+    /// <summary>Sysora's own impact: "Sysora impact: Low".</summary>
     [ObservableProperty]
-    public partial string SelfCpu { get; set; }
+    public partial string SelfImpactHeadline { get; set; }
+
+    public ObservableCollection<Core.Monitoring.SelfImpactItem> SelfImpactItems { get; } = [];
 
     [ObservableProperty]
-    public partial string SelfMemory { get; set; }
+    public partial string SelfImpactWarnings { get; set; }
 
     [ObservableProperty]
-    public partial string Throttle { get; set; }
+    public partial bool HasSelfImpactWarnings { get; set; }
 
     [RelayCommand]
     private void OpenLogsFolder() => _launcher.OpenFolder(Path.Combine(_paths.DataDirectory, "Logs"));
@@ -485,6 +499,13 @@ public sealed partial class SettingsViewModel : PageViewModel
         }
     }
 
+    partial void OnIntensityIndexChanged(int value)
+    {
+        var intensity = (MonitoringIntensity)Math.Clamp(value, 0, 2);
+        IntensityDescription = Core.Monitoring.MonitoringProfile.Describe(intensity);
+        Save(s => s with { Monitoring = s.Monitoring with { Intensity = intensity } });
+    }
+
     partial void OnRealtimeIntervalChanged(IntervalOption value) =>
         Save(s => s with
         {
@@ -606,6 +627,8 @@ public sealed partial class SettingsViewModel : PageViewModel
 
             var monitoring = settings.Monitoring;
             IsPaused = Hub.Monitor.IsPaused;
+            IntensityIndex = (int)monitoring.Intensity;
+            IntensityDescription = Core.Monitoring.MonitoringProfile.Describe(monitoring.Intensity);
             RealtimeInterval = Pick(RealtimeIntervals, monitoring.CpuIntervalMs);
             DetailInterval = Pick(DetailIntervals, monitoring.ProcessIntervalMs);
             StorageInterval = Pick(StorageIntervals, monitoring.StorageIntervalSeconds * 1000);
@@ -698,12 +721,23 @@ public sealed partial class SettingsViewModel : PageViewModel
     private void UpdateOverhead()
     {
         _lastOverheadUpdate = Environment.TickCount64;
-        var usage = Hub.Monitor.SelfUsage;
-        SelfCpu = usage.CpuPercent is { } cpu ? $"≈ {MetricFormatter.Percent(cpu, 2)}" : "Measuring…";
-        SelfMemory = usage.WorkingSetBytes > 0 ? $"≈ {MetricFormatter.Bytes((ulong)usage.WorkingSetBytes)}" : "Measuring…";
-        Throttle = usage.ThrottleFactor > 1.01
-            ? $"Intervals stretched ×{usage.ThrottleFactor:0.##} to stay within the CPU budget"
-            : "Running at the configured intervals";
+        var monitor = Hub.Monitor;
+        var schedule = monitor.ScheduleInfo;
+        var report = Core.Monitoring.SelfImpactAssessor.Assess(monitor.SelfUsage, schedule, _settings.Current.Monitoring.MaxSelfCpuPercent);
+        SelfImpactHeadline = report.Headline;
+        EffectiveIntervals = Core.Monitoring.SelfImpactAssessor.IntervalsText(schedule)
+            + (schedule.ThrottleFactor > 1.01 ? string.Create(System.Globalization.CultureInfo.CurrentCulture, $" · stretched ×{schedule.ThrottleFactor:0.##} to stay within the CPU budget") : string.Empty);
+        if (!SelfImpactItems.SequenceEqual(report.Items))
+        {
+            SelfImpactItems.Clear();
+            foreach (var item in report.Items)
+            {
+                SelfImpactItems.Add(item);
+            }
+        }
+
+        SelfImpactWarnings = string.Join(Environment.NewLine, report.Warnings);
+        HasSelfImpactWarnings = report.Warnings.Count > 0;
     }
 
     private async Task UpdateHistoryStatusAsync()

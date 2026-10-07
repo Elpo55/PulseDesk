@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 
 namespace Sysora.Core.Settings;
@@ -9,8 +10,20 @@ namespace Sysora.Core.Settings;
 /// Unknown properties are ignored and missing ones keep their default value, so files written by
 /// older or newer versions of Sysora still load.
 /// </summary>
+/// <remarks>
+/// Settings are immutable records with <c>init</c> properties, which the serializer sets all at once: a property absent
+/// from a section that is present would get <c>default(T)</c> (false, 0, the first enum value) instead of its declared
+/// default. The stored document is therefore laid over the serialized defaults before it is read, so a setting added by
+/// a newer version always starts at its intended default.
+/// </remarks>
 public static class SettingsSerializer
 {
+    private static readonly JsonDocumentOptions ReadOptions = new()
+    {
+        AllowTrailingCommas = true,
+        CommentHandling = JsonCommentHandling.Skip,
+    };
+
     public static string Serialize(AppSettings settings) =>
         JsonSerializer.Serialize(SettingsValidator.Normalize(settings), SettingsJsonContext.Default.AppSettings);
 
@@ -32,7 +45,15 @@ public static class SettingsSerializer
 
         try
         {
-            var parsed = JsonSerializer.Deserialize(json, SettingsJsonContext.Default.AppSettings);
+            if (JsonNode.Parse(json, documentOptions: ReadOptions) is not JsonObject stored)
+            {
+                error = "The settings document is not a JSON object.";
+                return false;
+            }
+
+            var document = JsonNode.Parse(Serialize(AppSettings.Default))!.AsObject();
+            Merge(document, stored);
+            var parsed = document.Deserialize(SettingsJsonContext.Default.AppSettings);
             if (parsed is null)
             {
                 error = "The settings document is null.";
@@ -47,6 +68,23 @@ public static class SettingsSerializer
         {
             error = ex.Message;
             return false;
+        }
+    }
+
+    /// <summary>Copies <paramref name="source"/> over <paramref name="target"/>, section by section (stored values win).</summary>
+    private static void Merge(JsonObject target, JsonObject source)
+    {
+        foreach (var (name, value) in source.ToArray())
+        {
+            if (value is JsonObject section && target[name] is JsonObject defaults)
+            {
+                Merge(defaults, section);
+                continue;
+            }
+
+            // A node belongs to one parent: detach it before moving it.
+            source.Remove(name);
+            target[name] = value;
         }
     }
 }

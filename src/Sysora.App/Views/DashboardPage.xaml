@@ -89,6 +89,63 @@
                     Value="{x:Bind ViewModel.Network.Value, Mode=OneWay}" />
             </controls:AdaptiveGridPanel>
 
+            <!-- PC Health and what changed since yesterday -->
+            <controls:AdaptiveGridPanel MinItemWidth="420">
+                <Button
+                    Padding="16"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Stretch"
+                    VerticalAlignment="Stretch"
+                    VerticalContentAlignment="Top"
+                    AutomationProperties.Name="PC Health, open the details"
+                    Command="{x:Bind ViewModel.OpenPcHealthCommand}">
+                    <Grid ColumnSpacing="14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <controls:StatusIcon VerticalAlignment="Top" BrushKey="{x:Bind ViewModel.HealthBrushKey, Mode=OneWay}" Glyph="{x:Bind ViewModel.HealthGlyph, Mode=OneWay}" GlyphSize="24" />
+                        <StackPanel Grid.Column="1" Spacing="2">
+                            <TextBlock Style="{StaticResource LabelTextStyle}" Text="PC HEALTH" />
+                            <TextBlock>
+                                <Run FontSize="24" FontWeight="SemiBold" Text="{x:Bind ViewModel.HealthScoreText, Mode=OneWay}" />
+                                <Run Text="  " />
+                                <Run Text="{x:Bind ViewModel.HealthGradeText, Mode=OneWay}" />
+                            </TextBlock>
+                            <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind ViewModel.HealthDetail, Mode=OneWay}" />
+                        </StackPanel>
+                    </Grid>
+                </Button>
+                <Button
+                    Padding="16"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Stretch"
+                    VerticalAlignment="Stretch"
+                    VerticalContentAlignment="Top"
+                    AutomationProperties.Name="Since yesterday, open Changes"
+                    Command="{x:Bind ViewModel.OpenChangesCommand}">
+                    <StackPanel Spacing="4">
+                        <TextBlock Style="{StaticResource LabelTextStyle}" Text="SINCE YESTERDAY" />
+                        <StackPanel Orientation="Horizontal" Spacing="16">
+                            <StackPanel Orientation="Horizontal" Spacing="6" Visibility="{x:Bind ViewModel.HasSignificantChanges, Mode=OneWay}">
+                                <controls:StatusIcon BrushKey="StatusCriticalBrush" Glyph="&#xEA39;" GlyphSize="14" />
+                                <TextBlock><Run Text="{x:Bind ViewModel.SignificantChanges, Mode=OneWay}" /><Run Text=" significant" /></TextBlock>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="6" Visibility="{x:Bind ViewModel.HasMinorChanges, Mode=OneWay}">
+                                <controls:StatusIcon BrushKey="StatusWarningBrush" Glyph="&#xE7BA;" GlyphSize="14" />
+                                <TextBlock><Run Text="{x:Bind ViewModel.MinorChanges, Mode=OneWay}" /><Run Text=" minor" /></TextBlock>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="6" Visibility="{x:Bind ViewModel.IsMostlyUnchanged, Mode=OneWay}">
+                                <controls:StatusIcon BrushKey="StatusNormalBrush" Glyph="&#xE73E;" GlyphSize="14" />
+                                <TextBlock Text="Most of your system is unchanged" />
+                            </StackPanel>
+                        </StackPanel>
+                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind ViewModel.SinceYesterdayHeadline, Mode=OneWay}" />
+                        <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind ViewModel.SinceYesterdayDetail, Mode=OneWay}" />
+                    </StackPanel>
+                </Button>
+            </controls:AdaptiveGridPanel>
+
             <!-- Insights and quick actions -->
             <Grid ColumnSpacing="12" RowSpacing="12">
                 <Grid.ColumnDefinitions>
@@ -133,6 +190,18 @@
                             <StackPanel Orientation="Horizontal" Spacing="10">
                                 <FontIcon FontSize="14" Glyph="&#xE95E;" />
                                 <TextBlock Text="Diagnose" />
+                            </StackPanel>
+                        </Button>
+                        <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Command="{x:Bind ViewModel.OpenTroubleshootingCommand}" ToolTipService.ToolTip="Investigate a problem for a few minutes with detailed collection">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon FontSize="14" Glyph="&#xE90F;" />
+                                <TextBlock Text="Troubleshoot" />
+                            </StackPanel>
+                        </Button>
+                        <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Command="{x:Bind ViewModel.OpenTimelineCommand}" ToolTipService.ToolTip="Everything that happened, in order">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon FontSize="14" Glyph="&#xE823;" />
+                                <TextBlock Text="Timeline" />
                             </StackPanel>
                         </Button>
                         <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Command="{x:Bind ViewModel.OpenReplayCommand}" ToolTipService.ToolTip="What happened in the last minutes?">

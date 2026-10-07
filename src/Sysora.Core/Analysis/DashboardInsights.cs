@@ -3,6 +3,7 @@ using Sysora.Core.Alerts;
 using Sysora.Core.Diagnosis;
 using Sysora.Core.Formatting;
 using Sysora.Core.Gaming;
+using Sysora.Core.Health;
 using Sysora.Core.History;
 
 namespace Sysora.Core.Analysis;
@@ -57,13 +58,17 @@ public static class DashboardInsights
     /// <param name="baseline">Usual behavior.</param>
     /// <param name="games">Game sessions in progress.</param>
     /// <param name="lastGame">Recap of the last game session, if any.</param>
+    /// <param name="health">Latest PC Health score, if computed.</param>
+    /// <param name="recurring">Recurring problems of the last days, if known.</param>
     public static IReadOnlyList<Insight> Build(
         DiagnosisReport report,
         IReadOnlyList<Alert> alerts,
         IReadOnlyList<MetricSnapshot> recent,
         UsageBaseline baseline,
         IReadOnlyList<LiveGameSession>? games = null,
-        GameRecap? lastGame = null)
+        GameRecap? lastGame = null,
+        PcHealthReport? health = null,
+        RecurringProblemReport? recurring = null)
     {
         ArgumentNullException.ThrowIfNull(report);
         ArgumentNullException.ThrowIfNull(alerts);
@@ -111,6 +116,25 @@ public static class DashboardInsights
             });
         }
 
+        if (Repeated(alerts, report.Timestamp) is { } repeated)
+        {
+            insights.Add(repeated);
+        }
+
+        if (recurring is { Problems: [var problem, ..] })
+        {
+            insights.Add(new Insight($"Recurring: {problem.Description}" + (problem.TimePattern is { } pattern ? $" {pattern}." : string.Empty), DiagnosisSeverity.Info, DiagnosisAction.PcHealth)
+            {
+                AppKey = problem.AssociatedAppKey,
+            });
+        }
+
+        if (health is { Score: { } score, Grade: PcHealthGrade.NeedsAttention or PcHealthGrade.Poor }
+            && health.Components.Where(c => c.Penalty > 0).MaxBy(c => c.Penalty) is { } lowest)
+        {
+            insights.Add(new Insight($"PC Health is {score}/100, lowered mostly by {lowest.Name.ToLowerInvariant()}: {lowest.Summary}", DiagnosisSeverity.Info, DiagnosisAction.PcHealth));
+        }
+
         if (Compared(recent, baseline) is { } comparison)
         {
             insights.Add(comparison);
@@ -121,6 +145,11 @@ public static class DashboardInsights
             insights.Add(consumer);
         }
 
+        if (Recovered(alerts, report.Timestamp) is { } recovered)
+        {
+            insights.Add(recovered);
+        }
+
         if (!baseline.IsReady && recent.Count > 0)
         {
             insights.Add(new Insight(baseline.Description, DiagnosisSeverity.Normal, DiagnosisAction.None) { IsNote = true });
@@ -129,6 +158,10 @@ public static class DashboardInsights
         if (!insights.Any(i => i.Severity >= DiagnosisSeverity.Info))
         {
             insights.Insert(0, new Insight(report.Results.Count == 0 ? "Analyzing the first measurements…" : "No significant issue detected", DiagnosisSeverity.Normal, DiagnosisAction.None));
+            if (WithinUsual(recent, baseline) is { } usual)
+            {
+                insights.Insert(1, usual);
+            }
         }
 
         return insights
@@ -170,6 +203,91 @@ public static class DashboardInsights
 
         return best;
     }
+
+    /// <summary>A resolved alert counts as a recovery for this long after it ended.</summary>
+    public static readonly TimeSpan RecoveryWindow = TimeSpan.FromMinutes(30);
+
+    /// <summary>Alerts counted when looking for a problem repeating the same day.</summary>
+    public static readonly TimeSpan RepeatWindow = TimeSpan.FromHours(24);
+
+    /// <summary>"Your PC recovered…": the latest warning that ended recently, when nothing of the same kind is still active.</summary>
+    private static Insight? Recovered(IReadOnlyList<Alert> alerts, DateTimeOffset now)
+    {
+        var resolved = alerts
+            .Where(a => a.Status == AlertStatus.Resolved && a.ResolvedAt is { } at && at <= now && now - at <= RecoveryWindow && a.Severity >= AlertSeverity.Warning)
+            .MaxBy(a => a.ResolvedAt);
+        if (resolved is null || alerts.Any(a => a.IsActive && a.RuleId == resolved.RuleId))
+        {
+            return null;
+        }
+
+        var at = resolved.ResolvedAt!.Value.ToLocalTime().ToString("t", CultureInfo.CurrentCulture);
+        return new Insight($"Your PC recovered after the last problem ({resolved.Title}): it ended at {at} and has not come back.", DiagnosisSeverity.Normal, DiagnosisAction.Replay)
+        {
+            AppKey = resolved.AppKey,
+        };
+    }
+
+    /// <summary>"This is the third busy disk alert in the last 24 hours", when a kind of alert repeats.</summary>
+    private static Insight? Repeated(IReadOnlyList<Alert> alerts, DateTimeOffset now)
+    {
+        var group = alerts
+            .Where(a => a.RaisedAt <= now && now - a.RaisedAt <= RepeatWindow)
+            .GroupBy(a => a.RuleId == "unusual" ? a.Key : a.RuleId == "app.cpu" ? $"{a.RuleId}:{a.AppKey}" : a.RuleId, StringComparer.Ordinal)
+            .Where(g => g.Count() >= 2)
+            .OrderByDescending(g => g.Count())
+            .ThenByDescending(g => g.Max(a => a.RaisedAt))
+            .FirstOrDefault();
+        if (group is null)
+        {
+            return null;
+        }
+
+        var newest = group.MaxBy(a => a.RaisedAt)!;
+        var kind = newest.RuleId switch
+        {
+            "cpu.sustained" => "high CPU",
+            "memory.sustained" => "high memory",
+            "memory.growth" => "rising memory",
+            "disk.busy" => "busy disk",
+            "app.cpu" => $"{RecurringProblemDetector.AppName(newest)} CPU",
+            "storage.low" => "low disk space",
+            _ => "unusual activity",
+        };
+        return new Insight($"This is the {Ordinal(group.Count())} {kind} alert in the last 24 hours (latest: {newest.Title}).", DiagnosisSeverity.Info, DiagnosisAction.Alerts)
+        {
+            AppKey = newest.AppKey,
+        };
+    }
+
+    /// <summary>"CPU and memory usage are within your usual range", when the baseline says so.</summary>
+    private static Insight? WithinUsual(IReadOnlyList<MetricSnapshot> recent, UsageBaseline baseline)
+    {
+        if (!baseline.IsReady || recent.Count == 0)
+        {
+            return null;
+        }
+
+        var window = recent.Where(s => s.Timestamp >= recent[^1].Timestamp - TimeSpan.FromMinutes(10)).ToArray();
+        foreach (var metric in new[] { HistoryMetric.Cpu, HistoryMetric.Memory })
+        {
+            if (baseline.Get(metric) is not { } usual || SnapshotStatistics.Summarize(window, s => s.Get(metric)) is not { } summary || summary.Average > usual.P95)
+            {
+                return null;
+            }
+        }
+
+        return new Insight("CPU and memory usage are within your usual range for this PC.", DiagnosisSeverity.Normal, DiagnosisAction.None) { IsNote = true };
+    }
+
+    private static string Ordinal(int value) => value switch
+    {
+        2 => "second",
+        3 => "third",
+        4 => "fourth",
+        5 => "fifth",
+        _ => string.Create(CultureInfo.InvariantCulture, $"{value}th"),
+    };
 
     /// <summary>The application using the most resources now, when it is significant.</summary>
     private static Insight? LargestConsumer(IReadOnlyList<MetricSnapshot> recent)

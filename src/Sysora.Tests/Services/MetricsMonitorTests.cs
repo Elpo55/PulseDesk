@@ -196,6 +196,57 @@ public sealed class MetricsMonitorTests : IAsyncLifetime
         Assert.True(_monitor.IsRunning);
     }
 
+    [Fact]
+    public async Task Intensity_ChangesTheEffectiveIntervals()
+    {
+        await StartAndWaitForFirstRoundAsync();
+        Assert.Equal(TimeSpan.FromSeconds(2), _monitor.ScheduleInfo.Get(MetricKind.Processes));
+        Assert.Equal(TimeSpan.FromSeconds(1), _monitor.ScheduleInfo.Get(MetricKind.Cpu));
+
+        _settings.Update(s => s with { Monitoring = s.Monitoring with { Intensity = MonitoringIntensity.Minimal } });
+        Assert.Equal(MonitoringIntensity.Minimal, _monitor.ScheduleInfo.Intensity);
+        Assert.Equal(TimeSpan.FromSeconds(6), _monitor.ScheduleInfo.Get(MetricKind.Processes));
+        Assert.Equal(TimeSpan.FromSeconds(2), _monitor.ScheduleInfo.Get(MetricKind.Cpu));
+        Assert.Equal(TimeSpan.FromSeconds(60), _monitor.ScheduleInfo.Get(MetricKind.Storage));
+
+        _settings.Update(s => s with { Monitoring = s.Monitoring with { Intensity = MonitoringIntensity.Detailed } });
+        Assert.Equal(TimeSpan.FromSeconds(1), _monitor.ScheduleInfo.Get(MetricKind.Processes));
+        Assert.Equal(TimeSpan.FromMilliseconds(500), _monitor.ScheduleInfo.Get(MetricKind.Cpu));
+    }
+
+    [Fact]
+    public async Task InvestigationMode_CollectsInDetail_EvenWhenTheWindowIsHidden()
+    {
+        await StartAndWaitForFirstRoundAsync();
+        _monitor.SetActivity(MonitoringActivity.Background);
+        Assert.Equal(TimeSpan.FromSeconds(10), _monitor.ScheduleInfo.Get(MetricKind.Processes));
+
+        _monitor.SetInvestigationMode(true);
+        Assert.True(_monitor.IsInvestigating);
+        Assert.True(_monitor.ScheduleInfo.Investigating);
+        Assert.False(_monitor.ScheduleInfo.Background);
+        Assert.Equal(TimeSpan.FromSeconds(1), _monitor.ScheduleInfo.Get(MetricKind.Processes));
+
+        _monitor.SetInvestigationMode(false);
+        Assert.Equal(MonitoringIntensity.Balanced, _monitor.ScheduleInfo.Intensity);
+        Assert.Equal(TimeSpan.FromSeconds(10), _monitor.ScheduleInfo.Get(MetricKind.Processes));
+    }
+
+    [Fact]
+    public async Task SelfUsage_ReportsCollectionRoundsAndAllocations_AfterAMeasurementPeriod()
+    {
+        await StartAndWaitForFirstRoundAsync();
+
+        await AdvanceUntilAsync(() => _monitor.SelfUsage.CollectionRoundsPerMinute is not null);
+
+        var usage = _monitor.SelfUsage;
+        Assert.InRange(usage.CollectionRoundsPerMinute!.Value, 30, 200);
+        Assert.NotNull(usage.AllocatedBytesPerSecond);
+        Assert.True(usage.ManagedHeapBytes > 0);
+        Assert.NotNull(usage.ProcessesAnalyzed);
+        Assert.False(usage.OverBudgetSustained);
+    }
+
     private MetricsMonitor CreateMonitor(MetricProviders providers) =>
         new(providers, _settings, NullLogger<MetricsMonitor>.Instance, _time, () => TimeSpan.Zero);
 

@@ -16,7 +16,14 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
+                <Button AutomationProperties.Name="Find large files" Grid.Column="2" VerticalAlignment="Center" Command="{x:Bind ViewModel.OpenLargeFilesCommand}" ToolTipService.ToolTip="Find the files that take the most space (read-only)">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon FontSize="14" Glyph="&#xE8B7;" />
+                        <TextBlock Text="Find large files" />
+                    </StackPanel>
+                </Button>
                 <StackPanel>
                     <TextBlock Style="{StaticResource PageTitleTextStyle}" Text="Storage" />
                     <TextBlock Style="{StaticResource PageSubtitleTextStyle}" Text="{x:Bind ViewModel.Summary, Mode=OneWay}" />

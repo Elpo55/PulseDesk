@@ -13,7 +13,7 @@ namespace Sysora.Core.History;
 /// </summary>
 public sealed class PerformanceHistory : IPerformanceHistory, IDisposable
 {
-    /// <summary>Applications kept per snapshot for each criterion (CPU, memory, I/O).</summary>
+    /// <summary>Applications kept per snapshot for each criterion (CPU, memory, I/O) with the Balanced intensity.</summary>
     public const int TopAppsPerCriterion = 5;
 
     /// <summary>Number of events kept in memory.</summary>
@@ -111,6 +111,18 @@ public sealed class PerformanceHistory : IPerformanceHistory, IDisposable
         return TimeSpan.FromMinutes(Math.Max(settings.History.ReplayMinutes, longest + 5));
     }
 
+    /// <summary>Applications kept per criterion: depends on the monitoring intensity (Detailed during an investigation).</summary>
+    private static int TopAppsFor(IMetricsMonitor? monitor, SettingsService? settings)
+    {
+        if (settings is null)
+        {
+            return TopAppsPerCriterion;
+        }
+
+        var intensity = monitor?.IsInvestigating == true ? MonitoringIntensity.Detailed : settings.Current.Monitoring.Intensity;
+        return Monitoring.MonitoringProfile.For(intensity).TopAppsPerCriterion;
+    }
+
     /// <summary>Number of snapshots needed to cover <paramref name="duration"/> at the fastest sampling interval.</summary>
     public static int CapacityFor(TimeSpan duration) =>
         (int)Math.Ceiling(duration.TotalMilliseconds / SettingsValidator.MinIntervalMs);
@@ -131,7 +143,7 @@ public sealed class PerformanceHistory : IPerformanceHistory, IDisposable
         if ((updated & MetricKind.Processes) != 0 && snapshot.Processes is { } processes)
         {
             apps = _grouper.Group(processes.Processes);
-            _topApps = AppGrouper.SelectTop(apps, TopAppsPerCriterion).Select(a => a.ToSample()).ToArray();
+            _topApps = AppGrouper.SelectTop(apps, TopAppsFor(_monitor, _settings)).Select(a => a.ToSample()).ToArray();
         }
         else if ((updated & MetricKind.Processes) != 0)
         {

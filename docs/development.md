@@ -30,10 +30,11 @@ In Visual Studio, open `Sysora.slnx`, set **Sysora.App** as the startup project 
 | `--demo` | Use `SimulatedMachine` instead of the Windows providers. The title bar shows "DEMO MODE". |
 | `--tray` | Start hidden in the notification area. |
 | `--startup` | Added by the Run key: applies "Start minimized" / "Start in tray". |
-| `--page=Name` | Open on a page (`Dashboard`, `Diagnosis`, `Replay`, `AppImpact`, `Changes`, `Alerts`, `Gaming`, `Performance`, `Processes`, `Storage`, `Network`, `System`, `Settings`). `History` opens Replay. |
+| `--page=Name` | Open on a page (`Dashboard`, `PcHealth`, `Timeline`, `Diagnosis`, `Troubleshooting`, `Replay`, `Compare`, `AppImpact`, `Changes`, `Alerts`, `Gaming`, `Performance`, `Processes`, `Storage`, `LargeFiles`, `Network`, `System`, `Settings`). `History` opens Replay. |
 
 Demo mode uses its own single-instance key, so it can run next to a normal instance. Its history is kept in
-memory only: simulated data never reaches the real history database.
+memory only: simulated data never reaches the real history database, and Large files scans a made-up folder tree
+instead of the real disk.
 
 ### Local data
 
@@ -41,7 +42,7 @@ memory only: simulated data never reaches the real history database.
 | --- | --- |
 | Settings | `%LOCALAPPDATA%\Sysora\settings.json` (delete it to reset) |
 | Logs | `%LOCALAPPDATA%\Sysora\Logs\sysora-YYYYMMDD.log` |
-| History (performance, application usage, events, alerts, snapshots, changes) | `%LOCALAPPDATA%\Sysora\history.db` (SQLite; delete it, or use Settings › History › Delete, to reset) |
+| History (performance, application usage, events, alerts, snapshots, changes, game sessions, investigations) | `%LOCALAPPDATA%\Sysora\history.db` (SQLite; delete it, or use Settings › History › Delete, to reset) |
 | Start with Windows | `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\Sysora` (only when enabled) |
 
 Set *Settings › Diagnostics › Log level* to **Debug** to see every collection failure.
@@ -83,6 +84,11 @@ x64 and ARM64 installers with their SHA-256 checksums and creates the GitHub rel
 - **Expected failures are values**: operations that can fail for normal reasons return `OperationResult`
   (for example "access denied" when ending a process).
 - **Comments** explain *why*, not *what*. Public types have XML documentation summaries.
+- **Observed, inferred, unknown**: an analysis labels its statements with `FindingBasis`. A correlation is worded as such
+  ("Likely contributor", "Associated with", "Evidence suggests"); what cannot be observed says "Cause unknown" or
+  "Not available".
+- **Settings evolve safely**: a new setting gets its declared default when an older file lacks it (the file is laid over the
+  serialized defaults before it is read). Add a test when adding a setting to an existing section.
 - **Style**: enforced by `.editorconfig` and the .NET analyzers. CI treats warnings as errors.
 
 ## Adding a metric

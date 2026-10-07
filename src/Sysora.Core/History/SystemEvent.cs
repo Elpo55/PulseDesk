@@ -56,6 +56,15 @@ public enum SystemEventKind
 
     /// <summary>Windows reported that the PC resumed from sleep.</summary>
     SystemResumed,
+
+    /// <summary>An application started (and kept running for at least one more sample).</summary>
+    AppStarted,
+
+    /// <summary>A troubleshooting investigation started.</summary>
+    InvestigationStarted,
+
+    /// <summary>A troubleshooting investigation ended.</summary>
+    InvestigationEnded,
 }
 
 /// <summary>

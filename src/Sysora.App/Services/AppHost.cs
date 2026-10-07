@@ -7,11 +7,15 @@ using Sysora.Core.Analysis;
 using Sysora.Core.Changes;
 using Sysora.Core.Diagnosis;
 using Sysora.Core.Gaming;
+using Sysora.Core.Health;
 using Sysora.Core.History;
 using Sysora.Core.Interfaces;
 using Sysora.Core.Monitoring;
 using Sysora.Core.Settings;
 using Sysora.Core.Simulation;
+using Sysora.Core.Storage;
+using Sysora.Core.Timeline;
+using Sysora.Core.Troubleshooting;
 using Sysora.Infrastructure;
 using Sysora.Infrastructure.Gaming;
 using Sysora.Infrastructure.Logging;
@@ -136,6 +140,39 @@ public sealed class AppHost : IAsyncDisposable
             sp.GetRequiredService<SettingsService>(),
             sp.GetRequiredService<ILogger<GameSessionService>>()));
 
+        // Advanced analysis: computed on demand from the data the services above already keep (no new collection).
+        services.AddSingleton(sp => new RecurringProblemService(sp.GetRequiredService<IHistoryRepository>()));
+        services.AddSingleton(sp => new PcHealthService(
+            sp.GetRequiredService<IPerformanceHistory>(),
+            sp.GetRequiredService<IMetricsMonitor>(),
+            sp.GetRequiredService<BaselineService>(),
+            sp.GetRequiredService<AlertService>(),
+            sp.GetRequiredService<RecurringProblemService>(),
+            sp.GetRequiredService<SettingsService>(),
+            sp.GetRequiredService<ILogger<PcHealthService>>()));
+        services.AddSingleton(sp => new WhyNowService(
+            sp.GetRequiredService<IPerformanceHistory>(),
+            sp.GetRequiredService<IHistoryRepository>(),
+            sp.GetRequiredService<BaselineService>(),
+            sp.GetRequiredService<AlertService>()));
+        services.AddSingleton(sp => new StateComparisonService(
+            sp.GetRequiredService<IPerformanceHistory>(),
+            sp.GetRequiredService<IHistoryRepository>(),
+            sp.GetRequiredService<SettingsService>()));
+        services.AddSingleton(sp => new SinceYesterdayService(
+            sp.GetRequiredService<IChangeDetectionService>(),
+            sp.GetRequiredService<StateComparisonService>(),
+            sp.GetRequiredService<AlertService>()));
+        services.AddSingleton(sp => new TimelineService(sp.GetRequiredService<IPerformanceHistory>(), sp.GetRequiredService<IHistoryRepository>()));
+        services.AddSingleton(sp => new TroubleshootingService(
+            sp.GetRequiredService<IMetricsMonitor>(),
+            sp.GetRequiredService<IPerformanceHistory>(),
+            sp.GetRequiredService<DiagnosisService>(),
+            sp.GetRequiredService<IHistoryRepository>(),
+            sp.GetRequiredService<SettingsService>(),
+            sp.GetRequiredService<ILogger<TroubleshootingService>>()));
+        services.AddSingleton(sp => new LargeFileService(sp.GetRequiredService<ILargeFileScanner>()));
+
         if (options.DemoMode)
         {
             AddSimulatedProviders(services);
@@ -147,7 +184,10 @@ public sealed class AppHost : IAsyncDisposable
 
         // UI services
         services.AddSingleton<AnalysisServices>();
+        services.AddSingleton<NavigationRequests>();
         services.AddSingleton<InsightNavigator>();
+        services.AddSingleton<PickerService>();
+        services.AddSingleton<ReportExportService>();
         services.AddSingleton<UiMetricsHub>();
         services.AddSingleton<ThemeService>();
         services.AddSingleton<NavigationService>();
@@ -159,6 +199,11 @@ public sealed class AppHost : IAsyncDisposable
         // View models live as long as the app, so pages keep their state (sorting, selection) between visits.
         services.AddSingleton<ShellViewModel>();
         services.AddSingleton<DashboardViewModel>();
+        services.AddSingleton<PcHealthViewModel>();
+        services.AddSingleton<TimelineViewModel>();
+        services.AddSingleton<CompareViewModel>();
+        services.AddSingleton<TroubleshootingViewModel>();
+        services.AddSingleton<LargeFilesViewModel>();
         services.AddSingleton<AppImpactViewModel>();
         services.AddSingleton<DiagnosisViewModel>();
         services.AddSingleton<AlertsViewModel>();
@@ -240,6 +285,7 @@ public sealed class AppHost : IAsyncDisposable
         services.AddSingleton<ISystemInventoryProvider, WindowsSystemInventoryProvider>();
         services.AddSingleton<IGameLibrary, WindowsGameLibrary>();
         services.AddSingleton<IProcessManager, WindowsProcessManager>();
+        services.AddSingleton<ILargeFileScanner>(sp => new FileSystemLargeFileScanner(sp.GetRequiredService<ILogger<FileSystemLargeFileScanner>>()));
     }
 
     private static void AddSimulatedProviders(ServiceCollection services)
@@ -250,5 +296,8 @@ public sealed class AppHost : IAsyncDisposable
         services.AddSingleton<ISystemInventoryProvider>(_ => new SimulatedInventoryProvider());
         services.AddSingleton<IGameLibrary, SimulatedGameLibrary>();
         services.AddSingleton<IProcessManager, FakeProcessManager>();
+
+        // Demo mode never scans the real disk.
+        services.AddSingleton<ILargeFileScanner>(_ => new SimulatedLargeFileScanner());
     }
 }

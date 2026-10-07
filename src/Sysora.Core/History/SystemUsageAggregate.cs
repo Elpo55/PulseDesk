@@ -51,6 +51,9 @@ public sealed record SystemUsageAggregate
 
     public AggregateValue? ProcessCount { get; init; }
 
+    /// <summary>Free space on the Windows volume, bytes (absent from history recorded before it was kept).</summary>
+    public AggregateValue? SystemDriveFree { get; init; }
+
     /// <summary>Physical memory size during the bucket (lets memory changes be detected).</summary>
     public ulong? MemoryTotalBytes { get; init; }
 
@@ -70,6 +73,7 @@ public sealed record SystemUsageAggregate
         HistoryMetric.NetworkSend => NetworkSend,
         HistoryMetric.Gpu => Gpu,
         HistoryMetric.ProcessCount => ProcessCount,
+        HistoryMetric.SystemDriveFree => SystemDriveFree,
         _ => null,
     };
 
@@ -127,6 +131,7 @@ public sealed class SystemUsageAggregator(HistoryResolution resolution = History
     private ValueAccumulator _send;
     private ValueAccumulator _gpu;
     private ValueAccumulator _processes;
+    private ValueAccumulator _systemFree;
 
     public HistoryResolution Resolution { get; } = resolution;
 
@@ -161,6 +166,7 @@ public sealed class SystemUsageAggregator(HistoryResolution resolution = History
         _send.Add(snapshot.NetworkSendBitsPerSecond);
         _gpu.Add(snapshot.GpuPercent);
         _processes.Add(snapshot.ProcessCount);
+        _systemFree.Add(snapshot.SystemDriveFreeBytes);
         _memoryTotal = snapshot.MemoryTotalBytes ?? _memoryTotal;
         return completed;
     }
@@ -186,12 +192,13 @@ public sealed class SystemUsageAggregator(HistoryResolution resolution = History
             NetworkSend = _send.Result,
             Gpu = _gpu.Result,
             ProcessCount = _processes.Result,
+            SystemDriveFree = _systemFree.Result,
             MemoryTotalBytes = _memoryTotal,
         };
 
         _samples = 0;
         _seconds = 0;
-        _cpu = _memory = _disk = _receive = _send = _gpu = _processes = default;
+        _cpu = _memory = _disk = _receive = _send = _gpu = _processes = _systemFree = default;
         _bucket = null;
         return aggregate;
     }

@@ -8,12 +8,17 @@ namespace Sysora.App.Services;
 public enum AppPage
 {
     Dashboard,
+    PcHealth,
+    Timeline,
     Diagnosis,
+    Troubleshooting,
     Replay,
+    Compare,
     AppImpact,
     Changes,
     Alerts,
     Gaming,
+    LargeFiles,
     Performance,
     Processes,
     Storage,
@@ -49,6 +54,11 @@ public sealed class NavigationService
     private static Type GetPageType(AppPage page) => page switch
     {
         AppPage.Dashboard => typeof(DashboardPage),
+        AppPage.PcHealth => typeof(PcHealthPage),
+        AppPage.Timeline => typeof(TimelinePage),
+        AppPage.Troubleshooting => typeof(TroubleshootingPage),
+        AppPage.Compare => typeof(ComparePage),
+        AppPage.LargeFiles => typeof(LargeFilesPage),
         AppPage.Diagnosis => typeof(DiagnosisPage),
         AppPage.Replay => typeof(ReplayPage),
         AppPage.AppImpact => typeof(AppImpactPage),

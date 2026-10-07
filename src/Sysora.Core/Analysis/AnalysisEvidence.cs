@@ -64,6 +64,7 @@ public static class MetricSources
         HistoryMetric.NetworkReceive or HistoryMetric.NetworkSend => Network,
         HistoryMetric.Gpu => Gpu,
         HistoryMetric.ProcessCount => Processes,
+        HistoryMetric.SystemDriveFree => Storage,
         _ => "Sysora measurements",
     };
 }

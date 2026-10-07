@@ -60,10 +60,13 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                    <Button
-                        Command="{x:Bind OpenCommand}"
-                        Content="{x:Bind ActionLabel, Mode=OneWay}"
-                        Visibility="{x:Bind HasAction, Mode=OneWay}" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Command="{x:Bind WhyNowCommand}" Content="Why now?" ToolTipService.ToolTip="When did it start, what changed at the same time, and how often it happened before" Visibility="{x:Bind CanExplainWhyNow, Mode=OneWay}" />
+                        <Button
+                            Command="{x:Bind OpenCommand}"
+                            Content="{x:Bind ActionLabel, Mode=OneWay}"
+                            Visibility="{x:Bind HasAction, Mode=OneWay}" />
+                    </StackPanel>
                 </StackPanel>
             </Expander>
         </DataTemplate>
@@ -83,12 +86,20 @@
                     <TextBlock Style="{StaticResource PageTitleTextStyle}" Text="Diagnosis" />
                     <TextBlock Style="{StaticResource PageSubtitleTextStyle}" Text="Why is my PC slow? Sysora checks what it measures and explains what it finds." TextWrapping="Wrap" />
                 </StackPanel>
-                <Button Grid.Column="1" VerticalAlignment="Center" Command="{x:Bind ViewModel.RunCommand}">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <FontIcon FontSize="14" Glyph="&#xE72C;" />
-                        <TextBlock Text="Analyze again" />
-                    </StackPanel>
-                </Button>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal" Spacing="8">
+                    <Button AutomationProperties.Name="Analyze again" Command="{x:Bind ViewModel.RunCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon FontSize="14" Glyph="&#xE72C;" />
+                            <TextBlock Text="Analyze again" />
+                        </StackPanel>
+                    </Button>
+                    <Button AutomationProperties.Name="Export" Command="{x:Bind ViewModel.ExportCommand}" ToolTipService.ToolTip="Save the diagnosis as an HTML report or JSON data">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon FontSize="14" Glyph="&#xEDE1;" />
+                            <TextBlock Text="Export" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
             </Grid>
 
             <!-- Overall answer -->
@@ -106,6 +117,91 @@
                         <TextBlock Style="{StaticResource LabelTextStyle}" Text="{x:Bind ViewModel.BaselineText, Mode=OneWay}" TextWrapping="Wrap" />
                         <ProgressBar IsIndeterminate="True" Visibility="{x:Bind ViewModel.IsRunning, Mode=OneWay}" />
                     </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Why now? -->
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="10">
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource CardHeaderTextStyle}" Text="Why now?" />
+                            <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="When a problem started, from what level, what changed at the same time and how often it happened before." />
+                        </StackPanel>
+                        <ComboBox Grid.Column="1" MinWidth="120" VerticalAlignment="Center" AutomationProperties.Name="Metric to explain" ItemsSource="{x:Bind ViewModel.WhyNowMetrics}" SelectedIndex="{x:Bind ViewModel.WhyNowIndex, Mode=TwoWay}" />
+                        <Button Grid.Column="2" VerticalAlignment="Center" Command="{x:Bind ViewModel.AnalyzeWhyNowCommand}" Content="Explain" Style="{StaticResource AccentButtonStyle}" />
+                        <Button Grid.Column="3" VerticalAlignment="Center" AutomationProperties.Name="Export this explanation" Command="{x:Bind ViewModel.ExportWhyNowCommand}" IsEnabled="{x:Bind ViewModel.HasWhyNow, Mode=OneWay}" ToolTipService.ToolTip="Export this explanation">
+                            <FontIcon FontSize="14" Glyph="&#xEDE1;" />
+                        </Button>
+                    </Grid>
+                    <ProgressBar IsIndeterminate="True" Visibility="{x:Bind ViewModel.IsWhyNowRunning, Mode=OneWay}" />
+                    <StackPanel Spacing="8" Visibility="{x:Bind ViewModel.HasWhyNow, Mode=OneWay}">
+                        <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="{x:Bind ViewModel.WhyNowHeadline, Mode=OneWay}" TextWrapping="Wrap" />
+                        <TextBlock Text="{x:Bind ViewModel.WhyNowSummary, Mode=OneWay}" TextWrapping="Wrap" />
+                        <controls:AdaptiveGridPanel MinItemWidth="200" RowSpacing="8" Visibility="{x:Bind ViewModel.IsWhyNowSignificant, Mode=OneWay}">
+                            <controls:StatItem Label="Started" Value="{x:Bind ViewModel.WhyNowStarted, Mode=OneWay}" />
+                            <controls:StatItem Label="Before → now" Value="{x:Bind ViewModel.WhyNowChange, Mode=OneWay}" />
+                            <controls:StatItem Label="Duration" Value="{x:Bind ViewModel.WhyNowDuration, Mode=OneWay}" />
+                        </controls:AdaptiveGridPanel>
+                        <StackPanel Spacing="2" Visibility="{x:Bind ViewModel.IsWhyNowSignificant, Mode=OneWay}">
+                            <TextBlock Style="{StaticResource LabelTextStyle}" Text="Main contributor" />
+                            <TextBlock Text="{x:Bind ViewModel.WhyNowContributor, Mode=OneWay}" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind ViewModel.WhyNowUsual, Mode=OneWay}" />
+                        <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind ViewModel.WhyNowSimilar, Mode=OneWay}" />
+                        <StackPanel Spacing="2" Visibility="{x:Bind ViewModel.HasWhyNowEvents, Mode=OneWay}">
+                            <TextBlock Style="{StaticResource LabelTextStyle}" Text="At the same time (a coincidence in time is not proof of cause)" />
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.WhyNowEvents}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="x:String">
+                                        <TextBlock Padding="0,2" Text="{x:Bind}" TextWrapping="Wrap" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                        <HyperlinkButton Padding="0" Command="{x:Bind ViewModel.OpenTimelineCommand}" Content="See everything that happened around it in the Timeline" />
+                        <Expander HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Header="Every statement and what it rests on">
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.WhyNowFindings}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:FindingItemViewModel">
+                                        <Grid Padding="0,3" ColumnSpacing="10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <controls:LevelBadge VerticalAlignment="Top" BrushKey="{x:Bind BasisBrushKey}" Text="{x:Bind BasisText}" />
+                                            <TextBlock Grid.Column="1" TextWrapping="Wrap">
+                                                <Run FontWeight="SemiBold" Text="{x:Bind Label}" /><Run Text=": " /><Run Text="{x:Bind Text}" />
+                                            </TextBlock>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Expander>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Recurring problems (details on PC Health) -->
+            <Border Style="{StaticResource CardStyle}">
+                <Grid ColumnSpacing="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon VerticalAlignment="Center" FontSize="16" Glyph="&#xE823;" />
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Recurring problems" />
+                        <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind ViewModel.RecurringText, Mode=OneWay}" />
+                    </StackPanel>
+                    <HyperlinkButton Grid.Column="2" VerticalAlignment="Center" Command="{x:Bind ViewModel.OpenRecurringCommand}" Content="Open PC Health" />
                 </Grid>
             </Border>
 

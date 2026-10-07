@@ -53,6 +53,18 @@ public interface IMetricsMonitor
 
     /// <summary>Collects the given metrics as soon as possible, outside of their normal schedule.</summary>
     void RequestRefresh(MetricKind kinds);
+
+    /// <summary>True while a troubleshooting investigation asks for detailed collection.</summary>
+    bool IsInvestigating { get; }
+
+    /// <summary>
+    /// Temporarily collects with the Detailed intensity, even while the window is hidden (troubleshooting). Turning it off
+    /// returns to the user's intensity.
+    /// </summary>
+    void SetInvestigationMode(bool enabled);
+
+    /// <summary>Intensity and effective interval of each metric family right now.</summary>
+    MonitoringScheduleInfo ScheduleInfo { get; }
 }
 
 /// <summary>How actively the monitor collects metrics.</summary>

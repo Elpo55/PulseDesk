@@ -221,9 +221,13 @@ public sealed class AlertService : IAsyncDisposable
 
     public async ValueTask DisposeAsync() => await StopAsync().ConfigureAwait(false);
 
+    /// <summary>Interval between evaluations for the current monitoring intensity (longer with Minimal).</summary>
+    private TimeSpan CurrentInterval =>
+        _monitor.IsInvestigating ? EvaluationInterval : Monitoring.MonitoringProfile.For(_settings.Current.Monitoring.Intensity).AlertEvaluationInterval;
+
     private void OnSnapshotRecorded(object? sender, MetricSnapshot snapshot)
     {
-        if (snapshot.Timestamp - _lastEvaluation < EvaluationInterval || Interlocked.Exchange(ref _evaluating, 1) == 1)
+        if (snapshot.Timestamp - _lastEvaluation < CurrentInterval || Interlocked.Exchange(ref _evaluating, 1) == 1)
         {
             return;
         }

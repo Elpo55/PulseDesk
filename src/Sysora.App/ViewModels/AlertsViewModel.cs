@@ -22,15 +22,19 @@ public sealed partial class AlertsViewModel : PageViewModel
     private readonly Dictionary<Guid, AlertItemViewModel> _items = [];
     private bool _refreshQueued;
 
+    private readonly ReportExportService _export;
+
     public AlertsViewModel(
         UiMetricsHub hub,
         AlertService alerts,
         SettingsService settings,
         InsightNavigator navigator,
         NavigationService navigation,
+        ReportExportService export,
         DispatcherQueue dispatcher)
         : base(hub)
     {
+        _export = export;
         _alerts = alerts;
         _settings = settings;
         _navigator = navigator;
@@ -66,6 +70,13 @@ public sealed partial class AlertsViewModel : PageViewModel
 
     [RelayCommand]
     private void OpenSettings() => _navigation.Navigate(AppPage.Settings);
+
+    [RelayCommand]
+    private Task Export()
+    {
+        var alerts = _alerts.Alerts;
+        return _export.ExportAsync(system => Sysora.Core.Reports.ReportBuilder.Alerts(alerts, DateTimeOffset.Now, system));
+    }
 
     protected override void OnActivated()
     {
@@ -124,7 +135,7 @@ public sealed partial class AlertsViewModel : PageViewModel
         {
             if (!_items.TryGetValue(alert.Id, out var item))
             {
-                item = new AlertItemViewModel(OnOpen, OnSeen);
+                item = new AlertItemViewModel(OnOpen, OnSeen, OnReplay, OnWhyNow);
                 _items[alert.Id] = item;
             }
 
@@ -170,6 +181,16 @@ public sealed partial class AlertsViewModel : PageViewModel
 
     private void OnSeen(AlertItemViewModel item) => _alerts.MarkSeen(item.Id);
 
+    private void OnReplay(AlertItemViewModel item) => _navigator.OpenReplay(item.Since, item.Until);
+
+    private void OnWhyNow(AlertItemViewModel item)
+    {
+        if (item.WhyNowMetric is { } metric)
+        {
+            _navigator.OpenWhyNow(metric);
+        }
+    }
+
     private static string Rules(SmartAlertSettings s) => string.Join(" · ",
     [
         $"CPU above {MetricFormatter.Percent(s.CpuPercent)} for {MetricFormatter.Plural(s.CpuMinutes, "minute")}",
@@ -187,11 +208,15 @@ public sealed partial class AlertItemViewModel : ObservableObject
 {
     private readonly Action<AlertItemViewModel> _open;
     private readonly Action<AlertItemViewModel> _seen;
+    private readonly Action<AlertItemViewModel>? _replay;
+    private readonly Action<AlertItemViewModel>? _whyNow;
 
-    public AlertItemViewModel(Action<AlertItemViewModel> open, Action<AlertItemViewModel> seen)
+    public AlertItemViewModel(Action<AlertItemViewModel> open, Action<AlertItemViewModel> seen, Action<AlertItemViewModel>? replay = null, Action<AlertItemViewModel>? whyNow = null)
     {
         _open = open;
         _seen = seen;
+        _replay = replay;
+        _whyNow = whyNow;
         Title = Glyph = BrushKey = StatusText = StatusBrushKey = TimeText = Observed = ContextText = Explanation = Recommendation = ActionLabel = string.Empty;
     }
 
@@ -257,11 +282,44 @@ public sealed partial class AlertItemViewModel : ObservableObject
         }
     }
 
+    /// <summary>When the condition started (the period shown by "Show in Replay").</summary>
+    public DateTimeOffset Since { get; private set; }
+
+    /// <summary>When the condition ended, or was last observed.</summary>
+    public DateTimeOffset Until { get; private set; }
+
+    /// <summary>Metric "Why now?" can explain, for an alert still in progress.</summary>
+    public Sysora.Core.Analysis.WhyNowMetric? WhyNowMetric { get; private set; }
+
+    [ObservableProperty]
+    public partial bool CanExplainWhyNow { get; set; }
+
     [RelayCommand]
     private void Open() => _open(this);
 
+    [RelayCommand]
+    private void Replay() => _replay?.Invoke(this);
+
+    [RelayCommand]
+    private void WhyNow() => _whyNow?.Invoke(this);
+
     public void Set(Alert alert)
     {
+        Since = alert.Since != default ? alert.Since : alert.RaisedAt;
+        Until = alert.ResolvedAt ?? alert.UpdatedAt;
+        WhyNowMetric = alert.RuleId switch
+        {
+            "cpu.sustained" or "app.cpu" => Sysora.Core.Analysis.WhyNowMetric.Cpu,
+            "memory.sustained" or "memory.growth" => Sysora.Core.Analysis.WhyNowMetric.Memory,
+            "disk.busy" => Sysora.Core.Analysis.WhyNowMetric.Disk,
+            "unusual" when alert.Key.EndsWith(".cpu", StringComparison.Ordinal) => Sysora.Core.Analysis.WhyNowMetric.Cpu,
+            "unusual" when alert.Key.EndsWith(".memory", StringComparison.Ordinal) => Sysora.Core.Analysis.WhyNowMetric.Memory,
+            "unusual" when alert.Key.EndsWith(".disk", StringComparison.Ordinal) => Sysora.Core.Analysis.WhyNowMetric.Disk,
+            _ => null,
+        };
+
+        // "Why now?" explains the current measurements: offered only while the alert is ongoing.
+        CanExplainWhyNow = WhyNowMetric is not null && alert.IsActive && _whyNow is not null;
         Id = alert.Id;
         AppKey = alert.AppKey;
         Action = alert.Action;

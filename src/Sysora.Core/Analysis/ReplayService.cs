@@ -80,6 +80,7 @@ public sealed class ReplayService(IPerformanceHistory history, IHistoryRepositor
             NetworkSendBitsPerSecond = minute.NetworkSend?.Average,
             GpuPercent = minute.Gpu?.Average,
             ProcessCount = minute.ProcessCount is { } count ? (int)Math.Round(count.Average) : null,
+            SystemDriveFreeBytes = minute.SystemDriveFree?.Average,
         };
     }
 }

@@ -16,6 +16,7 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <StackPanel>
                     <TextBlock Style="{StaticResource PageTitleTextStyle}" Text="Changes" />
@@ -34,7 +35,62 @@
                         <TextBlock Text="Check now" />
                     </StackPanel>
                 </Button>
+                <Button Grid.Column="3" VerticalAlignment="Center" AutomationProperties.Name="Export" Command="{x:Bind ViewModel.ExportCommand}" ToolTipService.ToolTip="Save the changes as an HTML report or JSON data">
+                    <FontIcon FontSize="14" Glyph="&#xEDE1;" />
+                </Button>
             </Grid>
+
+            <!-- Since yesterday -->
+            <Border Padding="18" Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="8">
+                    <TextBlock Style="{StaticResource LabelTextStyle}" Text="SINCE YESTERDAY" />
+                    <StackPanel Orientation="Horizontal" Spacing="18">
+                        <StackPanel Orientation="Horizontal" Spacing="6" Visibility="{x:Bind ViewModel.HasSignificant, Mode=OneWay}">
+                            <controls:StatusIcon BrushKey="StatusCriticalBrush" Glyph="&#xEA39;" GlyphSize="14" />
+                            <TextBlock><Run Text="{x:Bind ViewModel.SignificantCount, Mode=OneWay}" /><Run Text=" significant" /></TextBlock>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="6" Visibility="{x:Bind ViewModel.HasMinor, Mode=OneWay}">
+                            <controls:StatusIcon BrushKey="StatusWarningBrush" Glyph="&#xE7BA;" GlyphSize="14" />
+                            <TextBlock><Run Text="{x:Bind ViewModel.MinorCount, Mode=OneWay}" /><Run Text=" minor" /></TextBlock>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="6" Visibility="{x:Bind ViewModel.IsMostlyUnchanged, Mode=OneWay}">
+                            <controls:StatusIcon BrushKey="StatusNormalBrush" Glyph="&#xE73E;" GlyphSize="14" />
+                            <TextBlock Text="Most of your system is unchanged" />
+                        </StackPanel>
+                    </StackPanel>
+                    <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="{x:Bind ViewModel.SinceHeadline, Mode=OneWay}" />
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.SinceItems}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:SinceYesterdayItemViewModel">
+                                <Grid Padding="0,6" ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <controls:StatusIcon Margin="0,2,0,0" VerticalAlignment="Top" BrushKey="{x:Bind BrushKey}" Glyph="{x:Bind Glyph}" GlyphSize="14" />
+                                    <StackPanel Grid.Column="1" Spacing="2">
+                                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind Title}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{x:Bind Values}" TextWrapping="Wrap" Visibility="{x:Bind HasValues}" />
+                                        <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind Explanation}" />
+                                        <TextBlock Style="{StaticResource LabelTextStyle}" TextWrapping="Wrap">
+                                            <Run Text="{x:Bind Area}" /><Run Text=" · " /><Run Text="{x:Bind When}" /><Run Text=" · " /><Run Text="{x:Bind ConfidenceText}" />
+                                        </TextBlock>
+                                        <TextBlock Style="{StaticResource LabelTextStyle}" Text="{x:Bind Origin}" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Spacing="4">
+                                        <controls:LevelBadge HorizontalAlignment="Right" BrushKey="{x:Bind ImportanceBrushKey}" Text="{x:Bind ImportanceText}" />
+                                        <HyperlinkButton HorizontalAlignment="Right" Padding="0" Command="{x:Bind OpenCommand}" Content="{x:Bind ActionLabel}" Visibility="{x:Bind HasAction}" />
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind ViewModel.SinceUnchanged, Mode=OneWay}" />
+                    <TextBlock Style="{StaticResource LabelTextStyle}" Text="{x:Bind ViewModel.SinceNotCompared, Mode=OneWay}" TextWrapping="Wrap" Visibility="{x:Bind ViewModel.HasSinceNotCompared, Mode=OneWay}" />
+                    <TextBlock Style="{StaticResource LabelTextStyle}" Text="{x:Bind ViewModel.SinceNote, Mode=OneWay}" TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
 
             <StackPanel Spacing="2">
                 <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind ViewModel.Note, Mode=OneWay}" />

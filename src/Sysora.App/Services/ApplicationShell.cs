@@ -9,6 +9,7 @@ using Sysora.Core.Gaming;
 using Sysora.Core.Interfaces;
 using Sysora.Core.Models;
 using Sysora.Core.Settings;
+using Sysora.Core.Troubleshooting;
 using System.Runtime.InteropServices;
 using Windows.Graphics;
 
@@ -33,12 +34,16 @@ public sealed partial class ApplicationShell : IDisposable
     private readonly AlertService _alerts;
     private readonly GameSessionService _games;
     private readonly GamingViewModel _gaming;
+    private readonly TroubleshootingService _troubleshooting;
+    private readonly PickerService _pickers;
+    private readonly InsightNavigator _navigator;
     private readonly StartupOptions _options;
     private readonly DispatcherQueue _dispatcher;
     private readonly ILogger<ApplicationShell> _logger;
     private TrayIcon? _tray;
     private AppPage? _balloonPage;
     private Guid? _balloonSession;
+    private Guid? _balloonInvestigation;
     private bool _windowActive = true;
     private bool _gameRunning;
     private bool _behindGame;
@@ -57,6 +62,9 @@ public sealed partial class ApplicationShell : IDisposable
         AlertService alerts,
         GameSessionService games,
         GamingViewModel gaming,
+        TroubleshootingService troubleshooting,
+        PickerService pickers,
+        InsightNavigator navigator,
         StartupOptions options,
         DispatcherQueue dispatcher,
         ILogger<ApplicationShell> logger)
@@ -71,6 +79,9 @@ public sealed partial class ApplicationShell : IDisposable
         _alerts = alerts;
         _games = games;
         _gaming = gaming;
+        _troubleshooting = troubleshooting;
+        _pickers = pickers;
+        _navigator = navigator;
         _options = options;
         _dispatcher = dispatcher;
         _logger = logger;
@@ -84,6 +95,7 @@ public sealed partial class ApplicationShell : IDisposable
     {
         _theme.Attach(_window);
         _dialogs.Attach(_window);
+        _pickers.Attach(_window);
         _theme.Apply(_settings.Current.General.Theme);
         RestoreSize();
 
@@ -96,6 +108,7 @@ public sealed partial class ApplicationShell : IDisposable
         _alerts.AlertRaised += OnAlertRaised;
         _games.SessionsChanged += OnGamesChanged;
         _games.RecapReady += OnRecapReady;
+        _troubleshooting.Completed += OnInvestigationCompleted;
         CreateTray();
 
         _ = _monitor.StartAsync(CancellationToken.None);
@@ -155,6 +168,7 @@ public sealed partial class ApplicationShell : IDisposable
         _alerts.AlertRaised -= OnAlertRaised;
         _games.SessionsChanged -= OnGamesChanged;
         _games.RecapReady -= OnRecapReady;
+        _troubleshooting.Completed -= OnInvestigationCompleted;
         _window.Activated -= OnWindowActivated;
         _settings.Changed -= OnSettingsChanged;
         _tray?.Dispose();
@@ -288,11 +302,40 @@ public sealed partial class ApplicationShell : IDisposable
         });
     }
 
+    /// <summary>Windows notification when an investigation ends while Sysora is not in front; clicking it opens the report.</summary>
+    private void OnInvestigationCompleted(object? sender, TroubleshootingReport report)
+    {
+        if (report.EndReason == TroubleshootingEndReason.SysoraClosed)
+        {
+            return;
+        }
+
+        _dispatcher.TryEnqueue(() =>
+        {
+            if (_window.AppWindow.IsVisible && _windowActive)
+            {
+                return;
+            }
+
+            _balloonPage = AppPage.Troubleshooting;
+            _balloonSession = null;
+            _balloonInvestigation = report.Id;
+            _tray?.ShowInfo("Investigation complete", $"{report.Headline.Replace("Investigation complete: ", string.Empty, StringComparison.Ordinal)}. Click to open the report.");
+        });
+    }
+
     private void OnBalloonClicked()
     {
         if (_balloonPage is not { } page)
         {
             ShowMainWindow();
+            return;
+        }
+
+        if (page == AppPage.Troubleshooting && _balloonInvestigation is { } investigation)
+        {
+            ShowMainWindow();
+            _navigator.OpenInvestigation(investigation);
             return;
         }
 
