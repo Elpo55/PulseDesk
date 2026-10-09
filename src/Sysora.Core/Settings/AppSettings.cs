@@ -233,6 +233,18 @@ public sealed record GamingSettings
     /// <summary>Treat executables installed in a game library folder (Steam, Epic, Xbox, GOG...) as likely games.</summary>
     public bool DetectLibraryGames { get; init; } = true;
 
+    /// <summary>
+    /// Treat executables installed in the folder of a game a launcher reports as installed (Steam, Epic Games, Riot, GOG)
+    /// as that game. Read from the launchers' local files only.
+    /// </summary>
+    public bool DetectLauncherGames { get; init; } = true;
+
+    /// <summary>Launcher games the user chose to ignore ("Steam:730"): never followed.</summary>
+    public IReadOnlyList<string> IgnoredLauncherGames { get; init; } = [];
+
+    /// <summary>Launcher games the user confirmed: followed even when launcher detection is off or the launcher is gone.</summary>
+    public IReadOnlyList<ConfirmedGame> ConfirmedGames { get; init; } = [];
+
     /// <summary>Sessions shorter than this are not kept (launchers that restart, quick checks).</summary>
     public int MinimumSessionMinutes { get; init; } = 2;
 
@@ -258,6 +270,9 @@ public sealed record GamingSettings
         && Enabled == other.Enabled
         && DetectWindowsGames == other.DetectWindowsGames
         && DetectLibraryGames == other.DetectLibraryGames
+        && DetectLauncherGames == other.DetectLauncherGames
+        && IgnoredLauncherGames.SequenceEqual(other.IgnoredLauncherGames, StringComparer.Ordinal)
+        && ConfirmedGames.SequenceEqual(other.ConfirmedGames)
         && MinimumSessionMinutes == other.MinimumSessionMinutes
         && NotifyRecap == other.NotifyRecap
         && ReduceMonitoringDuringGames == other.ReduceMonitoringDuringGames
@@ -265,8 +280,14 @@ public sealed record GamingSettings
         && ExcludedGames.SequenceEqual(other.ExcludedGames, StringComparer.Ordinal);
 
     public override int GetHashCode() =>
-        HashCode.Combine(Enabled, DetectWindowsGames, DetectLibraryGames, MinimumSessionMinutes, NotifyRecap, ReduceMonitoringDuringGames, AddedGames.Count, ExcludedGames.Count);
+        HashCode.Combine(Enabled, DetectWindowsGames, DetectLibraryGames, DetectLauncherGames, MinimumSessionMinutes, NotifyRecap, ReduceMonitoringDuringGames, AddedGames.Count + ExcludedGames.Count + IgnoredLauncherGames.Count + ConfirmedGames.Count);
 }
+
+/// <summary>A launcher game the user confirmed, remembered with what is needed to recognize it without the launcher.</summary>
+/// <param name="Key">The launcher's key of the game ("Steam:730").</param>
+/// <param name="Name">The game's name.</param>
+/// <param name="Folder">Folder holding the game's files.</param>
+public sealed record ConfirmedGame(string Key, string Name, string Folder);
 
 /// <summary>Minimum level written to the local log files.</summary>
 public enum LogVerbosity

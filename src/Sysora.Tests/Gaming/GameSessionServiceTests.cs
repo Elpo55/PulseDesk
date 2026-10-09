@@ -41,6 +41,18 @@ public sealed class GameSessionServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public void MarkingAGameTwice_KeepsOneEntry()
+    {
+        _settings.Update(s => s with { Gaming = s.Gaming with { ExcludedGames = [@"D:\Games\Racer\racer.exe"] } });
+
+        _service.MarkAsGame(@"D:\Games\Racer\racer.exe");
+        _service.MarkAsGame(@"d:\games\racer\RACER.exe");
+
+        Assert.Equal([@"D:\Games\Racer\racer.exe"], _settings.Current.Gaming.AddedGames);
+        Assert.Empty(_settings.Current.Gaming.ExcludedGames);
+    }
+
+    [Fact]
     public async Task ClosedGame_IsSavedAndItsRecapIsAnnounced()
     {
         var recapReady = new TaskCompletionSource<GameRecap>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -164,6 +176,8 @@ public sealed class GameSessionServiceTests : IAsyncLifetime
     private sealed class EmptyLibrary : IGameLibrary
     {
         public IReadOnlySet<string> RecognizedGames { get; } = new HashSet<string>();
+
+        public InstalledGameIndex InstalledGames => InstalledGameIndex.Empty;
 
         public bool Refresh() => false;
 

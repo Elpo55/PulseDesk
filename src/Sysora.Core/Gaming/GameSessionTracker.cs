@@ -57,6 +57,7 @@ public sealed class GameSessionTracker
     private readonly AppGrouper _grouper = new();
     private GamingSettings _settings;
     private IReadOnlySet<string> _recognized;
+    private InstalledGameIndex _installed = InstalledGameIndex.Empty;
 
     /// <param name="settings">Detection settings and the user's lists.</param>
     /// <param name="recognized">Executables Windows recognizes as games.</param>
@@ -82,12 +83,19 @@ public sealed class GameSessionTracker
     /// Applies new detection settings or a new list of recognized games. Sessions of executables that are no longer
     /// considered games (the user marked them "not a game") are dropped and returned.
     /// </summary>
-    public IReadOnlyList<LiveGameSession> Configure(GamingSettings settings, IReadOnlySet<string> recognized)
+    public IReadOnlyList<LiveGameSession> Configure(GamingSettings settings, IReadOnlySet<string> recognized) =>
+        Configure(settings, recognized, _installed);
+
+    /// <inheritdoc cref="Configure(GamingSettings, IReadOnlySet{string})"/>
+    /// <param name="installed">Games the launchers report as installed.</param>
+    public IReadOnlyList<LiveGameSession> Configure(GamingSettings settings, IReadOnlySet<string> recognized, InstalledGameIndex installed)
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(recognized);
+        ArgumentNullException.ThrowIfNull(installed);
         _settings = settings;
         _recognized = recognized;
+        _installed = installed;
         _classified.Clear();
 
         var dropped = new List<LiveGameSession>();
@@ -122,7 +130,7 @@ public sealed class GameSessionTracker
             {
                 if (!_active.ContainsKey(path) && Classify(path) is { } match)
                 {
-                    var session = new SessionBuilder(match, GameName(path), time, EarliestStart(gameProcesses, time));
+                    var session = new SessionBuilder(match, match.GameName ?? GameName(path), time, EarliestStart(gameProcesses, time));
                     _active[path] = session;
                     (started ??= []).Add(session.ToLive());
                 }
@@ -249,7 +257,7 @@ public sealed class GameSessionTracker
             _classified.Clear();
         }
 
-        match = GameClassifier.Classify(path, _settings, _recognized);
+        match = GameClassifier.Classify(path, _settings, _recognized, _installed);
         _classified[path] = match;
         return match;
     }
@@ -557,7 +565,7 @@ public sealed class GameSessionTracker
             _match = match;
             _name = name;
             _key = AppIdentity.Create(Path.GetFileName(match.ExecutablePath), match.ExecutablePath).Key;
-            _installFolder = GameClassifier.InstallFolder(match.ExecutablePath);
+            _installFolder = match.InstallFolder is { } folder ? InstalledGameIndex.Normalize(folder).Replace('/', Path.DirectorySeparatorChar) : GameClassifier.InstallFolder(match.ExecutablePath);
             _start = start;
             _gameStartedAt = gameStartedAt;
             LastSeen = start;

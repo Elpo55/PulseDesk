@@ -3813,4 +3813,10 @@
   <data name="History_InMemory" xml:space="preserve">
     <value>In memory (demo mode: nothing is written to disk)</value>
   </data>
+  <data name="Game_Detect_Confirmed" xml:space="preserve">
+    <value>You confirmed this game ({0}).</value>
+  </data>
+  <data name="Game_Detect_Launcher" xml:space="preserve">
+    <value>{0} reports {1} as installed in this folder.</value>
+  </data>
 </root>

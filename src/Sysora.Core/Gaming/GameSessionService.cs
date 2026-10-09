@@ -60,6 +60,7 @@ public sealed class GameSessionService : IAsyncDisposable
         _logger = logger;
         _time = timeProvider ?? TimeProvider.System;
         _tracker = new GameSessionTracker(settings.Current.Gaming, library.RecognizedGames, ReadProductName, selfProcessId ?? Environment.ProcessId);
+        _tracker.Configure(settings.Current.Gaming, library.RecognizedGames, library.InstalledGames);
     }
 
     /// <summary>Raised on a background thread when a game starts.</summary>
@@ -200,6 +201,24 @@ public sealed class GameSessionService : IAsyncDisposable
         });
     }
 
+    /// <summary>Games the launchers report as installed, as last read.</summary>
+    public IReadOnlyList<InstalledGame> InstalledGames => _library.InstalledGames.Games;
+
+    /// <summary>Reads the launchers' files and Windows' list of games again now (on request). Never throws.</summary>
+    public Task RefreshGamesAsync() => Task.Run(RefreshLibrary);
+
+    /// <summary>The name Sysora gives a game executable: its product name, its folder or its file name.</summary>
+    public string DisplayNameOf(string executablePath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(executablePath);
+        if (_library.InstalledGames.Find(executablePath) is { } game)
+        {
+            return game.Name;
+        }
+
+        return GameClassifier.DisplayName(executablePath, ReadProductName(executablePath));
+    }
+
     /// <summary>Marks an executable as a game (detected from then on, whatever the automatic detection says).</summary>
     public void MarkAsGame(string executablePath)
     {
@@ -208,7 +227,9 @@ public sealed class GameSessionService : IAsyncDisposable
         {
             Gaming = s.Gaming with
             {
-                AddedGames = [.. s.Gaming.AddedGames, executablePath],
+                AddedGames = s.Gaming.AddedGames.Contains(executablePath, StringComparer.OrdinalIgnoreCase)
+                    ? s.Gaming.AddedGames
+                    : [.. s.Gaming.AddedGames, executablePath],
                 ExcludedGames = s.Gaming.ExcludedGames.Where(p => !string.Equals(p, executablePath, StringComparison.OrdinalIgnoreCase)).ToArray(),
             },
         });
@@ -369,10 +390,13 @@ public sealed class GameSessionService : IAsyncDisposable
 
             lock (_lock)
             {
-                _tracker.Configure(_settings.Current.Gaming, _library.RecognizedGames);
+                _tracker.Configure(_settings.Current.Gaming, _library.RecognizedGames, _library.InstalledGames);
             }
 
-            _logger.LogDebug("{Count} games recognized by Windows.", _library.RecognizedGames.Count);
+            _logger.LogDebug(
+                "{Count} games recognized by Windows, {Installed} installed with a launcher.",
+                _library.RecognizedGames.Count,
+                _library.InstalledGames.Games.Count);
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {

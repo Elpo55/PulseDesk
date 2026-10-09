@@ -1,3 +1,5 @@
+using Sysora.Core.Gaming;
+
 namespace Sysora.Core.Interfaces;
 
 /// <summary>
@@ -11,7 +13,13 @@ public interface IGameLibrary
     /// </summary>
     IReadOnlySet<string> RecognizedGames { get; }
 
-    /// <summary>Re-reads the list of recognized games. Returns true when it changed. Never throws.</summary>
+    /// <summary>
+    /// Games the launchers report as installed (Steam, Epic Games, Riot, GOG), read from their local files. Returns the
+    /// last list read; <see cref="Refresh"/> reads it again. Empty when no launcher is found.
+    /// </summary>
+    InstalledGameIndex InstalledGames { get; }
+
+    /// <summary>Re-reads the recognized and installed games. Returns true when either list changed. Never throws.</summary>
     bool Refresh();
 
     /// <summary>Product name from the executable's version information, or null when it has none.</summary>

@@ -202,6 +202,9 @@
             <controls:SettingRow Description="{x:Bind l:UiStrings.Settings_ExecutablesThatWindowsItselfRecognizesAsGames}" Glyph="&#xE7FC;" Header="{x:Bind l:UiStrings.Settings_GamesRecognizedByWindows}">
                 <ToggleSwitch AutomationProperties.Name="{x:Bind l:UiStrings.Settings_GamesRecognizedByWindows}" IsOn="{x:Bind ViewModel.DetectWindowsGames, Mode=TwoWay}" />
             </controls:SettingRow>
+            <controls:SettingRow Description="{x:Bind l:UiStrings.Settings_Games_LauncherToggleDescription}" Glyph="&#xE7FC;" Header="{x:Bind l:UiStrings.Settings_Games_LauncherToggle}">
+                <ToggleSwitch AutomationProperties.Name="{x:Bind l:UiStrings.Settings_Games_LauncherToggle}" IsOn="{x:Bind ViewModel.DetectLauncherGames, Mode=TwoWay}" />
+            </controls:SettingRow>
             <controls:SettingRow Description="{x:Bind l:UiStrings.Settings_ExecutablesInstalledInAGameLibraryFolderSteam}" Glyph="&#xE8F1;" Header="{x:Bind l:UiStrings.Settings_GamesInLibraryFolders}">
                 <ToggleSwitch AutomationProperties.Name="{x:Bind l:UiStrings.Settings_GamesInLibraryFolders}" IsOn="{x:Bind ViewModel.DetectLibraryGames, Mode=TwoWay}" />
             </controls:SettingRow>
@@ -216,8 +219,62 @@
             </controls:SettingRow>
             <Border Style="{StaticResource CardStyle}">
                 <StackPanel Spacing="10">
-                    <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind l:UiStrings.Settings_YourGameLists}" />
-                    <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind l:UiStrings.Settings_MarkARunningApplicationAsAGameWhenSysoraDoesNot}" />
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Spacing="4">
+                            <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind l:UiStrings.Settings_Games_LaunchersTitle}" />
+                            <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind l:UiStrings.Settings_Games_LaunchersDescription}" TextWrapping="Wrap" />
+                            <TextBlock Style="{StaticResource LabelTextStyle}" Text="{x:Bind ViewModel.LauncherSummary, Mode=OneWay}" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Top" Orientation="Horizontal" Spacing="8">
+                            <ProgressRing Width="16" Height="16" IsActive="{x:Bind ViewModel.IsScanningLaunchers, Mode=OneWay}" />
+                            <Button AutomationProperties.AutomationId="ScanLaunchers" Command="{x:Bind ViewModel.ScanLaunchersCommand}" Content="{x:Bind l:UiStrings.Settings_Games_ScanAgain}" />
+                        </StackPanel>
+                    </Grid>
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.LauncherGames}" Visibility="{x:Bind ViewModel.HasLauncherGames, Mode=OneWay}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:LauncherGameItemViewModel">
+                                <Grid Padding="0,6" ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Spacing="2">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind Name}" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock VerticalAlignment="Center" Style="{StaticResource LabelTextStyle}" Text="{x:Bind Launcher}" />
+                                        </StackPanel>
+                                        <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind StateText}" />
+                                        <TextBlock IsTextSelectionEnabled="True" Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind Folder}" TextTrimming="CharacterEllipsis" ToolTipService.ToolTip="{x:Bind Folder}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal" Spacing="6">
+                                        <Button Command="{x:Bind ConfirmCommand}" Content="{x:Bind l:UiStrings.Settings_Games_Confirm}" ToolTipService.ToolTip="{x:Bind l:UiStrings.Settings_Games_ConfirmHint}" Visibility="{x:Bind CanConfirm}" />
+                                        <Button Command="{x:Bind IgnoreCommand}" Content="{x:Bind l:UiStrings.Settings_Games_Ignore}" Visibility="{x:Bind CanIgnore}" />
+                                        <Button Command="{x:Bind ResetCommand}" Content="{x:Bind ResetLabel}" Visibility="{x:Bind CanReset}" />
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="10">
+                    <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind l:UiStrings.Settings_Games_YourGames}" />
+                    <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind l:UiStrings.Settings_Games_YourGamesDescription}" TextWrapping="Wrap" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button AutomationProperties.AutomationId="BrowseGame" Command="{x:Bind ViewModel.BrowseGameCommand}" Style="{StaticResource AccentButtonStyle}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon FontSize="14" Glyph="&#xE8E5;" />
+                                <TextBlock Text="{x:Bind l:UiStrings.Settings_Games_Browse}" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                    <InfoBar IsClosable="True" IsOpen="{x:Bind ViewModel.HasGameMessage, Mode=TwoWay}" Message="{x:Bind ViewModel.GameMessage, Mode=OneWay}" Severity="Informational" />
+                    <TextBlock Style="{StaticResource LabelTextStyle}" Text="{x:Bind l:UiStrings.Settings_Games_OrRunning}" />
                     <Grid ColumnSpacing="8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -231,7 +288,7 @@
                             ItemsSource="{x:Bind ViewModel.RunningApps}"
                             PlaceholderText="{x:Bind l:UiStrings.Settings_ChooseARunningApplication}"
                             SelectedItem="{x:Bind ViewModel.SelectedRunningApp, Mode=TwoWay}" />
-                        <Button Grid.Column="1" Command="{x:Bind ViewModel.RefreshRunningAppsCommand}" ToolTipService.ToolTip="{x:Bind l:UiStrings.Settings_RefreshTheListOfRunningApplications}">
+                        <Button Grid.Column="1" AutomationProperties.Name="{x:Bind l:UiStrings.Settings_RefreshTheListOfRunningApplications}" Command="{x:Bind ViewModel.RefreshRunningAppsCommand}" ToolTipService.ToolTip="{x:Bind l:UiStrings.Settings_RefreshTheListOfRunningApplications}">
                             <FontIcon FontSize="14" Glyph="&#xE72C;" />
                         </Button>
                         <Button Grid.Column="2" Command="{x:Bind ViewModel.AddGameCommand}" Content="{x:Bind l:UiStrings.Settings_MarkAsAGame}" />
@@ -241,13 +298,20 @@
                     <ItemsControl ItemsSource="{x:Bind ViewModel.AddedGames}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:GameListItemViewModel">
-                                <Grid Padding="0,2" ColumnSpacing="8">
+                                <Grid Padding="0,6" ColumnSpacing="8">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock VerticalAlignment="Center" IsTextSelectionEnabled="True" Text="{x:Bind Path}" TextTrimming="CharacterEllipsis" ToolTipService.ToolTip="{x:Bind Path}" />
-                                    <Button Grid.Column="1" Command="{x:Bind RemoveCommand}" Content="{x:Bind l:UiStrings.Settings_Remove}" />
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind Name}" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock IsTextSelectionEnabled="True" Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind Path}" TextTrimming="CharacterEllipsis" ToolTipService.ToolTip="{x:Bind Path}" />
+                                        <TextBlock Foreground="{ThemeResource SystemFillColorCautionBrush}" Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind MissingText}" TextWrapping="Wrap" Visibility="{x:Bind IsMissing}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal" Spacing="6">
+                                        <Button Command="{x:Bind RelocateCommand}" Content="{x:Bind l:UiStrings.Settings_Games_ChangeLocation}" Visibility="{x:Bind CanRelocate}" />
+                                        <Button Command="{x:Bind RemoveCommand}" Content="{x:Bind l:UiStrings.Settings_Remove}" />
+                                    </StackPanel>
                                 </Grid>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
@@ -257,13 +321,20 @@
                     <ItemsControl ItemsSource="{x:Bind ViewModel.ExcludedGames}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:GameListItemViewModel">
-                                <Grid Padding="0,2" ColumnSpacing="8">
+                                <Grid Padding="0,6" ColumnSpacing="8">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock VerticalAlignment="Center" IsTextSelectionEnabled="True" Text="{x:Bind Path}" TextTrimming="CharacterEllipsis" ToolTipService.ToolTip="{x:Bind Path}" />
-                                    <Button Grid.Column="1" Command="{x:Bind RemoveCommand}" Content="{x:Bind l:UiStrings.Settings_Remove}" />
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind Name}" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock IsTextSelectionEnabled="True" Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind Path}" TextTrimming="CharacterEllipsis" ToolTipService.ToolTip="{x:Bind Path}" />
+                                        <TextBlock Foreground="{ThemeResource SystemFillColorCautionBrush}" Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind MissingText}" TextWrapping="Wrap" Visibility="{x:Bind IsMissing}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal" Spacing="6">
+                                        <Button Command="{x:Bind RelocateCommand}" Content="{x:Bind l:UiStrings.Settings_Games_ChangeLocation}" Visibility="{x:Bind CanRelocate}" />
+                                        <Button Command="{x:Bind RemoveCommand}" Content="{x:Bind l:UiStrings.Settings_Remove}" />
+                                    </StackPanel>
                                 </Grid>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>

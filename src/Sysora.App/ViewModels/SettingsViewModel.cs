@@ -36,6 +36,7 @@ public sealed partial class SettingsViewModel : PageViewModel
     private readonly HistoryRecorder _history;
     private readonly DialogService _dialogs;
     private readonly GameSessionService _games;
+    private readonly PickerService _pickers;
     private bool _loading;
     private long _lastOverheadUpdate;
 
@@ -48,6 +49,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         HistoryRecorder history,
         DialogService dialogs,
         GameSessionService games,
+        PickerService pickers,
         StartupOptions options)
         : base(hub)
     {
@@ -58,7 +60,9 @@ public sealed partial class SettingsViewModel : PageViewModel
         _history = history;
         _dialogs = dialogs;
         _games = games;
+        _pickers = pickers;
         IsDemoMode = options.DemoMode;
+        GameMessage = LauncherSummary = string.Empty;
         _loading = true;
         StartupStatus = HistoryStatus = IntensityDescription = EffectiveIntervals = SelfImpactHeadline = SelfImpactWarnings = string.Empty;
         ReplayDuration = ReplayDurations[2];
@@ -367,6 +371,163 @@ public sealed partial class SettingsViewModel : PageViewModel
     public partial bool DetectLibraryGames { get; set; }
 
     [ObservableProperty]
+    public partial bool DetectLauncherGames { get; set; }
+
+    /// <summary>Result of the last action on the game lists ("Already in your games."), empty when none.</summary>
+    [ObservableProperty]
+    public partial string GameMessage { get; set; }
+
+    [ObservableProperty]
+    public partial bool HasGameMessage { get; set; }
+
+    /// <summary>"10 games found: Steam 9, Riot Games 1".</summary>
+    [ObservableProperty]
+    public partial string LauncherSummary { get; set; }
+
+    [ObservableProperty]
+    public partial bool HasLauncherGames { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsScanningLaunchers { get; set; }
+
+    /// <summary>Games the launchers report as installed, and confirmed games, with what Sysora does with each.</summary>
+    public ObservableCollection<LauncherGameItemViewModel> LauncherGames { get; } = [];
+
+    partial void OnGameMessageChanged(string value) => HasGameMessage = value.Length > 0;
+
+    partial void OnDetectLauncherGamesChanged(bool value) => Save(s => s with { Gaming = s.Gaming with { DetectLauncherGames = value } });
+
+    /// <summary>Asks for a game's program and adds it to the user's games.</summary>
+    [RelayCommand]
+    private async Task BrowseGameAsync()
+    {
+        if (await _pickers.PickExecutableAsync() is not { } path)
+        {
+            return;
+        }
+
+        if (CheckExecutable(path) is { } problem)
+        {
+            GameMessage = problem;
+            return;
+        }
+
+        if (_settings.Current.Gaming.AddedGames.Contains(path, StringComparer.OrdinalIgnoreCase))
+        {
+            GameMessage = Text.Format(UiStrings.Settings_Games_AlreadyAdded, _games.DisplayNameOf(path));
+            return;
+        }
+
+        _games.MarkAsGame(path);
+        GameMessage = Text.Format(UiStrings.Settings_Games_Added, _games.DisplayNameOf(path));
+    }
+
+    /// <summary>Asks for the new location of a game that moved, keeping its place in the list and its past sessions.</summary>
+    private async Task RelocateGameAsync(string oldPath)
+    {
+        if (await _pickers.PickExecutableAsync() is not { } path || string.Equals(path, oldPath, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        if (CheckExecutable(path) is { } problem)
+        {
+            GameMessage = problem;
+            return;
+        }
+
+        _settings.Update(s => s with
+        {
+            Gaming = s.Gaming with
+            {
+                AddedGames = s.Gaming.AddedGames
+                    .Select(p => string.Equals(p, oldPath, StringComparison.OrdinalIgnoreCase) ? path : p)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray(),
+                ExcludedGames = s.Gaming.ExcludedGames.Where(p => !string.Equals(p, path, StringComparison.OrdinalIgnoreCase)).ToArray(),
+            },
+        });
+        GameMessage = Text.Format(UiStrings.Settings_Games_Moved, _games.DisplayNameOf(path));
+    }
+
+    /// <summary>Why a chosen file cannot be a game, or null when it can.</summary>
+    private static string? CheckExecutable(string path) =>
+        GameExecutable.Check(path, Environment.GetFolderPath(Environment.SpecialFolder.Windows)) switch
+        {
+            GameExecutableProblem.NotAProgram => UiStrings.Settings_Games_NotAProgram,
+            GameExecutableProblem.NotFound => Text.Format(UiStrings.Settings_Games_NotFound, path),
+            GameExecutableProblem.Unreadable => Text.Format(UiStrings.Settings_Games_Unreadable, path),
+            GameExecutableProblem.SystemProgram => UiStrings.Settings_Games_SystemProgram,
+            _ => null,
+        };
+
+    /// <summary>Reads the launchers' files again now.</summary>
+    [RelayCommand]
+    private async Task ScanLaunchersAsync()
+    {
+        IsScanningLaunchers = true;
+        try
+        {
+            await _games.RefreshGamesAsync();
+        }
+        finally
+        {
+            IsScanningLaunchers = false;
+        }
+
+        LoadLauncherGames(_settings.Current.Gaming);
+    }
+
+    private void LoadLauncherGames(GamingSettings gaming)
+    {
+        var installed = _games.InstalledGames;
+        var confirmed = gaming.ConfirmedGames.ToDictionary(g => g.Key, StringComparer.Ordinal);
+        var ignored = new HashSet<string>(gaming.IgnoredLauncherGames, StringComparer.OrdinalIgnoreCase);
+        var items = installed
+            .Select(g => new LauncherGameItemViewModel(g.Key, g.Name, g.LauncherName, g.InstallFolder, confirmed.ContainsKey(g.Key), ignored.Contains(g.Key), gaming.DetectLauncherGames, true, SetLauncherGame))
+            .Concat(gaming.ConfirmedGames
+                .Where(c => installed.All(g => !string.Equals(g.Key, c.Key, StringComparison.Ordinal)))
+                .Select(c => new LauncherGameItemViewModel(c.Key, c.Name, LauncherOf(c.Key), c.Folder, true, false, gaming.DetectLauncherGames, false, SetLauncherGame)))
+            .ToList();
+        LauncherGames.Clear();
+        foreach (var item in items)
+        {
+            LauncherGames.Add(item);
+        }
+
+        HasLauncherGames = LauncherGames.Count > 0;
+        LauncherSummary = installed.Count == 0
+            ? UiStrings.Settings_Games_NoLauncherGame
+            : Text.Format(
+                UiStrings.Settings_Games_LauncherSummary,
+                Text.Plural(installed.Count, UiStrings.Count_GameFound_One, UiStrings.Count_GameFound_Other),
+                string.Join(Strings.List_Separator, installed.GroupBy(g => g.LauncherName).OrderByDescending(g => g.Count()).Select(g => $"{g.Key} {g.Count()}")));
+    }
+
+    private static string LauncherOf(string key) =>
+        Enum.TryParse<Core.Gaming.GameLauncher>(key.Split(':')[0], out var launcher) ? Core.Gaming.LauncherNames.Of(launcher) : string.Empty;
+
+    /// <summary>Confirms, ignores or restores a launcher game.</summary>
+    private void SetLauncherGame(LauncherGameItemViewModel item, LauncherGameAction action)
+    {
+        _settings.Update(s =>
+        {
+            var gaming = s.Gaming;
+            var ignored = gaming.IgnoredLauncherGames.Where(k => !string.Equals(k, item.Key, StringComparison.OrdinalIgnoreCase));
+            var confirmed = gaming.ConfirmedGames.Where(g => !string.Equals(g.Key, item.Key, StringComparison.Ordinal));
+            return s with
+            {
+                Gaming = action switch
+                {
+                    LauncherGameAction.Confirm => gaming with { IgnoredLauncherGames = ignored.ToArray(), ConfirmedGames = [.. confirmed, new ConfirmedGame(item.Key, item.Name, item.Folder)] },
+                    LauncherGameAction.Ignore => gaming with { IgnoredLauncherGames = [.. ignored, item.Key], ConfirmedGames = confirmed.ToArray() },
+                    _ => gaming with { IgnoredLauncherGames = ignored.ToArray(), ConfirmedGames = confirmed.ToArray() },
+                },
+            };
+        });
+    }
+
+    [ObservableProperty]
     public partial double MinimumSessionMinutes { get; set; }
 
     [ObservableProperty]
@@ -450,22 +611,18 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     private void LoadGameLists(GamingSettings gaming)
     {
-        void Sync(ObservableCollection<GameListItemViewModel> items, IReadOnlyList<string> paths)
+        void Sync(ObservableCollection<GameListItemViewModel> items, IReadOnlyList<string> paths, bool canRelocate)
         {
-            if (items.Select(i => i.Path).SequenceEqual(paths, StringComparer.Ordinal))
-            {
-                return;
-            }
-
             items.Clear();
             foreach (var path in paths)
             {
-                items.Add(new GameListItemViewModel(path, RemoveGameMark));
+                items.Add(new GameListItemViewModel(path, _games.DisplayNameOf(path), File.Exists(path), canRelocate, RemoveGameMark, p => _ = RelocateGameAsync(p)));
             }
         }
 
-        Sync(AddedGames, gaming.AddedGames);
-        Sync(ExcludedGames, gaming.ExcludedGames);
+        Sync(AddedGames, gaming.AddedGames, true);
+        Sync(ExcludedGames, gaming.ExcludedGames, false);
+        LoadLauncherGames(gaming);
         HasAddedGames = AddedGames.Count > 0;
         HasExcludedGames = ExcludedGames.Count > 0;
     }
@@ -743,6 +900,7 @@ public sealed partial class SettingsViewModel : PageViewModel
             GamingEnabled = gaming.Enabled;
             DetectWindowsGames = gaming.DetectWindowsGames;
             DetectLibraryGames = gaming.DetectLibraryGames;
+            DetectLauncherGames = gaming.DetectLauncherGames;
             MinimumSessionMinutes = gaming.MinimumSessionMinutes;
             NotifyRecap = gaming.NotifyRecap;
             ReduceMonitoringDuringGames = gaming.ReduceMonitoringDuringGames;
@@ -835,10 +993,68 @@ public sealed record RunningAppOption(string Path, string Label)
 }
 
 /// <summary>An executable in one of the user's game lists.</summary>
-public sealed partial class GameListItemViewModel(string path, Action<string> remove)
+public sealed partial class GameListItemViewModel(string path, string name, bool exists, bool canRelocate, Action<string> remove, Action<string> relocate)
 {
     public string Path { get; } = path;
 
+    public string Name { get; } = name;
+
+    /// <summary>False when the file is no longer there (the game moved or was uninstalled).</summary>
+    public bool Exists { get; } = exists;
+
+    public bool IsMissing => !Exists;
+
+    public string MissingText => UiStrings.Settings_Games_Missing;
+
+    public bool CanRelocate { get; } = canRelocate;
+
     [RelayCommand]
     private void Remove() => remove(Path);
+
+    [RelayCommand]
+    private void Relocate() => relocate(Path);
+}
+
+/// <summary>What the user does with a launcher game.</summary>
+public enum LauncherGameAction
+{
+    Confirm,
+    Ignore,
+    Reset,
+}
+
+/// <summary>A game a launcher reports as installed (or a confirmed one), with what Sysora does with it.</summary>
+public sealed partial class LauncherGameItemViewModel(
+    string key, string name, string launcher, string folder, bool confirmed, bool ignored, bool detectionOn, bool installed, Action<LauncherGameItemViewModel, LauncherGameAction> apply)
+{
+    public string Key { get; } = key;
+
+    public string Name { get; } = name;
+
+    public string Launcher { get; } = launcher;
+
+    public string Folder { get; } = folder;
+
+    /// <summary>"Followed automatically", "Confirmed", "Ignored"...</summary>
+    public string StateText { get; } = confirmed
+        ? installed ? UiStrings.Settings_Games_State_Confirmed : UiStrings.Settings_Games_State_ConfirmedGone
+        : ignored ? UiStrings.Settings_Games_State_Ignored
+        : detectionOn ? UiStrings.Settings_Games_State_Auto : UiStrings.Settings_Games_State_Off;
+
+    public bool CanConfirm { get; } = !confirmed;
+
+    public bool CanIgnore { get; } = !ignored;
+
+    public bool CanReset { get; } = confirmed || ignored;
+
+    public string ResetLabel { get; } = ignored ? UiStrings.Settings_Games_FollowAgain : UiStrings.Settings_Games_Unconfirm;
+
+    [RelayCommand]
+    private void Confirm() => apply(this, LauncherGameAction.Confirm);
+
+    [RelayCommand]
+    private void Ignore() => apply(this, LauncherGameAction.Ignore);
+
+    [RelayCommand]
+    private void Reset() => apply(this, LauncherGameAction.Reset);
 }

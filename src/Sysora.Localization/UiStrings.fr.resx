@@ -2454,4 +2454,100 @@
   <data name="Replay_SourceOlder" xml:space="preserve">
     <value>Au-delà de {0} : les applications sont affichées par tranches de cinq minutes.</value>
   </data>
+  <data name="Settings_Games_LauncherToggle" xml:space="preserve">
+    <value>Jeux installés avec un lanceur</value>
+  </data>
+  <data name="Settings_Games_LauncherToggleDescription" xml:space="preserve">
+    <value>Jeux que Steam, Epic Games, Riot ou GOG déclarent installés, lus dans les fichiers des lanceurs sur ce PC</value>
+  </data>
+  <data name="Settings_Games_LaunchersTitle" xml:space="preserve">
+    <value>Jeux trouvés dans vos lanceurs</value>
+  </data>
+  <data name="Settings_Games_LaunchersDescription" xml:space="preserve">
+    <value>Sysora lit les fichiers des lanceurs sur ce PC : cela fonctionne hors ligne, rien n'est envoyé, aucun jeu n'est lancé et ses fichiers ne sont jamais modifiés. Confirmez un jeu pour continuer à le suivre même sans son lanceur, ou ignorez-le.</value>
+  </data>
+  <data name="Settings_Games_ScanAgain" xml:space="preserve">
+    <value>Rechercher à nouveau</value>
+  </data>
+  <data name="Settings_Games_Confirm" xml:space="preserve">
+    <value>Confirmer</value>
+  </data>
+  <data name="Settings_Games_ConfirmHint" xml:space="preserve">
+    <value>Continuer à suivre ce jeu même si la détection par lanceur est désactivée ou le lanceur désinstallé</value>
+  </data>
+  <data name="Settings_Games_Ignore" xml:space="preserve">
+    <value>Ignorer</value>
+  </data>
+  <data name="Settings_Games_YourGames" xml:space="preserve">
+    <value>Vos jeux</value>
+  </data>
+  <data name="Settings_Games_YourGamesDescription" xml:space="preserve">
+    <value>Ajoutez un jeu que Sysora ne reconnaît pas en choisissant son programme (.exe). Sysora le suit à son prochain lancement ; il ne le lance jamais. Les applications marquées comme n'étant pas des jeux ne sont jamais suivies.</value>
+  </data>
+  <data name="Settings_Games_Browse" xml:space="preserve">
+    <value>Ajouter un jeu…</value>
+  </data>
+  <data name="Settings_Games_OrRunning" xml:space="preserve">
+    <value>Ou choisissez une application en cours d'exécution</value>
+  </data>
+  <data name="Settings_Games_ChangeLocation" xml:space="preserve">
+    <value>Changer l'emplacement…</value>
+  </data>
+  <data name="Settings_Games_AlreadyAdded" xml:space="preserve">
+    <value>{0} est déjà dans vos jeux.</value>
+  </data>
+  <data name="Settings_Games_Added" xml:space="preserve">
+    <value>{0} ajouté : Sysora le suit dès son prochain lancement.</value>
+  </data>
+  <data name="Settings_Games_Moved" xml:space="preserve">
+    <value>{0} pointe maintenant vers son nouvel emplacement. Ses sessions passées sont conservées.</value>
+  </data>
+  <data name="Settings_Games_NotAProgram" xml:space="preserve">
+    <value>Choisissez le programme du jeu (un fichier se terminant par .exe).</value>
+  </data>
+  <data name="Settings_Games_NotFound" xml:space="preserve">
+    <value>{0} est introuvable. Il a peut-être été déplacé ou supprimé.</value>
+  </data>
+  <data name="Settings_Games_Unreadable" xml:space="preserve">
+    <value>{0} ne peut pas être vérifié : le chemin n'est pas valide ou l'accès est refusé.</value>
+  </data>
+  <data name="Settings_Games_SystemProgram" xml:space="preserve">
+    <value>Les programmes de Windows ne sont jamais suivis comme des jeux.</value>
+  </data>
+  <data name="Settings_Games_NoLauncherGame" xml:space="preserve">
+    <value>Aucun jeu trouvé dans les fichiers des lanceurs (Steam, Epic Games, Riot, GOG).</value>
+  </data>
+  <data name="Settings_Games_LauncherSummary" xml:space="preserve">
+    <value>{0} : {1}. Les jeux dont le dossier n'existe plus sont écartés.</value>
+  </data>
+  <data name="Count_GameFound_One" xml:space="preserve">
+    <value>{0} jeu trouvé</value>
+  </data>
+  <data name="Count_GameFound_Other" xml:space="preserve">
+    <value>{0} jeux trouvés</value>
+  </data>
+  <data name="Settings_Games_Missing" xml:space="preserve">
+    <value>Introuvable à cet emplacement : le jeu a peut-être été déplacé. Choisissez son nouvel emplacement ou retirez-le.</value>
+  </data>
+  <data name="Settings_Games_State_Confirmed" xml:space="preserve">
+    <value>Confirmé</value>
+  </data>
+  <data name="Settings_Games_State_ConfirmedGone" xml:space="preserve">
+    <value>Confirmé (plus listé par le lanceur)</value>
+  </data>
+  <data name="Settings_Games_State_Ignored" xml:space="preserve">
+    <value>Ignoré : non suivi</value>
+  </data>
+  <data name="Settings_Games_State_Auto" xml:space="preserve">
+    <value>Suivi automatiquement</value>
+  </data>
+  <data name="Settings_Games_State_Off" xml:space="preserve">
+    <value>Non suivi (détection par lanceur désactivée)</value>
+  </data>
+  <data name="Settings_Games_FollowAgain" xml:space="preserve">
+    <value>Suivre à nouveau</value>
+  </data>
+  <data name="Settings_Games_Unconfirm" xml:space="preserve">
+    <value>Retirer la confirmation</value>
+  </data>
 </root>

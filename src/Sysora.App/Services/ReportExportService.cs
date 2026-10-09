@@ -52,6 +52,29 @@ public sealed class PickerService(ILogger<PickerService> logger)
         }
     }
 
+    /// <summary>Asks for a program (.exe); null when cancelled or when the picker cannot be shown.</summary>
+    public async Task<string?> PickExecutableAsync()
+    {
+        if (_window is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            var picker = new FileOpenPicker { SuggestedStartLocation = PickerLocationId.ComputerFolder, ViewMode = PickerViewMode.List };
+            picker.FileTypeFilter.Add(".exe");
+            WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(_window));
+            var file = await picker.PickSingleFileAsync();
+            return file?.Path;
+        }
+        catch (COMException ex)
+        {
+            logger.LogWarning(ex, "The file picker could not be shown.");
+            return null;
+        }
+    }
+
     /// <summary>Asks for a folder; null when cancelled or when the picker cannot be shown.</summary>
     public async Task<string?> PickFolderAsync()
     {

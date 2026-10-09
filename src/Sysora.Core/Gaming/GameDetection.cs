@@ -15,6 +15,9 @@ public enum GameDetectionSource
 
     /// <summary>It is installed in a game library folder (Steam, Epic, Xbox, GOG...): likely a game.</summary>
     GameLibrary,
+
+    /// <summary>It is installed in the folder of a game a launcher reports as installed (Steam, Epic Games, Riot, GOG).</summary>
+    Launcher,
 }
 
 /// <summary>An executable identified as a game, with the evidence and how much it can be trusted.</summary>
@@ -24,8 +27,14 @@ public enum GameDetectionSource
 /// <param name="Evidence">Plain-language reason, e.g. "Windows recognizes this executable as a game (Game Bar)".</param>
 public sealed record GameMatch(string ExecutablePath, GameDetectionSource Source, ConfidenceLevel Confidence, string Evidence)
 {
-    /// <summary>Name of the game library folder that identified it, when <see cref="Source"/> is <see cref="GameDetectionSource.GameLibrary"/>.</summary>
+    /// <summary>Name of the game library folder or launcher that identified it.</summary>
     public string? Library { get; init; }
+
+    /// <summary>The game's name as its launcher reports it, when a launcher identified it.</summary>
+    public string? GameName { get; init; }
+
+    /// <summary>The game's folder as its launcher reports it, when a launcher identified it.</summary>
+    public string? InstallFolder { get; init; }
 }
 
 /// <summary>
@@ -61,7 +70,7 @@ public static class GameClassifier
         "crashreport", "crashhandler", "crash_handler", "crashpad", "crashsender", "crashdump", "report", "launcher", "unins", "setup", "install", "redist", "dxsetup", "prereq", "anticheat",
         "easyanticheat", "battleye", "beservice", "helper", "updater", "update", "service", "overlay", "bootstrap",
         "webview", "cefsharp", "cefprocess", "handler", "dedicated", "editor", "benchmark", "config", "settings", "touchup",
-        "uploader", "socialclub", "eac_", "vc_", "dotnet", "ue4prereq", "ueprereq",
+        "uploader", "socialclub", "eac_", "vc_", "dotnet", "ue4prereq", "ueprereq", "leagueclient", "riotclient",
     ];
 
     /// <summary>Folders of well-known tools distributed through game stores (not games).</summary>
@@ -96,8 +105,17 @@ public static class GameClassifier
     /// <param name="executablePath">Full executable path (null for protected processes, which are never games).</param>
     /// <param name="settings">Detection settings and the user's lists.</param>
     /// <param name="recognized">Executables Windows recognizes as games.</param>
-    public static GameMatch? Classify(string? executablePath, GamingSettings settings, IReadOnlySet<string> recognized)
+    public static GameMatch? Classify(string? executablePath, GamingSettings settings, IReadOnlySet<string> recognized) =>
+        Classify(executablePath, settings, recognized, InstalledGameIndex.Empty);
+
+    /// <summary>Classifies an executable. Returns null when there is no evidence that it is a game.</summary>
+    /// <param name="executablePath">Full executable path (null for protected processes, which are never games).</param>
+    /// <param name="settings">Detection settings and the user's lists.</param>
+    /// <param name="recognized">Executables Windows recognizes as games.</param>
+    /// <param name="installed">Games the launchers report as installed.</param>
+    public static GameMatch? Classify(string? executablePath, GamingSettings settings, IReadOnlySet<string> recognized, InstalledGameIndex installed)
     {
+        ArgumentNullException.ThrowIfNull(installed);
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(recognized);
         if (string.IsNullOrWhiteSpace(executablePath) || Contains(settings.ExcludedGames, executablePath))
@@ -113,6 +131,26 @@ public static class GameClassifier
         if (IsSystemPath(executablePath))
         {
             return null;
+        }
+
+        if (!IsHelper(executablePath) && Confirmed(settings, executablePath) is { } confirmed)
+        {
+            return new GameMatch(executablePath, GameDetectionSource.Launcher, ConfidenceLevel.High, Text.Format(Strings.Game_Detect_Confirmed, confirmed.Name))
+            {
+                GameName = confirmed.Name,
+                InstallFolder = confirmed.Folder,
+            };
+        }
+
+        if (settings.DetectLauncherGames && !IsHelper(executablePath) && installed.Find(executablePath) is { } game
+            && !Contains(settings.IgnoredLauncherGames, game.Key))
+        {
+            return new GameMatch(executablePath, GameDetectionSource.Launcher, ConfidenceLevel.High, Text.Format(Strings.Game_Detect_Launcher, game.LauncherName, game.Name))
+            {
+                Library = game.LauncherName,
+                GameName = game.Name,
+                InstallFolder = game.InstallFolder,
+            };
         }
 
         if (settings.DetectWindowsGames && recognized.Contains(executablePath))
@@ -255,6 +293,19 @@ public static class GameClassifier
         GenericProductNames.Any(g =>
             product.Equals(g, StringComparison.OrdinalIgnoreCase)
             || (product.StartsWith(g, StringComparison.OrdinalIgnoreCase) && product.Length > g.Length && !char.IsLetterOrDigit(product[g.Length])));
+
+    private static ConfirmedGame? Confirmed(GamingSettings settings, string executablePath)
+    {
+        if (settings.ConfirmedGames.Count == 0)
+        {
+            return null;
+        }
+
+        var path = InstalledGameIndex.Normalize(executablePath);
+        return settings.ConfirmedGames
+            .Where(g => path.StartsWith(InstalledGameIndex.Normalize(g.Folder), StringComparison.OrdinalIgnoreCase))
+            .MaxBy(g => g.Folder.Length);
+    }
 
     private static bool IsSystemPath(string path) =>
         path.Contains(@"\Windows\System32\", StringComparison.OrdinalIgnoreCase)

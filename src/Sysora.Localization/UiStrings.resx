@@ -2454,4 +2454,100 @@
   <data name="Replay_SourceOlder" xml:space="preserve">
     <value>Older than {0}: applications are shown per five minutes.</value>
   </data>
+  <data name="Settings_Games_LauncherToggle" xml:space="preserve">
+    <value>Games installed with a launcher</value>
+  </data>
+  <data name="Settings_Games_LauncherToggleDescription" xml:space="preserve">
+    <value>Games that Steam, Epic Games, Riot or GOG report as installed, read from the launchers' files on this PC</value>
+  </data>
+  <data name="Settings_Games_LaunchersTitle" xml:space="preserve">
+    <value>Games found in your launchers</value>
+  </data>
+  <data name="Settings_Games_LaunchersDescription" xml:space="preserve">
+    <value>Sysora reads the launchers' own files on this PC: it works offline, sends nothing, never starts a game and never changes its files. Confirm a game to keep following it even without its launcher, or ignore it.</value>
+  </data>
+  <data name="Settings_Games_ScanAgain" xml:space="preserve">
+    <value>Look again</value>
+  </data>
+  <data name="Settings_Games_Confirm" xml:space="preserve">
+    <value>Confirm</value>
+  </data>
+  <data name="Settings_Games_ConfirmHint" xml:space="preserve">
+    <value>Keep following this game even if launcher detection is turned off or the launcher is uninstalled</value>
+  </data>
+  <data name="Settings_Games_Ignore" xml:space="preserve">
+    <value>Ignore</value>
+  </data>
+  <data name="Settings_Games_YourGames" xml:space="preserve">
+    <value>Your games</value>
+  </data>
+  <data name="Settings_Games_YourGamesDescription" xml:space="preserve">
+    <value>Add a game Sysora does not recognize by choosing its program (.exe). Sysora follows it the next time it runs; it never starts it. Applications marked as not games are never followed.</value>
+  </data>
+  <data name="Settings_Games_Browse" xml:space="preserve">
+    <value>Add a game…</value>
+  </data>
+  <data name="Settings_Games_OrRunning" xml:space="preserve">
+    <value>Or choose an application that is running now</value>
+  </data>
+  <data name="Settings_Games_ChangeLocation" xml:space="preserve">
+    <value>Change location…</value>
+  </data>
+  <data name="Settings_Games_AlreadyAdded" xml:space="preserve">
+    <value>{0} is already in your games.</value>
+  </data>
+  <data name="Settings_Games_Added" xml:space="preserve">
+    <value>{0} added: Sysora follows it from the next time it starts.</value>
+  </data>
+  <data name="Settings_Games_Moved" xml:space="preserve">
+    <value>{0} now points to its new location. Its past sessions are kept.</value>
+  </data>
+  <data name="Settings_Games_NotAProgram" xml:space="preserve">
+    <value>Choose the game's program (a file ending in .exe).</value>
+  </data>
+  <data name="Settings_Games_NotFound" xml:space="preserve">
+    <value>{0} was not found. It may have been moved or deleted.</value>
+  </data>
+  <data name="Settings_Games_Unreadable" xml:space="preserve">
+    <value>{0} cannot be checked: the path is not valid or access is denied.</value>
+  </data>
+  <data name="Settings_Games_SystemProgram" xml:space="preserve">
+    <value>Windows programs are never followed as games.</value>
+  </data>
+  <data name="Settings_Games_NoLauncherGame" xml:space="preserve">
+    <value>No game found in the launchers' files (Steam, Epic Games, Riot, GOG).</value>
+  </data>
+  <data name="Settings_Games_LauncherSummary" xml:space="preserve">
+    <value>{0}: {1}. Games whose folder no longer exists are left out.</value>
+  </data>
+  <data name="Count_GameFound_One" xml:space="preserve">
+    <value>{0} game found</value>
+  </data>
+  <data name="Count_GameFound_Other" xml:space="preserve">
+    <value>{0} games found</value>
+  </data>
+  <data name="Settings_Games_Missing" xml:space="preserve">
+    <value>Not found at this location: the game may have moved. Choose its new location or remove it.</value>
+  </data>
+  <data name="Settings_Games_State_Confirmed" xml:space="preserve">
+    <value>Confirmed</value>
+  </data>
+  <data name="Settings_Games_State_ConfirmedGone" xml:space="preserve">
+    <value>Confirmed (no longer listed by the launcher)</value>
+  </data>
+  <data name="Settings_Games_State_Ignored" xml:space="preserve">
+    <value>Ignored: not followed</value>
+  </data>
+  <data name="Settings_Games_State_Auto" xml:space="preserve">
+    <value>Followed automatically</value>
+  </data>
+  <data name="Settings_Games_State_Off" xml:space="preserve">
+    <value>Not followed (launcher detection is off)</value>
+  </data>
+  <data name="Settings_Games_FollowAgain" xml:space="preserve">
+    <value>Follow again</value>
+  </data>
+  <data name="Settings_Games_Unconfirm" xml:space="preserve">
+    <value>Remove confirmation</value>
+  </data>
 </root>

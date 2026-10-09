@@ -127,7 +127,25 @@ public static class SettingsValidator
             MinimumSessionMinutes = Math.Clamp(gaming.MinimumSessionMinutes, 1, 30),
             ExcludedGames = excluded,
             AddedGames = added,
+            IgnoredLauncherGames = NormalizePaths(gaming.IgnoredLauncherGames, []),
+            ConfirmedGames = NormalizeConfirmed(gaming.ConfirmedGames),
         };
+    }
+
+    /// <summary>Complete, distinct confirmed games; the same instance when the list is already clean.</summary>
+    private static IReadOnlyList<ConfirmedGame> NormalizeConfirmed(IReadOnlyList<ConfirmedGame>? games)
+    {
+        if (games is null)
+        {
+            return [];
+        }
+
+        var clean = games
+            .Where(g => g is { Key.Length: > 0, Name.Length: > 0, Folder.Length: > 0 })
+            .DistinctBy(g => g.Key, StringComparer.Ordinal)
+            .Take(MaxGameListEntries)
+            .ToArray();
+        return clean.Length == games.Count ? games : clean;
     }
 
     /// <summary>
