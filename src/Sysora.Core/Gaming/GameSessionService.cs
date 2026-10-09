@@ -72,6 +72,12 @@ public sealed class GameSessionService : IAsyncDisposable
     /// <summary>Raised on a background thread when sessions start, end or are dropped.</summary>
     public event EventHandler? SessionsChanged;
 
+    /// <summary>
+    /// Raised on a background thread when the games Windows recognizes or the launchers report as installed have changed
+    /// (the first read after start included).
+    /// </summary>
+    public event EventHandler? LibraryChanged;
+
     /// <summary>Sessions in progress.</summary>
     public IReadOnlyList<LiveGameSession> ActiveSessions
     {
@@ -397,6 +403,7 @@ public sealed class GameSessionService : IAsyncDisposable
                 "{Count} games recognized by Windows, {Installed} installed with a launcher.",
                 _library.RecognizedGames.Count,
                 _library.InstalledGames.Games.Count);
+            LibraryChanged?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {

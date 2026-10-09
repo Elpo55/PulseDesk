@@ -119,7 +119,7 @@ public sealed class LauncherGameTests : IDisposable
 
         Assert.NotNull(game);
         Assert.Equal("VALORANT", game.Name);
-        Assert.Equal("D:/GAMES/Riot Games/VALORANT/live", game.InstallFolder);
+        Assert.Equal("D:/GAMES/Riot Games/VALORANT/live".Replace('/', Path.DirectorySeparatorChar), game.InstallFolder);
     }
 
     [Fact]

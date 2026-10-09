@@ -37,6 +37,7 @@ public sealed partial class SettingsViewModel : PageViewModel
     private readonly DialogService _dialogs;
     private readonly GameSessionService _games;
     private readonly PickerService _pickers;
+    private readonly SynchronizationContext? _ui;
     private bool _loading;
     private long _lastOverheadUpdate;
 
@@ -61,6 +62,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         _dialogs = dialogs;
         _games = games;
         _pickers = pickers;
+        _ui = SynchronizationContext.Current;
         IsDemoMode = options.DemoMode;
         GameMessage = LauncherSummary = string.Empty;
         _loading = true;
@@ -660,11 +662,25 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     protected override void OnActivated()
     {
+        _games.LibraryChanged += OnLibraryChanged;
         Load(_settings.Current);
         UpdateOverhead();
         RefreshRunningApps();
         _ = UpdateHistoryStatusAsync();
     }
+
+    protected override void OnDeactivated() => _games.LibraryChanged -= OnLibraryChanged;
+
+    /// <summary>The launchers' files are read in the background (at start, every 30 minutes): show the new list.</summary>
+    private void OnLibraryChanged(object? sender, EventArgs e) => _ui?.Post(
+        _ =>
+        {
+            if (IsActive)
+            {
+                LoadLauncherGames(_settings.Current.Gaming);
+            }
+        },
+        null);
 
     protected override void Update(SystemSnapshot snapshot, MetricKind updated)
     {

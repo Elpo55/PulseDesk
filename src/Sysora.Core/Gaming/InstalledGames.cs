@@ -501,7 +501,8 @@ public static class RiotFiles
             name += $" ({patchline.ToUpperInvariant()})";
         }
 
-        return new InstalledGame(GameLauncher.Riot, productFolder, name, path);
+        // The Riot Client writes paths with forward slashes: show them the way the system does.
+        return new InstalledGame(GameLauncher.Riot, productFolder, name, path.Replace('/', Path.DirectorySeparatorChar));
     }
 
     private static string FolderName(string path)

@@ -173,6 +173,45 @@ public sealed class GameSessionServiceTests : IAsyncLifetime
         }
     }
 
+    [Fact]
+    public async Task LibraryChanges_AreAnnounced()
+    {
+        var library = new ChangingLibrary();
+        var service = new GameSessionService(_monitor, _history, library, _repository, _settings, NullLogger<GameSessionService>.Instance, _time, selfProcessId: 77);
+        var changes = 0;
+        service.LibraryChanged += (_, _) => Interlocked.Increment(ref changes);
+
+        await service.RefreshGamesAsync();
+        await service.RefreshGamesAsync();
+
+        Assert.Equal(1, changes);
+        Assert.Single(service.InstalledGames);
+        await service.DisposeAsync();
+    }
+
+    /// <summary>A library whose first read finds one launcher game, and whose later reads find no change.</summary>
+    private sealed class ChangingLibrary : IGameLibrary
+    {
+        private int _reads;
+
+        public IReadOnlySet<string> RecognizedGames { get; } = new HashSet<string>();
+
+        public InstalledGameIndex InstalledGames { get; private set; } = InstalledGameIndex.Empty;
+
+        public bool Refresh()
+        {
+            if (Interlocked.Increment(ref _reads) > 1)
+            {
+                return false;
+            }
+
+            InstalledGames = new InstalledGameIndex([new InstalledGame(GameLauncher.Steam, "730", "Counter-Strike 2", @"D:\SteamLibrary\steamapps\common\Counter-Strike Global Offensive")]);
+            return true;
+        }
+
+        public string? GetProductName(string executablePath) => null;
+    }
+
     private sealed class EmptyLibrary : IGameLibrary
     {
         public IReadOnlySet<string> RecognizedGames { get; } = new HashSet<string>();
