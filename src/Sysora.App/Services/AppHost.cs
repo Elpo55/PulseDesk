@@ -65,8 +65,10 @@ public sealed class AppHost : IAsyncDisposable
         services.AddLogging(builder => builder.SetMinimumLevel(LogLevel.Debug));
         services.AddSingleton<ILoggerProvider>(sp => sp.GetRequiredService<FileLoggerProvider>());
 
-        // Core
-        services.AddSingleton<ISettingsStore, JsonFileSettingsStore>();
+        // Core. Demo mode starts from the user's settings but keeps its changes (and "Start with Windows") to itself.
+        services.AddSingleton<ISettingsStore>(_ => options.DemoMode
+            ? new DemoSettingsStore(new JsonFileSettingsStore(paths))
+            : new JsonFileSettingsStore(paths));
         services.AddSingleton(sp => new SettingsService(sp.GetRequiredService<ISettingsStore>(), sp.GetRequiredService<ILogger<SettingsService>>()));
         services.AddSingleton(sp => new MetricsMonitor(
             sp.GetRequiredService<MetricProviders>(),
@@ -76,7 +78,9 @@ public sealed class AppHost : IAsyncDisposable
         services.AddSingleton<HealthService>();
         services.AddSingleton<ISystemPowerEvents, Sysora.Infrastructure.Windows.WindowsPowerEvents>();
         services.AddSingleton<RunKeyStartupRegistration>();
-        services.AddSingleton<IStartupRegistration>(sp => sp.GetRequiredService<RunKeyStartupRegistration>());
+        services.AddSingleton<IStartupRegistration>(sp => options.DemoMode
+            ? new SimulatedStartupRegistration()
+            : sp.GetRequiredService<RunKeyStartupRegistration>());
 
         // History and analysis. Demo mode keeps its history in memory: simulated data never reaches the
         // real history database.
