@@ -2,6 +2,7 @@
     x:Class="Sysora.App.Views.ComparePage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:l="using:Sysora.Localization"
     xmlns:controls="using:Sysora.App.Controls"
     xmlns:vm="using:Sysora.App.ViewModels"
     NavigationCacheMode="Required">
@@ -17,13 +18,13 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <StackPanel>
-                    <TextBlock Style="{StaticResource PageTitleTextStyle}" Text="Compare" />
-                    <TextBlock Style="{StaticResource PageSubtitleTextStyle}" Text="Before / after: how the PC behaved in two periods" />
+                    <TextBlock Style="{StaticResource PageTitleTextStyle}" Text="{x:Bind l:UiStrings.Common_Compare}" />
+                    <TextBlock Style="{StaticResource PageSubtitleTextStyle}" Text="{x:Bind l:UiStrings.Compare_BeforeAfterHowThePCBehavedInTwoPeriods}" />
                 </StackPanel>
-                <Button AutomationProperties.Name="Export" Grid.Column="1" VerticalAlignment="Center" Command="{x:Bind ViewModel.ExportCommand}" IsEnabled="{x:Bind ViewModel.HasResult, Mode=OneWay}" ToolTipService.ToolTip="Save this comparison as an HTML report or JSON data">
+                <Button AutomationProperties.Name="{x:Bind l:UiStrings.Common_Export}" Grid.Column="1" VerticalAlignment="Center" Command="{x:Bind ViewModel.ExportCommand}" IsEnabled="{x:Bind ViewModel.HasResult, Mode=OneWay}" ToolTipService.ToolTip="{x:Bind l:UiStrings.Compare_SaveThisComparisonAsAnHTMLReportOrJSONData}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <FontIcon FontSize="14" Glyph="&#xEDE1;" />
-                        <TextBlock Text="Export" />
+                        <TextBlock Text="{x:Bind l:UiStrings.Common_Export}" />
                     </StackPanel>
                 </Button>
             </Grid>
@@ -33,35 +34,35 @@
                     <controls:AdaptiveGridPanel MinItemWidth="260" RowSpacing="12">
                         <ComboBox
                             HorizontalAlignment="Stretch"
-                            Header="Compare"
+                            Header="{x:Bind l:UiStrings.Common_Compare}"
                             ItemsSource="{x:Bind ViewModel.Presets}"
                             SelectedItem="{x:Bind ViewModel.Preset, Mode=TwoWay}" />
                         <ComboBox
                             HorizontalAlignment="Stretch"
-                            Header="Game session"
+                            Header="{x:Bind l:UiStrings.Compare_GameSession}"
                             ItemsSource="{x:Bind ViewModel.Sessions}"
-                            PlaceholderText="No game session recorded"
+                            PlaceholderText="{x:Bind l:UiStrings.Compare_NoGameSessionRecorded}"
                             SelectedItem="{x:Bind ViewModel.Session, Mode=TwoWay}"
                             Visibility="{x:Bind ViewModel.NeedsSession, Mode=OneWay}" />
                     </controls:AdaptiveGridPanel>
                     <StackPanel Orientation="Horizontal" Spacing="12" Visibility="{x:Bind ViewModel.NeedsFirstMoment, Mode=OneWay}">
-                        <CalendarDatePicker Date="{x:Bind ViewModel.FirstDate, Mode=TwoWay}" Header="Moment (date)" />
-                        <TimePicker Header="Time" Time="{x:Bind ViewModel.FirstTime, Mode=TwoWay}" />
+                        <CalendarDatePicker Date="{x:Bind ViewModel.FirstDate, Mode=TwoWay}" Header="{x:Bind l:UiStrings.Compare_MomentDate}" />
+                        <TimePicker Header="{x:Bind l:UiStrings.Compare_Time}" Time="{x:Bind ViewModel.FirstTime, Mode=TwoWay}" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="12" Visibility="{x:Bind ViewModel.NeedsSecondMoment, Mode=OneWay}">
-                        <CalendarDatePicker Date="{x:Bind ViewModel.SecondDate, Mode=TwoWay}" Header="Second moment (date)" />
-                        <TimePicker Header="Time" Time="{x:Bind ViewModel.SecondTime, Mode=TwoWay}" />
+                        <CalendarDatePicker Date="{x:Bind ViewModel.SecondDate, Mode=TwoWay}" Header="{x:Bind l:UiStrings.Compare_SecondMomentDate}" />
+                        <TimePicker Header="{x:Bind l:UiStrings.Compare_Time}" Time="{x:Bind ViewModel.SecondTime, Mode=TwoWay}" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="12">
-                        <Button AutomationProperties.Name="Compare" Command="{x:Bind ViewModel.CompareCommand}" Style="{StaticResource AccentButtonStyle}">
+                        <Button AutomationProperties.Name="{x:Bind l:UiStrings.Common_Compare}" Command="{x:Bind ViewModel.CompareCommand}" Style="{StaticResource AccentButtonStyle}">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <FontIcon FontSize="14" Glyph="&#xE81E;" />
-                                <TextBlock Text="Compare" />
+                                <TextBlock Text="{x:Bind l:UiStrings.Common_Compare}" />
                             </StackPanel>
                         </Button>
                         <ProgressRing Width="20" Height="20" IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay}" />
                     </StackPanel>
-                    <TextBlock Style="{StaticResource LabelTextStyle}" Text="A moment is compared over the 10 minutes before it; &quot;before vs after a moment&quot; uses 15 minutes on each side. Recent periods use per-second measurements, older ones the per-minute or hourly history." TextWrapping="Wrap" />
+                    <TextBlock Style="{StaticResource LabelTextStyle}" Text="{x:Bind l:UiStrings.Compare_AMomentIsComparedOverThe10MinutesBeforeItQuot}" TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
 
@@ -79,11 +80,11 @@
                                     <ColumnDefinition Width="1.6*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Style="{StaticResource LabelTextStyle}" Text="Metric" />
+                                <TextBlock Style="{StaticResource LabelTextStyle}" Text="{x:Bind l:UiStrings.Common_Metric}" />
                                 <TextBlock Grid.Column="1" Style="{StaticResource LabelTextStyle}" Text="{x:Bind ViewModel.BeforeLabel, Mode=OneWay}" />
                                 <TextBlock Grid.Column="2" Style="{StaticResource LabelTextStyle}" Text="{x:Bind ViewModel.AfterLabel, Mode=OneWay}" />
-                                <TextBlock Grid.Column="3" Style="{StaticResource LabelTextStyle}" Text="Change" />
-                                <TextBlock Grid.Column="4" MinWidth="120" Style="{StaticResource LabelTextStyle}" Text="Importance" />
+                                <TextBlock Grid.Column="3" Style="{StaticResource LabelTextStyle}" Text="{x:Bind l:UiStrings.Compare_Change}" />
+                                <TextBlock Grid.Column="4" MinWidth="120" Style="{StaticResource LabelTextStyle}" Text="{x:Bind l:UiStrings.Compare_Importance}" />
                             </Grid>
                             <ItemsControl ItemsSource="{x:Bind ViewModel.Rows}">
                                 <ItemsControl.ItemTemplate>
@@ -122,8 +123,8 @@
 
             <Border Style="{StaticResource CardStyle}">
                 <StackPanel Spacing="4">
-                    <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="What is compared" />
-                    <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="Averages of CPU, memory, disk activity, GPU, network, processes and free space on the Windows volume, over each period. A metric measured in only one period is shown as not available and not compared. Percentages differ in percentage points; amounts also show the relative change." />
+                    <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind l:UiStrings.Common_WhatIsCompared}" />
+                    <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind l:UiStrings.Compare_AveragesOfCPUMemoryDiskActivityGPUNetwork}" />
                 </StackPanel>
             </Border>
         </StackPanel>

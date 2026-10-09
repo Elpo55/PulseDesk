@@ -10,6 +10,7 @@ using Sysora.Core.Formatting;
 using Sysora.Core.Gaming;
 using Sysora.Core.Models;
 using Sysora.Core.Reports;
+using Sysora.Localization;
 
 namespace Sysora.App.ViewModels;
 
@@ -65,14 +66,14 @@ public sealed partial class CompareViewModel : PageViewModel
 
     public IReadOnlyList<ComparePresetOption> Presets { get; } =
     [
-        new(ComparisonPreset.NowVsHourAgo, "Now vs 1 hour ago"),
-        new(ComparisonPreset.NowVsYesterday, "Now vs yesterday at this time"),
-        new(ComparisonPreset.TodayVsYesterday, "Today vs yesterday"),
-        new(ComparisonPreset.GameBeforeVsDuring, "Game session: before vs during"),
-        new(ComparisonPreset.GameBeforeVsAfter, "Game session: before vs after"),
-        new(ComparisonPreset.GameVsPreviousGame, "Game session vs the previous one"),
-        new(ComparisonPreset.AroundTime, "Before vs after a moment"),
-        new(ComparisonPreset.TwoMoments, "Two moments"),
+        new(ComparisonPreset.NowVsHourAgo, UiStrings.Compare_Preset_HourAgo),
+        new(ComparisonPreset.NowVsYesterday, UiStrings.Compare_Preset_Yesterday),
+        new(ComparisonPreset.TodayVsYesterday, UiStrings.Compare_Preset_TodayYesterday),
+        new(ComparisonPreset.GameBeforeVsDuring, UiStrings.Compare_Preset_GameDuring),
+        new(ComparisonPreset.GameBeforeVsAfter, UiStrings.Compare_Preset_GameAfter),
+        new(ComparisonPreset.GameVsPreviousGame, UiStrings.Compare_Preset_GamePrevious),
+        new(ComparisonPreset.AroundTime, UiStrings.Compare_Preset_Moment),
+        new(ComparisonPreset.TwoMoments, UiStrings.Compare_Preset_TwoMoments),
     ];
 
     public ObservableCollection<GameSessionOption> Sessions { get; } = [];
@@ -265,7 +266,7 @@ public sealed partial class CompareViewModel : PageViewModel
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             _logger.LogWarning(ex, "The comparison failed.");
-            Summary = "The comparison could not be made. See the log for details.";
+            Summary = UiStrings.Compare_Failed;
         }
         finally
         {
@@ -322,7 +323,7 @@ public sealed class CompareRowViewModel(StateDifference row)
         _ => string.Empty,
     };
 
-    public string ImportanceText { get; } = row.IsComparable ? HealthDisplay.Importance(row.Importance).Text : "Not compared";
+    public string ImportanceText { get; } = row.IsComparable ? HealthDisplay.Importance(row.Importance).Text : UiStrings.Compare_NotCompared;
 
     public string ImportanceBrushKey { get; } = row.IsComparable ? HealthDisplay.Importance(row.Importance).BrushKey : "StatusUnknownBrush";
 }

@@ -5,6 +5,7 @@ using Sysora.Core.Gaming;
 using Sysora.Core.History;
 using Sysora.Core.Interfaces;
 using Sysora.Core.Settings;
+using Sysora.Localization;
 
 namespace Sysora.Core.Analysis;
 
@@ -86,15 +87,15 @@ public static class StateComparer
     /// <summary>Display name of a metric.</summary>
     public static string Name(StateMetric metric) => metric switch
     {
-        StateMetric.Cpu => "CPU usage",
-        StateMetric.MemoryUsed => "Memory in use",
-        StateMetric.Disk => "Disk active time",
-        StateMetric.Gpu => "GPU usage",
-        StateMetric.NetworkReceive => "Download",
-        StateMetric.NetworkSend => "Upload",
-        StateMetric.ProcessCount => "Processes",
-        StateMetric.SystemDriveFree => "Free space (Windows volume)",
-        _ => "Memory in use (%)",
+        StateMetric.Cpu => Strings.Diag_Metric_CpuUsage,
+        StateMetric.MemoryUsed => Strings.State_Metric_MemoryUsed,
+        StateMetric.Disk => Strings.Diag_Metric_DiskActive,
+        StateMetric.Gpu => Strings.Diag_Metric_GpuUsage,
+        StateMetric.NetworkReceive => Strings.State_Metric_Download,
+        StateMetric.NetworkSend => Strings.State_Metric_Upload,
+        StateMetric.ProcessCount => Strings.State_Metric_Processes,
+        StateMetric.SystemDriveFree => Strings.State_Metric_SystemFree,
+        _ => Strings.State_Metric_MemoryPercent,
     };
 
     /// <summary>Averages of every metric over the snapshots of a period.</summary>
@@ -163,7 +164,7 @@ public static class StateComparer
         }
 
         var samples = session.Cpu?.Samples ?? 0;
-        return new PeriodState(label ?? $"During {session.Name}", session.Start, session.End, samples, "Averages recorded during the game session", values);
+        return new PeriodState(label ?? Text.Format(Strings.State_During, session.Name), session.Start, session.End, samples, Strings.State_SessionSource, values);
     }
 
     public static StateComparisonResult Compare(PeriodState before, PeriodState after)
@@ -186,10 +187,14 @@ public static class StateComparer
             .OrderByDescending(r => r.Importance)
             .ToArray();
         var summary = !before.HasData || !after.HasData
-            ? "Not enough data to compare: " + string.Join(" and ", new[] { before, after }.Where(p => !p.HasData).Select(p => $"no measurement for \"{p.Label}\"")) + "."
+            ? Text.Format(Strings.State_NotEnough, Text.List(new[] { before, after }.Where(p => !p.HasData).Select(p => Text.Format(Strings.State_NoMeasurementFor, p.Label))))
             : notable.Length == 0
-                ? "No notable difference between the two periods."
-                : $"{MetricFormatter.Plural(notable.Length, "notable difference")}: {string.Join(", ", notable.Take(4).Select(r => $"{r.Name} {r.ChangeText}"))}.";
+                ? Strings.State_NoDifference
+                : Text.Plural(
+                    notable.Length,
+                    Strings.State_Notable_One,
+                    Strings.State_Notable_Other,
+                    string.Join(Strings.List_Separator, notable.Take(4).Select(r => $"{r.Name} {r.ChangeText}")));
 
         var notes = new List<string>
         {
@@ -199,7 +204,7 @@ public static class StateComparer
         var missing = rows.Where(r => !r.IsComparable).Select(r => r.Name).ToArray();
         if (missing.Length > 0)
         {
-            notes.Add($"Not compared (measured in only one period): {string.Join(", ", missing)}.");
+            notes.Add(Text.Format(Strings.State_NotCompared, string.Join(Strings.List_Separator, missing)));
         }
 
         return new StateComparisonResult(before, after, rows, summary, notes);
@@ -213,12 +218,12 @@ public static class StateComparer
         var afterText = after is { } av ? format(av) : MetricFormatter.NotAvailable;
         if (before is not { } b || after is not { } a)
         {
-            return new StateDifference(metric, name, before, after, beforeText, afterText, "—", null, null, ChangeImportance.Low, "Measured in only one of the two periods: not compared.");
+            return new StateDifference(metric, name, before, after, beforeText, afterText, "—", null, null, ChangeImportance.Low, Strings.State_OnlyOne);
         }
 
         var difference = a - b;
         var direction = IsSame(metric, b, a) ? ChangeDirection.Same : difference > 0 ? ChangeDirection.Up : ChangeDirection.Down;
-        var changeText = direction == ChangeDirection.Same ? "No change" : Difference(metric, difference);
+        var changeText = direction == ChangeDirection.Same ? Strings.State_NoChange : Difference(metric, difference);
         string? relative = metric is StateMetric.MemoryUsed or StateMetric.NetworkReceive or StateMetric.NetworkSend or StateMetric.ProcessCount or StateMetric.SystemDriveFree
             && b > 0 && direction != ChangeDirection.Same
             ? $"{(difference >= 0 ? "+" : "−")}{MetricFormatter.Percent(Math.Abs(difference / b) * 100)}"
@@ -264,21 +269,21 @@ public static class StateComparer
 
     private static string Explain(StateMetric metric, ChangeDirection direction) => (metric, direction) switch
     {
-        (_, ChangeDirection.Same) => "About the same in both periods.",
-        (StateMetric.Cpu, ChangeDirection.Up) => "The processor was busier in the second period.",
-        (StateMetric.Cpu, _) => "The processor was less busy in the second period.",
-        (StateMetric.MemoryUsed, ChangeDirection.Up) => "More memory was in use in the second period.",
-        (StateMetric.MemoryUsed, _) => "Less memory was in use in the second period.",
-        (StateMetric.Disk, ChangeDirection.Up) => "Disks were busier in the second period.",
-        (StateMetric.Disk, _) => "Disks were less busy in the second period.",
-        (StateMetric.Gpu, ChangeDirection.Up) => "The graphics processor was busier in the second period.",
-        (StateMetric.Gpu, _) => "The graphics processor was less busy in the second period.",
-        (StateMetric.SystemDriveFree, ChangeDirection.Down) => "Space was used on the Windows volume between the two periods.",
-        (StateMetric.SystemDriveFree, _) => "Space was freed on the Windows volume between the two periods.",
-        (StateMetric.ProcessCount, ChangeDirection.Up) => "More processes were running in the second period.",
-        (StateMetric.ProcessCount, _) => "Fewer processes were running in the second period.",
-        (_, ChangeDirection.Up) => "More network traffic in the second period.",
-        _ => "Less network traffic in the second period.",
+        (_, ChangeDirection.Same) => Strings.State_Explain_Same,
+        (StateMetric.Cpu, ChangeDirection.Up) => Strings.State_Explain_CpuUp,
+        (StateMetric.Cpu, _) => Strings.State_Explain_CpuDown,
+        (StateMetric.MemoryUsed, ChangeDirection.Up) => Strings.State_Explain_MemoryUp,
+        (StateMetric.MemoryUsed, _) => Strings.State_Explain_MemoryDown,
+        (StateMetric.Disk, ChangeDirection.Up) => Strings.State_Explain_DiskUp,
+        (StateMetric.Disk, _) => Strings.State_Explain_DiskDown,
+        (StateMetric.Gpu, ChangeDirection.Up) => Strings.State_Explain_GpuUp,
+        (StateMetric.Gpu, _) => Strings.State_Explain_GpuDown,
+        (StateMetric.SystemDriveFree, ChangeDirection.Down) => Strings.State_Explain_SpaceUsed,
+        (StateMetric.SystemDriveFree, _) => Strings.State_Explain_SpaceFreed,
+        (StateMetric.ProcessCount, ChangeDirection.Up) => Strings.State_Explain_ProcessesUp,
+        (StateMetric.ProcessCount, _) => Strings.State_Explain_ProcessesDown,
+        (_, ChangeDirection.Up) => Strings.State_Explain_NetworkUp,
+        _ => Strings.State_Explain_NetworkDown,
     };
 
     private static Func<double, string> Format(StateMetric metric) => metric switch
@@ -298,7 +303,7 @@ public static class StateComparer
             StateMetric.MemoryUsed or StateMetric.SystemDriveFree => $"{sign}{MetricFormatter.Bytes(magnitude)}",
             StateMetric.NetworkReceive or StateMetric.NetworkSend => $"{sign}{MetricFormatter.BitsPerSecond(magnitude)}",
             StateMetric.ProcessCount => string.Create(CultureInfo.CurrentCulture, $"{sign}{Math.Round(magnitude):N0}"),
-            _ => string.Create(CultureInfo.CurrentCulture, $"{sign}{Math.Round(magnitude):0} percentage {(Math.Round(magnitude) == 1 ? "point" : "points")}"),
+            _ => sign + Text.Plural((long)Math.Round(magnitude), Strings.State_Points_One, Strings.State_Points_Other),
         };
     }
 
@@ -306,7 +311,9 @@ public static class StateComparer
         $"{state.From.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)} – {state.To.ToLocalTime().ToString("t", CultureInfo.CurrentCulture)}";
 
     private static string Samples(PeriodState state) =>
-        state.SampleCount > 0 ? MetricFormatter.Plural(state.SampleCount, "measurement") : "no measurement";
+        state.SampleCount > 0
+            ? Text.Plural(state.SampleCount, Strings.Count_Measurement_One, Strings.Count_Measurement_Other)
+            : Strings.State_NoMeasurement;
 }
 
 /// <summary>Ready-made comparisons offered to the user.</summary>
@@ -363,25 +370,25 @@ public sealed class StateComparisonService(
         {
             case ComparisonPreset.NowVsHourAgo:
                 return StateComparer.Compare(
-                    await LoadAsync("1 hour ago", now - TimeSpan.FromHours(1) - MomentWindow, now - TimeSpan.FromHours(1), cancellationToken).ConfigureAwait(false),
-                    await LoadAsync("Now", now - MomentWindow, now, cancellationToken).ConfigureAwait(false));
+                    await LoadAsync(Strings.State_Label_HourAgo, now - TimeSpan.FromHours(1) - MomentWindow, now - TimeSpan.FromHours(1), cancellationToken).ConfigureAwait(false),
+                    await LoadAsync(Strings.State_Label_Now, now - MomentWindow, now, cancellationToken).ConfigureAwait(false));
             case ComparisonPreset.NowVsYesterday:
                 return StateComparer.Compare(
-                    await LoadAsync("Yesterday at this time", now.AddDays(-1) - MomentWindow, now.AddDays(-1), cancellationToken).ConfigureAwait(false),
-                    await LoadAsync("Now", now - MomentWindow, now, cancellationToken).ConfigureAwait(false));
+                    await LoadAsync(Strings.State_Label_YesterdaySameTime, now.AddDays(-1) - MomentWindow, now.AddDays(-1), cancellationToken).ConfigureAwait(false),
+                    await LoadAsync(Strings.State_Label_Now, now - MomentWindow, now, cancellationToken).ConfigureAwait(false));
             case ComparisonPreset.TodayVsYesterday:
             {
                 var local = TimeZoneInfo.ConvertTime(now, zone);
                 var midnight = new DateTimeOffset(local.Date, zone.GetUtcOffset(local.Date));
                 return StateComparer.Compare(
-                    await LoadAsync("Yesterday", midnight.AddDays(-1), midnight, cancellationToken).ConfigureAwait(false),
-                    await LoadAsync("Today", midnight, now, cancellationToken).ConfigureAwait(false));
+                    await LoadAsync(Strings.Usual_Period_Yesterday, midnight.AddDays(-1), midnight, cancellationToken).ConfigureAwait(false),
+                    await LoadAsync(Strings.Usual_Period_Today, midnight, now, cancellationToken).ConfigureAwait(false));
             }
 
             case ComparisonPreset.AroundTime when request.Time is { } time:
                 return StateComparer.Compare(
-                    await LoadAsync("Before", time - AroundWindow, time, cancellationToken).ConfigureAwait(false),
-                    await LoadAsync("After", time, Min(time + AroundWindow, now), cancellationToken).ConfigureAwait(false));
+                    await LoadAsync(Strings.State_Label_Before, time - AroundWindow, time, cancellationToken).ConfigureAwait(false),
+                    await LoadAsync(Strings.State_Label_After, time, Min(time + AroundWindow, now), cancellationToken).ConfigureAwait(false));
             case ComparisonPreset.TwoMoments when request.Time is { } first && request.SecondTime is { } second:
             {
                 var (a, b) = first <= second ? (first, second) : (second, first);
@@ -403,7 +410,7 @@ public sealed class StateComparisonService(
         var detailed = history.GetSnapshots(from, to);
         if (detailed.Count > 0 && detailed[0].Timestamp - from <= TimeSpan.FromMinutes(1))
         {
-            return StateComparer.Summarize(label, from, to, detailed, "Per-second measurements kept in memory");
+            return StateComparer.Summarize(label, from, to, detailed, Strings.State_Source_Seconds);
         }
 
         var detailLimit = _time.GetUtcNow().AddDays(-settings.Current.History.DetailRetentionDays);
@@ -411,7 +418,9 @@ public sealed class StateComparisonService(
         var start = SystemUsageAggregate.BucketStart(from, resolution);
         var buckets = await repository.GetSystemUsageAsync(start, to, resolution, cancellationToken).ConfigureAwait(false);
         var points = buckets.Select(ReplayService.ToSnapshot).ToArray();
-        var source = resolution == HistoryResolution.Minute ? "Per-minute averages of the local history" : "Hourly summaries of the local history";
+        var source = resolution == HistoryResolution.Minute
+            ? Strings.State_Source_Minutes
+            : Strings.State_Source_Hours;
         return StateComparer.Summarize(label, start, to, points, source);
     }
 
@@ -423,8 +432,8 @@ public sealed class StateComparisonService(
         var index = request.SessionId is { } id ? sessions.FindIndex(s => s.Id == id) : sessions.Count - 1;
         if (index < 0)
         {
-            var none = new PeriodState("No game session", now, now, 0, "No game session recorded", new Dictionary<StateMetric, double>());
-            return StateComparer.Compare(none, none) with { Summary = "No game session recorded yet: play a game for a few minutes, then compare." };
+            var none = new PeriodState(Strings.State_NoSession, now, now, 0, Strings.State_NoSessionRecorded, new Dictionary<StateMetric, double>());
+            return StateComparer.Compare(none, none) with { Summary = Strings.State_NoSessionYet };
         }
 
         var session = sessions[index];
@@ -432,18 +441,18 @@ public sealed class StateComparisonService(
         {
             case ComparisonPreset.GameBeforeVsDuring:
                 return StateComparer.Compare(
-                    await LoadAsync($"Before {session.Name}", session.Start - AroundWindow, session.Start, cancellationToken).ConfigureAwait(false),
+                    await LoadAsync(Text.Format(Strings.State_BeforeGame, session.Name), session.Start - AroundWindow, session.Start, cancellationToken).ConfigureAwait(false),
                     StateComparer.FromSession(session));
             case ComparisonPreset.GameBeforeVsAfter:
                 return StateComparer.Compare(
-                    await LoadAsync($"Before {session.Name}", session.Start - AroundWindow, session.Start, cancellationToken).ConfigureAwait(false),
-                    await LoadAsync($"After {session.Name}", session.End, Min(session.End + AroundWindow, now), cancellationToken).ConfigureAwait(false));
+                    await LoadAsync(Text.Format(Strings.State_BeforeGame, session.Name), session.Start - AroundWindow, session.Start, cancellationToken).ConfigureAwait(false),
+                    await LoadAsync(Text.Format(Strings.State_AfterGame, session.Name), session.End, Min(session.End + AroundWindow, now), cancellationToken).ConfigureAwait(false));
             default:
                 if (index == 0)
                 {
                     var only = StateComparer.FromSession(session);
-                    return StateComparer.Compare(only with { Values = new Dictionary<StateMetric, double>(), Label = "Previous session" }, only)
-                        with { Summary = "There is no earlier game session to compare with." };
+                    return StateComparer.Compare(only with { Values = new Dictionary<StateMetric, double>(), Label = Strings.State_PreviousSession }, only)
+                        with { Summary = Strings.State_NoEarlierSession };
                 }
 
                 var previous = sessions[index - 1];

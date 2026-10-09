@@ -2,6 +2,7 @@ using System.Globalization;
 using Sysora.Core.Formatting;
 using Sysora.Core.Interfaces;
 using Sysora.Core.Metrics;
+using Sysora.Localization;
 
 namespace Sysora.Core.Analysis;
 
@@ -68,7 +69,7 @@ public sealed class AppImpactAnalyzer : IAppImpactAnalyzer
             CpuLevel(cpuLoad),
             cpuLoad,
             cpuNormalized,
-            Invariant($"{cpuLoad:0.#}% of total CPU capacity on average over the period ({usage.CpuAverage:0.#}% while running)"));
+            Text.Format(Strings.Impact_Cpu_Description, MetricFormatter.Percent(cpuLoad, 1), MetricFormatter.Percent(usage.CpuAverage, 1)));
 
         var memoryShare = totalMemoryBytes > 0 ? usage.MemoryAverageBytes / totalMemoryBytes * 100 : 0;
         var memoryLoad = memoryShare * presence;
@@ -79,8 +80,8 @@ public sealed class AppImpactAnalyzer : IAppImpactAnalyzer
             memoryLoad,
             memoryNormalized,
             totalMemoryBytes > 0
-                ? Invariant($"{memoryLoad:0.#}% of physical memory on average over the period ({MetricFormatter.Bytes(usage.MemoryAverageBytes)} while running)")
-                : "Physical memory size unknown: memory not scored");
+                ? Text.Format(Strings.Impact_Memory_Description, MetricFormatter.Percent(memoryLoad, 1), MetricFormatter.Bytes(usage.MemoryAverageBytes))
+                : Strings.Impact_Memory_Unknown);
 
         var ioLoad = usage.IoAverageBytesPerSecond * presence;
         var ioNormalized = Math.Min(ioLoad / IoReferenceBytesPerSecond, 1);
@@ -89,14 +90,14 @@ public sealed class AppImpactAnalyzer : IAppImpactAnalyzer
             IoLevel(ioLoad),
             ioLoad,
             ioNormalized,
-            $"{MetricFormatter.BytesPerSecond(ioLoad)} on average over the period (files, devices and network combined)");
+            Text.Format(Strings.Impact_Io_Description, MetricFormatter.BytesPerSecond(ioLoad)));
 
         var duration = new ImpactComponent(
             "Running time",
             presence >= 0.8 ? ImpactLevel.High : presence >= 0.3 ? ImpactLevel.Moderate : ImpactLevel.Low,
             presence,
             presence,
-            Invariant($"Running {presence * 100:0}% of the monitored time"));
+            Text.Format(Strings.Impact_Running_Description, MetricFormatter.Percent(presence * 100)));
 
         var value = (int)Math.Round(100 * ((CpuWeight * cpuNormalized) + (MemoryWeight * memoryNormalized) + (IoWeight * ioNormalized)));
         return new AppImpactScore(value, LevelOf(value), [cpu, memory, io, duration]);
@@ -147,48 +148,43 @@ public sealed class AppImpactAnalyzer : IAppImpactAnalyzer
             .ToList();
 
         var presence = usage.Presence;
-        var when = presence >= 0.8 ? "for most of the monitored time"
-            : presence >= 0.3 ? "for a large part of the monitored time"
-            : presence >= 0.05 ? "for part of the monitored time"
-            : "briefly";
-        var running = $"{MetricFormatter.DurationCompact(TimeSpan.FromSeconds(usage.ActiveSeconds))} running of {MetricFormatter.DurationCompact(TimeSpan.FromSeconds(usage.MonitoredSeconds))} measured";
+        var when = presence >= 0.8 ? Strings.Impact_When_Most
+            : presence >= 0.3 ? Strings.Impact_When_Large
+            : presence >= 0.05 ? Strings.Impact_When_Part
+            : Strings.Impact_When_Briefly;
+        var running = Text.Format(Strings.Impact_RunningOfMeasured, MetricFormatter.DurationCompact(TimeSpan.FromSeconds(usage.ActiveSeconds)), MetricFormatter.DurationCompact(TimeSpan.FromSeconds(usage.MonitoredSeconds)));
 
         string sentence;
         if (drivers.Count == 0)
         {
-            sentence = $"Low resource usage over the period ({running}).";
+            sentence = Text.Format(Strings.Impact_Explain_Low, running);
             if (usage.CpuMaximum >= 50)
             {
-                sentence += Invariant($" Short CPU peaks up to {usage.CpuMaximum:0}% were observed.");
+                sentence += " " + Text.Format(Strings.Impact_Explain_Peaks, Percent(usage.CpuMaximum));
             }
 
             return sentence;
         }
 
-        var parts = drivers.Select(c => $"{Amount(c.Level)} {Noun(c.Resource)}").ToList();
-        var list = parts.Count switch
-        {
-            1 => parts[0],
-            2 => $"{parts[0]} and {parts[1]}",
-            _ => $"{parts[0]}, {parts[1]} and {parts[2]}",
-        };
-
-        return $"This application used {list} {when} ({running}).";
+        var list = Text.List(drivers.Select(c => Text.Format(Amount(c.Level), Noun(c.Resource))));
+        return Text.Format(Strings.Impact_Explain_Used, list, when, running);
     }
 
     private static string Amount(ImpactLevel level) => level switch
     {
-        ImpactLevel.VeryHigh => "a very large amount of",
-        ImpactLevel.High => "a large amount of",
-        _ => "a moderate amount of",
+        ImpactLevel.VeryHigh => Strings.Impact_Amount_VeryHigh,
+        ImpactLevel.High => Strings.Impact_Amount_High,
+        _ => Strings.Impact_Amount_Moderate,
     };
 
     private static string Noun(string resource) => resource switch
     {
-        "CPU" => "CPU",
-        "Memory" => "memory",
-        _ => "disk I/O",
+        "CPU" => Strings.Impact_Noun_Cpu,
+        "Memory" => Strings.Impact_Noun_Memory,
+        _ => Strings.Impact_Noun_Io,
     };
+
+    private static string Percent(double value) => MetricFormatter.Percent(value);
 
     private static ConfidenceLevel Confidence(AppUsageStatistics usage) => usage.MonitoredSeconds switch
     {
@@ -203,42 +199,42 @@ public sealed class AppImpactAnalyzer : IAppImpactAnalyzer
         var measured = TimeSpan.FromSeconds(usage.MonitoredSeconds);
         var evidence = new List<AnalysisEvidence>
         {
-            new("Running time", $"{MetricFormatter.DurationCompact(running)} of {MetricFormatter.DurationCompact(measured)} measured")
+            new(Strings.Impact_Ev_RunningTime, Text.Format(Strings.Impact_Ev_RunningValue, MetricFormatter.DurationCompact(running), MetricFormatter.DurationCompact(measured)))
             {
                 From = context.From,
                 To = context.To,
                 SampleCount = usage.Samples,
-                Source = "Sysora process samples (gaps such as sleep are excluded)",
+                Source = Strings.Impact_Ev_RunningSource,
             },
-            new("CPU", Invariant($"Average {usage.CpuAverage:0.#}% of total CPU while running, peak {usage.CpuMaximum:0.#}%"))
+            new(Strings.Impact_Ev_Cpu, Text.Format(Strings.Impact_Ev_CpuValue, MetricFormatter.Percent(usage.CpuAverage, 1), MetricFormatter.Percent(usage.CpuMaximum, 1)))
             {
-                Reference = Invariant($"Reference for \"very high\": {CpuReferencePercent:0}% of total CPU on average over the period"),
+                Reference = Text.Format(Strings.Impact_Ev_CpuReference, Percent(CpuReferencePercent)),
                 Source = MetricSources.Processes,
             },
-            new("Memory", $"Average {MetricFormatter.Bytes(usage.MemoryAverageBytes)} private working set while running, peak {MetricFormatter.Bytes(usage.MemoryMaximumBytes)}")
+            new(Strings.Impact_Ev_Memory, Text.Format(Strings.Impact_Ev_MemoryValue, MetricFormatter.Bytes(usage.MemoryAverageBytes), MetricFormatter.Bytes(usage.MemoryMaximumBytes)))
             {
                 Reference = context.TotalMemoryBytes > 0
-                    ? Invariant($"Reference for \"very high\": {MemoryReferencePercent:0}% of {MetricFormatter.Bytes(context.TotalMemoryBytes)} on average over the period")
+                    ? Text.Format(Strings.Impact_Ev_MemoryReference, Percent(MemoryReferencePercent), MetricFormatter.Bytes(context.TotalMemoryBytes))
                     : MetricFormatter.NotAvailable,
                 Source = MetricSources.Processes,
             },
-            new("Disk I/O", $"Average {MetricFormatter.BytesPerSecond(usage.IoAverageBytesPerSecond)} while running, peak {MetricFormatter.BytesPerSecond(usage.IoMaximumBytesPerSecond)}")
+            new(Strings.Impact_Ev_Io, Text.Format(Strings.Impact_Ev_IoValue, MetricFormatter.BytesPerSecond(usage.IoAverageBytesPerSecond), MetricFormatter.BytesPerSecond(usage.IoMaximumBytesPerSecond)))
             {
-                Reference = $"Reference for \"very high\": {MetricFormatter.BytesPerSecond(IoReferenceBytesPerSecond)} on average over the period",
+                Reference = Text.Format(Strings.Impact_Ev_IoReference, MetricFormatter.BytesPerSecond(IoReferenceBytesPerSecond)),
                 Source = MetricSources.ProcessIo,
             },
-            new("Network", MetricFormatter.NotAvailable)
+            new(Strings.Impact_Ev_Network, MetricFormatter.NotAvailable)
             {
-                Reference = "Windows does not report network usage per application without event tracing; network I/O is included in Disk I/O.",
+                Reference = Strings.Impact_Ev_NetworkReference,
             },
-            new("Launches", usage.Launches > 0
-                ? MetricFormatter.Plural(usage.Launches, "process start") + " observed"
-                : "No process start observed (already running, or not restarted)"),
-            new("Identification", usage.Identity.IdentificationEvidence)
+            new(Strings.Impact_Ev_Launches, usage.Launches > 0
+                ? Text.Plural(usage.Launches, Strings.Impact_Ev_Launches_One, Strings.Impact_Ev_Launches_Other)
+                : Strings.Impact_Ev_NoLaunch),
+            new(Strings.Impact_Ev_Identification, usage.Identity.IdentificationEvidence)
             {
-                Source = usage.Identity.ExecutablePath ?? "Image name only",
+                Source = usage.Identity.ExecutablePath ?? Strings.Impact_Ev_ImageNameOnly,
             },
-            new("Score", Invariant($"{score.Value}/100 ({score.Level})"))
+            new(Strings.Impact_Ev_Score, Text.Format(Strings.Impact_Ev_ScoreValue, score.Value, ImpactLevelText.Label(score.Level).ToLowerInvariant()))
             {
                 Reference = AppImpactScore.Formula,
             },

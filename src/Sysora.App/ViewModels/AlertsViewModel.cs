@@ -8,6 +8,7 @@ using Sysora.Core.Alerts;
 using Sysora.Core.Formatting;
 using Sysora.Core.Models;
 using Sysora.Core.Settings;
+using Sysora.Localization;
 
 namespace Sysora.App.ViewModels;
 
@@ -45,7 +46,7 @@ public sealed partial class AlertsViewModel : PageViewModel
 
     public ObservableCollection<AlertItemViewModel> Items { get; } = [];
 
-    public IReadOnlyList<string> Filters { get; } = ["All", "Active", "Resolved"];
+    public IReadOnlyList<string> Filters { get; } = [UiStrings.Alerts_Filter_All, UiStrings.Alerts_Filter_Active, UiStrings.Alerts_Filter_Resolved];
 
     /// <summary>0 = all, 1 = active (new or seen), 2 = resolved.</summary>
     [ObservableProperty]
@@ -127,8 +128,12 @@ public sealed partial class AlertsViewModel : PageViewModel
         var active = all.Count(a => a.IsActive);
         var unseen = all.Count(a => a.Status == AlertStatus.New);
         Summary = all.Count == 0
-            ? "No alert recorded in the last 7 days."
-            : $"{MetricFormatter.Plural(active, "active alert")} · {unseen.ToString(CultureInfo.CurrentCulture)} new · {MetricFormatter.Plural(all.Count, "alert")} in the last 7 days";
+            ? UiStrings.Alerts_NoneIn7Days
+            : Text.Format(
+                UiStrings.Alerts_Summary,
+                Text.Plural(active, UiStrings.Count_ActiveAlert_One, UiStrings.Count_ActiveAlert_Other),
+                unseen,
+                Text.Plural(all.Count, Strings.Count_Alert_One, Strings.Count_Alert_Other));
         IsEmpty = list.Count == 0;
 
         var desired = list.Select(alert =>
@@ -193,13 +198,15 @@ public sealed partial class AlertsViewModel : PageViewModel
 
     private static string Rules(SmartAlertSettings s) => string.Join(" · ",
     [
-        $"CPU above {MetricFormatter.Percent(s.CpuPercent)} for {MetricFormatter.Plural(s.CpuMinutes, "minute")}",
-        $"memory above {MetricFormatter.Percent(s.MemoryPercent)} for {MetricFormatter.Plural(s.MemoryMinutes, "minute")}",
-        $"disk busy above {MetricFormatter.Percent(s.DiskActivePercent)} for {MetricFormatter.Plural(s.DiskMinutes, "minute")}",
-        $"one application above {MetricFormatter.Percent(s.AppCpuPercent)} CPU for {MetricFormatter.Plural(s.AppCpuMinutes, "minute")}",
-        string.Create(CultureInfo.CurrentCulture, $"memory rising {s.MemoryGrowthPoints:0} points in {s.MemoryGrowthMinutes} minutes"),
-        s.UnusualActivity ? $"activity above your usual range for {MetricFormatter.Plural(s.UnusualMinutes, "minute")}" : "unusual activity off",
-        string.Create(CultureInfo.CurrentCulture, $"less than {s.LowDiskFreePercent:0}% free on the system disk"),
+        Text.Format(UiStrings.Alerts_Rule_Cpu, MetricFormatter.Percent(s.CpuPercent), Text.Plural(s.CpuMinutes, Strings.Duration_Minute_One, Strings.Duration_Minute_Other)),
+        Text.Format(UiStrings.Alerts_Rule_Memory, MetricFormatter.Percent(s.MemoryPercent), Text.Plural(s.MemoryMinutes, Strings.Duration_Minute_One, Strings.Duration_Minute_Other)),
+        Text.Format(UiStrings.Alerts_Rule_Disk, MetricFormatter.Percent(s.DiskActivePercent), Text.Plural(s.DiskMinutes, Strings.Duration_Minute_One, Strings.Duration_Minute_Other)),
+        Text.Format(UiStrings.Alerts_Rule_App, MetricFormatter.Percent(s.AppCpuPercent), Text.Plural(s.AppCpuMinutes, Strings.Duration_Minute_One, Strings.Duration_Minute_Other)),
+        Text.Format(UiStrings.Alerts_Rule_Growth, s.MemoryGrowthPoints, Text.Plural(s.MemoryGrowthMinutes, Strings.Duration_Minute_One, Strings.Duration_Minute_Other)),
+        s.UnusualActivity
+            ? Text.Format(UiStrings.Alerts_Rule_Unusual, Text.Plural(s.UnusualMinutes, Strings.Duration_Minute_One, Strings.Duration_Minute_Other))
+            : UiStrings.Alerts_Rule_UnusualOff,
+        Text.Format(UiStrings.Alerts_Rule_Space, MetricFormatter.Percent(s.LowDiskFreePercent)),
     ]);
 }
 
@@ -332,23 +339,23 @@ public sealed partial class AlertItemViewModel : ObservableObject
         };
         (StatusText, StatusBrushKey) = alert.Status switch
         {
-            AlertStatus.New => ("New", "StatusCriticalBrush"),
-            AlertStatus.Seen => ("Seen", "StatusInfoBrush"),
-            _ => ("Resolved", "StatusNormalBrush"),
+            AlertStatus.New => (AlertStatusText.Label(AlertStatus.New), "StatusCriticalBrush"),
+            AlertStatus.Seen => (AlertStatusText.Label(AlertStatus.Seen), "StatusInfoBrush"),
+            _ => (AlertStatusText.Label(AlertStatus.Resolved), "StatusNormalBrush"),
         };
         IsNew = alert.Status == AlertStatus.New;
 
-        var lasted = alert.Duration > TimeSpan.Zero ? $" · lasted {MetricFormatter.DurationPrecise(alert.Duration)}" : string.Empty;
+        var lasted = alert.Duration > TimeSpan.Zero ? " · " + Text.Format(UiStrings.Alerts_Lasted, MetricFormatter.DurationPrecise(alert.Duration)) : string.Empty;
         var since = alert.Since != default ? alert.Since : alert.RaisedAt;
         TimeText = alert.Status == AlertStatus.Resolved && alert.ResolvedAt is { } resolved
             ? $"{InsightDisplay.Time(since)} → {InsightDisplay.Time(resolved)}{lasted}"
-            : $"Since {InsightDisplay.Time(since)} · ongoing{lasted}";
+            : Text.Format(UiStrings.Alerts_SinceOngoing, InsightDisplay.Time(since), lasted);
         if (alert.Occurrences > 1)
         {
-            TimeText += $" · {alert.Occurrences.ToString(CultureInfo.CurrentCulture)} occurrences";
+            TimeText += " · " + Text.Plural(alert.Occurrences, UiStrings.Count_Occurrence_One, UiStrings.Count_Occurrence_Other);
         }
 
-        Observed = $"{alert.Metric}: {alert.Value}";
+        Observed = Text.Format(Strings.Common_NameValue, alert.Metric, alert.Value);
         ContextText = alert.Context;
         Explanation = alert.Explanation;
         Recommendation = alert.Recommendation ?? string.Empty;

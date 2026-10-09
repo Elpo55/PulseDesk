@@ -1,6 +1,7 @@
 using System.Globalization;
 using Sysora.Core.Formatting;
 using Sysora.Core.History;
+using Sysora.Localization;
 
 namespace Sysora.Core.Analysis;
 
@@ -24,7 +25,7 @@ public enum BaselineStatus
 public sealed record MetricBaseline(HistoryMetric Metric, double Median, double P25, double P75, double P95, int Minutes)
 {
     /// <summary>"35–50%" for percentages.</summary>
-    public string UsualRange => string.Create(CultureInfo.CurrentCulture, $"{Math.Round(P25):0}–{Math.Round(P75):0}%");
+    public string UsualRange => Text.Format(Strings.Format_PercentRange, Math.Round(P25), Math.Round(P75));
 }
 
 /// <summary>
@@ -49,8 +50,8 @@ public sealed record UsageBaseline(BaselineStatus Status, int MinutesOfData, Dat
 
     /// <summary>Text shown while collecting, e.g. "Collecting baseline data… (1h 12m of 4h)".</summary>
     public string Description => IsReady
-        ? $"Usual behavior learned from {MetricFormatter.DurationCompact(TimeSpan.FromMinutes(MinutesOfData))} of history"
-        : $"Collecting baseline data… ({MetricFormatter.DurationCompact(TimeSpan.FromMinutes(MinutesOfData))} recorded of the {MetricFormatter.Plural((int)BaselineCalculator.MinimumData.TotalHours, "hour")} needed before Sysora compares with your usual activity)";
+        ? Text.Format(Strings.Baseline_Ready, MetricFormatter.DurationCompact(TimeSpan.FromMinutes(MinutesOfData)))
+        : Text.Format(Strings.Baseline_Collecting, MetricFormatter.DurationCompact(TimeSpan.FromMinutes(MinutesOfData)), Text.Plural((int)BaselineCalculator.MinimumData.TotalHours, Strings.Duration_Hour_One, Strings.Duration_Hour_Other));
 }
 
 /// <summary>Computes the usual behavior of the PC from per-minute history (pure, deterministic).</summary>

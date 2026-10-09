@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using Sysora.Localization;
 using static Sysora.App.Services.Tray.TrayNativeMethods;
 
 namespace Sysora.App.Services.Tray;
@@ -212,11 +213,11 @@ internal sealed unsafe partial class TrayIcon : IDisposable
         var menu = CreatePopupMenu();
         try
         {
-            AppendMenu(menu, MfString | MfDefault, CommandOpen, "Open Sysora");
-            AppendMenu(menu, MfString, CommandPauseResume, _paused ? "Resume monitoring" : "Pause monitoring");
-            AppendMenu(menu, MfString, CommandSettings, "Settings");
+            AppendMenu(menu, MfString | MfDefault, CommandOpen, UiStrings.Tray_Open);
+            AppendMenu(menu, MfString, CommandPauseResume, _paused ? UiStrings.Shell_ResumeMonitoring : UiStrings.Settings_PauseMonitoring);
+            AppendMenu(menu, MfString, CommandSettings, UiStrings.Settings_Settings);
             AppendMenu(menu, MfSeparator, 0, null);
-            AppendMenu(menu, MfString, CommandExit, "Exit");
+            AppendMenu(menu, MfString, CommandExit, UiStrings.Tray_Exit);
 
             // Required so the menu closes when the user clicks elsewhere.
             SetForegroundWindow(_window);

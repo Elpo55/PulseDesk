@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using Sysora.Core.Analysis;
 using Sysora.Core.Diagnosis;
 using Sysora.Core.Formatting;
+using Sysora.Localization;
 
 namespace Sysora.Core.Changes;
 
@@ -15,7 +16,7 @@ namespace Sysora.Core.Changes;
 public static partial class BaselineComparer
 {
     /// <summary>Text used when Sysora cannot tell what caused a change.</summary>
-    public const string UnknownOrigin = "Change detected, origin unknown.";
+    public static string UnknownOrigin => Strings.Changes_UnknownOrigin;
 
     /// <summary>Minimum change of used space reported, in addition to <see cref="DiskChangeShare"/>.</summary>
     public const ulong MinimumDiskChangeBytes = 5UL * 1024 * 1024 * 1024;
@@ -68,9 +69,9 @@ public static partial class BaselineComparer
             .Where(a => a.Source != "Store" && a.InstallDate is { } date && date >= today.AddDays(-days) && date <= today)
             .Select(a => Installed(a, period: null, current.CapturedAt) with
             {
-                Title = $"{a.Name} installed or updated",
+                Title = Text.Format(Strings.Changes_InstalledOrUpdated, a.Name),
                 Importance = ChangeImportance.Low,
-                Explanation = "Windows records this date when an application is installed; many installers also rewrite it when they update the application.",
+                Explanation = Strings.Changes_InstalledOrUpdated_Explanation,
             })
             .ToArray();
     }
@@ -101,12 +102,12 @@ public static partial class BaselineComparer
 
             added.Remove(app);
             removed.Remove(previous);
-            changes.Add(Updated(previous, app, period, "Matched by name and publisher in Windows' list of installed applications."));
+            changes.Add(Updated(previous, app, period, Strings.Changes_MatchedByName));
         }
 
         foreach (var app in newById.Values.Where(a => oldById.TryGetValue(a.Id, out var old) && !string.Equals(old.Version, a.Version, StringComparison.Ordinal)))
         {
-            changes.Add(Updated(oldById[app.Id], app, period, "Version read from Windows' list of installed applications."));
+            changes.Add(Updated(oldById[app.Id], app, period, Strings.Changes_VersionRead));
         }
 
         changes.AddRange(added.Select(a => Installed(a, period, period.To)));
@@ -118,12 +119,12 @@ public static partial class BaselineComparer
             After = period.From,
             Before = period.To,
             Subject = a.Name,
-            Title = $"{a.Name} removed",
+            Title = Text.Format(Strings.Changes_Removed, a.Name),
             OldValue = a.Version,
             Importance = ChangeImportance.Low,
-            Explanation = "The application is no longer in Windows' list of installed applications.",
-            Origin = $"Present in the snapshot of {Date(period.From)}, absent from the snapshot of {Date(period.To)}.",
-            Evidence = [Evidence("Installed applications", a)],
+            Explanation = Strings.Changes_Removed_Explanation,
+            Origin = Text.Format(Strings.Changes_Removed_Origin, Date(period.From), Date(period.To)),
+            Evidence = [Evidence(Strings.Changes_Ev_InstalledApps, a)],
         }));
     }
 
@@ -136,8 +137,8 @@ public static partial class BaselineComparer
         var after = useDate ? dayStart : period?.From;
         var before = useDate && dayStart!.Value.AddDays(1) < detectedAt ? dayStart.Value.AddDays(1) : detectedAt;
         var origin = useDate
-            ? $"Install date ({date!.Value.ToString("d", CultureInfo.CurrentCulture)}) recorded by the installer in Windows' list of installed applications."
-            : $"In Windows' list of installed applications, absent from the snapshot of {Date(period!.Value.From)}.";
+            ? Text.Format(Strings.Changes_Installed_OriginDate, date!.Value.ToString("d", CultureInfo.CurrentCulture))
+            : Text.Format(Strings.Changes_Installed_OriginSnapshot, Date(period!.Value.From));
 
         return new DetectedChange
         {
@@ -147,14 +148,14 @@ public static partial class BaselineComparer
             After = after,
             Before = before,
             Subject = app.Name,
-            Title = $"{app.Name} installed",
+            Title = Text.Format(Strings.Changes_Installed, app.Name),
             NewValue = app.Version,
             Importance = ChangeImportance.Medium,
             Explanation = app.Publisher is { } publisher
-                ? $"New application from {publisher}. New software can add background processes and startup items."
-                : "New application. New software can add background processes and startup items.",
+                ? Text.Format(Strings.Changes_Installed_ExplanationPublisher, publisher)
+                : Strings.Changes_Installed_Explanation,
             Origin = origin,
-            Evidence = [Evidence("Installed applications", app)],
+            Evidence = [Evidence(Strings.Changes_Ev_InstalledApps, app)],
             Action = DiagnosisAction.AppImpact,
         };
     }
@@ -167,49 +168,60 @@ public static partial class BaselineComparer
         After = period.From,
         Before = period.To,
         Subject = current.Name,
-        Title = $"{current.Name} updated",
+        Title = Text.Format(Strings.Changes_Updated, current.Name),
         OldValue = old.Version ?? MetricFormatter.NotAvailable,
         NewValue = current.Version ?? MetricFormatter.NotAvailable,
         Importance = ChangeImportance.Low,
-        Explanation = "A new version can behave differently (performance, background activity).",
+        Explanation = Strings.Changes_Updated_Explanation,
         Origin = origin,
-        Evidence = [Evidence("Before", old), Evidence("After", current)],
+        Evidence = [Evidence(Strings.State_Label_Before, old), Evidence(Strings.State_Label_After, current)],
     };
 
     private static void CompareStartup(IReadOnlyList<StartupProgram> before, IReadOnlyList<StartupProgram> after, Period period, List<DetectedChange> changes)
     {
         var oldById = before.GroupBy(p => p.Id, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
         var newById = after.GroupBy(p => p.Id, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
-        var origin = $"Compared the startup entries of {Date(period.From)} and {Date(period.To)}.";
+        var origin = Text.Format(Strings.Changes_Startup_Origin, Date(period.From), Date(period.To));
 
         foreach (var program in newById.Values)
         {
             if (!oldById.TryGetValue(program.Id, out var old))
             {
-                changes.Add(Startup(ChangeType.StartupProgramAdded, program, period, $"New startup program: {program.Name}", ChangeImportance.High,
-                    "It now starts automatically when you sign in, which can make startup longer and use resources in the background.", origin, null, program.Command));
+                changes.Add(Startup(ChangeType.StartupProgramAdded, program, period, Text.Format(Strings.Changes_Startup_New, program.Name), ChangeImportance.High,
+                    Strings.Changes_Startup_New_Explanation, origin, null, program.Command));
             }
             else if (old.Enabled != program.Enabled && old.Enabled is not null && program.Enabled is not null)
             {
                 var enabled = program.Enabled == true;
                 changes.Add(Startup(enabled ? ChangeType.StartupProgramEnabled : ChangeType.StartupProgramDisabled, program, period,
-                    enabled ? $"Startup program enabled: {program.Name}" : $"Startup program disabled: {program.Name}",
+                    enabled
+                        ? Text.Format(Strings.Changes_Startup_Enabled, program.Name)
+                        : Text.Format(Strings.Changes_Startup_Disabled, program.Name),
                     enabled ? ChangeImportance.Medium : ChangeImportance.Low,
-                    enabled ? "It will start automatically again when you sign in." : "It no longer starts automatically when you sign in.",
-                    origin, old.Enabled == true ? "Enabled" : "Disabled", enabled ? "Enabled" : "Disabled"));
+                    enabled
+                        ? Strings.Changes_Startup_Enabled_Explanation
+                        : Strings.Changes_Startup_Removed_Explanation,
+                    origin, EnabledText(old.Enabled == true), EnabledText(enabled), StateToken(old.Enabled == true), StateToken(enabled)));
             }
         }
 
         foreach (var program in oldById.Values.Where(p => !newById.ContainsKey(p.Id)))
         {
-            changes.Add(Startup(ChangeType.StartupProgramRemoved, program, period, $"Startup program removed: {program.Name}", ChangeImportance.Low,
-                "It no longer starts automatically when you sign in.", origin, program.Command, null));
+            changes.Add(Startup(ChangeType.StartupProgramRemoved, program, period, Text.Format(Strings.Changes_Startup_Removed, program.Name), ChangeImportance.Low,
+                Strings.Changes_Startup_Removed_Explanation, origin, program.Command, null));
         }
     }
 
-    private static DetectedChange Startup(ChangeType type, StartupProgram program, Period period, string title, ChangeImportance importance, string explanation, string origin, string? oldValue, string? newValue) => new()
+    private static string EnabledText(bool enabled) => enabled ? Strings.Changes_Enabled : Strings.Changes_Disabled;
+
+    // Identifiers stay in English whatever the interface language, so a change is recorded once.
+    private static string StateToken(bool enabled) => enabled ? "Enabled" : "Disabled";
+
+    private static DetectedChange Startup(
+        ChangeType type, StartupProgram program, Period period, string title, ChangeImportance importance, string explanation, string origin, string? oldValue, string? newValue,
+        string? oldToken = null, string? newToken = null) => new()
     {
-        Id = ChangeId(type, program.Id, oldValue, newValue, Day(period.To)),
+        Id = ChangeId(type, program.Id, oldToken ?? oldValue, newToken ?? newValue, Day(period.To)),
         Type = type,
         DetectedAt = period.To,
         After = period.From,
@@ -221,7 +233,7 @@ public static partial class BaselineComparer
         Importance = importance,
         Explanation = explanation,
         Origin = origin,
-        Evidence = [new AnalysisEvidence("Startup entry", $"{program.Name}: {program.Command}") { Source = program.Location }],
+        Evidence = [new AnalysisEvidence(Strings.Changes_Ev_StartupEntry, Text.Format(Strings.Common_NameValue, program.Name, program.Command)) { Source = program.Location }],
     };
 
     private static void CompareSystem(SystemBaseline older, SystemBaseline newer, Period period, List<DetectedChange> changes)
@@ -230,27 +242,31 @@ public static partial class BaselineComparer
         {
             var oldText = Join(older.OsVersion, oldBuild);
             var newText = Join(newer.OsVersion, newBuild);
-            changes.Add(System(ChangeType.WindowsUpdated, "Windows", "Windows was updated", oldText, newText, ChangeImportance.Medium,
-                "Windows updates can change drivers and background services; the first hours after an update often show extra disk and CPU activity.",
-                period, "Build number read from the registry (CurrentVersion)."));
+            changes.Add(System(ChangeType.WindowsUpdated, "Windows", "Windows", Strings.Changes_Windows_Title, oldText, newText, ChangeImportance.Medium,
+                Strings.Changes_Windows_Explanation,
+                period, Strings.Changes_Windows_Source));
         }
 
         if (older.BiosVersion is { } oldBios && newer.BiosVersion is { } newBios && oldBios != newBios)
         {
-            changes.Add(System(ChangeType.FirmwareUpdated, "BIOS", "Firmware (BIOS) updated", oldBios, newBios, ChangeImportance.Medium,
-                "A firmware update can change power management and hardware behavior.", period, "BIOS version read from the registry (SMBIOS data copied by Windows)."));
+            changes.Add(System(ChangeType.FirmwareUpdated, "BIOS", "BIOS", Strings.Changes_Bios_Title, oldBios, newBios, ChangeImportance.Medium,
+                Strings.Changes_Bios_Explanation, period, Strings.Changes_Bios_Source));
         }
 
         if (older.InstalledMemoryBytes is { } oldMemory && newer.InstalledMemoryBytes is { } newMemory && oldMemory != newMemory)
         {
-            changes.Add(System(ChangeType.MemoryChanged, "Memory", "Installed memory changed", MetricFormatter.Bytes(oldMemory), MetricFormatter.Bytes(newMemory), ChangeImportance.High,
-                "The amount of physical memory changed (a module added, removed or not detected).", period, "Installed memory reported by the firmware."));
+            changes.Add(System(ChangeType.MemoryChanged, "Memory", Strings.Changes_Memory_Subject, Strings.Changes_Memory_Title, MetricFormatter.Bytes(oldMemory), MetricFormatter.Bytes(newMemory), ChangeImportance.High,
+                Strings.Changes_Memory_Explanation, period, Strings.Changes_Memory_Source,
+                oldMemory.ToString(CultureInfo.InvariantCulture), newMemory.ToString(CultureInfo.InvariantCulture)));
         }
     }
 
-    private static DetectedChange System(ChangeType type, string subject, string title, string oldValue, string newValue, ChangeImportance importance, string explanation, Period period, string source) => new()
+    /// <param name="subjectId">Subject in the identifier of the change (never translated, so a change is recorded once).</param>
+    private static DetectedChange System(
+        ChangeType type, string subjectId, string subject, string title, string oldValue, string newValue, ChangeImportance importance, string explanation, Period period, string source,
+        string? oldId = null, string? newId = null) => new()
     {
-        Id = ChangeId(type, subject, oldValue, newValue),
+        Id = ChangeId(type, subjectId, oldId ?? oldValue, newId ?? newValue),
         Type = type,
         DetectedAt = period.To,
         After = period.From,
@@ -261,7 +277,7 @@ public static partial class BaselineComparer
         NewValue = newValue,
         Importance = importance,
         Explanation = explanation,
-        Origin = $"Compared the snapshots of {Date(period.From)} and {Date(period.To)}.",
+        Origin = Text.Format(Strings.Changes_System_Origin, Date(period.From), Date(period.To)),
         Evidence = [new AnalysisEvidence(subject, $"{oldValue} → {newValue}") { Source = source, From = period.From, To = period.To }],
     };
 
@@ -270,16 +286,16 @@ public static partial class BaselineComparer
         static string Key(DeviceInfo d) => $"{d.Category}|{d.Id}";
         var oldKeys = before.Select(Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var newKeys = after.Select(Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var origin = $"Compared the devices of {Date(period.From)} and {Date(period.To)}.";
+        var origin = Text.Format(Strings.Changes_Devices_Origin, Date(period.From), Date(period.To));
 
         foreach (var device in after.Where(d => !oldKeys.Contains(Key(d))))
         {
-            changes.Add(Device(ChangeType.DeviceAdded, device, period, $"New {device.Category.ToLowerInvariant()} device: {device.Name}", origin));
+            changes.Add(Device(ChangeType.DeviceAdded, device, period, Text.Format(Strings.Changes_Device_New, DeviceCategoryText.Label(device.Category), DeviceCategoryText.Lower(device.Category), device.Name), origin));
         }
 
         foreach (var device in before.Where(d => !newKeys.Contains(Key(d))))
         {
-            changes.Add(Device(ChangeType.DeviceRemoved, device, period, $"{device.Category} device no longer present: {device.Name}", origin));
+            changes.Add(Device(ChangeType.DeviceRemoved, device, period, Text.Format(Strings.Changes_Device_Gone, DeviceCategoryText.Label(device.Category), DeviceCategoryText.Lower(device.Category), device.Name), origin));
         }
     }
 
@@ -294,10 +310,10 @@ public static partial class BaselineComparer
         Title = title,
         Importance = ChangeImportance.Medium,
         Explanation = type == ChangeType.DeviceAdded
-            ? "A device appeared since the previous snapshot (new hardware, a driver change or a virtual adapter)."
-            : "A device present in the previous snapshot was not found (removed, disabled, or its driver changed).",
+            ? Strings.Changes_Device_New_Explanation
+            : Strings.Changes_Device_Gone_Explanation,
         Origin = origin,
-        Evidence = [new AnalysisEvidence(device.Category, device.Name) { Reference = device.Id }],
+        Evidence = [new AnalysisEvidence(DeviceCategoryText.Label(device.Category), device.Name) { Reference = device.Id }],
     };
 
     private static void CompareDiskSpace(IReadOnlyList<DeviceInfo> before, IReadOnlyList<DeviceInfo> after, Period period, IReadOnlyList<string> installed, List<DetectedChange> changes)
@@ -321,7 +337,7 @@ public static partial class BaselineComparer
             var grew = delta > 0;
             var evidence = new List<AnalysisEvidence>
             {
-                new($"Volume {volume.Id}", $"{MetricFormatter.Bytes(usedBefore)} → {MetricFormatter.Bytes(usedAfter)} used of {MetricFormatter.Bytes(total)}")
+                new(Text.Format(Strings.Diag_Volume, volume.Id), Text.Format(Strings.Changes_Space_UsedOf, MetricFormatter.Bytes(usedBefore), MetricFormatter.Bytes(usedAfter), MetricFormatter.Bytes(total)))
                 {
                     From = period.From,
                     To = period.To,
@@ -330,9 +346,9 @@ public static partial class BaselineComparer
             };
             if (grew && installed.Count > 0)
             {
-                evidence.Add(new AnalysisEvidence("Installed in the same period", string.Join(", ", installed))
+                evidence.Add(new AnalysisEvidence(Strings.Changes_Ev_InstalledSamePeriod, string.Join(Strings.List_Separator, installed))
                 {
-                    Reference = "Possible contributors, not confirmed: Sysora does not measure the size of individual files.",
+                    Reference = Strings.Changes_Ev_PossibleFiles,
                 });
             }
 
@@ -344,15 +360,17 @@ public static partial class BaselineComparer
                 After = period.From,
                 Before = period.To,
                 Subject = volume.Id,
-                Title = grew ? $"{MetricFormatter.Bytes(delta)} more used on {volume.Id}" : $"{MetricFormatter.Bytes(-delta)} freed on {volume.Id}",
-                OldValue = $"{MetricFormatter.Bytes(usedBefore)} used",
-                NewValue = $"{MetricFormatter.Bytes(usedAfter)} used",
+                Title = grew
+                    ? Text.Format(Strings.Changes_Space_More, MetricFormatter.Bytes(delta), volume.Id)
+                    : Text.Format(Strings.Changes_Space_Freed, MetricFormatter.Bytes(-delta), volume.Id),
+                OldValue = Text.Format(Strings.Changes_Space_Used, MetricFormatter.Bytes(usedBefore)),
+                NewValue = Text.Format(Strings.Changes_Space_Used, MetricFormatter.Bytes(usedAfter)),
                 Importance = grew && (Math.Abs(delta) >= 20.0 * 1024 * 1024 * 1024 || Math.Abs(delta) >= total * 0.10) ? ChangeImportance.High
                     : grew ? ChangeImportance.Medium : ChangeImportance.Low,
                 Explanation = grew
-                    ? "Used space on this volume grew noticeably between the two snapshots."
-                    : "Space was freed on this volume between the two snapshots.",
-                Origin = UnknownOrigin + " Sysora measures free space, not individual files.",
+                    ? Strings.Changes_Space_Grew_Explanation
+                    : Strings.Changes_Space_Freed_Explanation,
+                Origin = UnknownOrigin + " " + Strings.Changes_Space_Origin,
                 Evidence = evidence,
                 Action = DiagnosisAction.Storage,
             });
@@ -366,8 +384,13 @@ public static partial class BaselineComparer
             return;
         }
 
-        void Add(ChangeType type, string name, double? oldValue, double? newValue)
+        void Add(ChangeType type, double? oldValue, double? newValue)
         {
+            var memory = type == ChangeType.MemoryUsageChanged;
+            var name = memory ? Strings.Diag_Metric_MemoryUsage : Strings.Diag_Metric_CpuUsage;
+            var average = memory
+                ? Strings.Changes_Usage_AverageMemory
+                : Strings.Changes_Usage_AverageCpu;
             if (oldValue is not { } o || newValue is not { } n || Math.Abs(n - o) < UsageChangePoints)
             {
                 return;
@@ -376,19 +399,19 @@ public static partial class BaselineComparer
             var delta = n - o;
             var evidence = new List<AnalysisEvidence>
             {
-                new($"Average {name.ToLowerInvariant()}", $"{MetricFormatter.Percent(o)} → {MetricFormatter.Percent(n)}")
+                new(average, $"{MetricFormatter.Percent(o)} → {MetricFormatter.Percent(n)}")
                 {
-                    Reference = string.Create(CultureInfo.CurrentCulture, $"Average over the 24 hours before each snapshot ({before.MonitoredMinutes} and {after.MonitoredMinutes} minutes of measurements)"),
+                    Reference = Text.Format(Strings.Changes_Usage_Reference, before.MonitoredMinutes, after.MonitoredMinutes),
                     From = period.From,
                     To = period.To,
-                    Source = "Per-minute averages of the local history",
+                    Source = Strings.State_Source_Minutes,
                 },
             };
             if (installed.Count > 0)
             {
-                evidence.Add(new AnalysisEvidence("Installed in the same period", string.Join(", ", installed))
+                evidence.Add(new AnalysisEvidence(Strings.Changes_Ev_InstalledSamePeriod, string.Join(Strings.List_Separator, installed))
                 {
-                    Reference = "Possible contributors, not confirmed.",
+                    Reference = Strings.Changes_Ev_Possible,
                 });
             }
 
@@ -400,21 +423,25 @@ public static partial class BaselineComparer
                 After = period.From,
                 Before = period.To,
                 Subject = name,
-                Title = string.Create(CultureInfo.CurrentCulture, $"Average {name.ToLowerInvariant()} {(delta > 0 ? "+" : string.Empty)}{delta:0} points"),
+                Title = Text.Format(Strings.Changes_Usage_Title, average, delta),
                 OldValue = MetricFormatter.Percent(o),
                 NewValue = MetricFormatter.Percent(n),
                 Importance = Math.Abs(delta) >= 2 * UsageChangePoints ? ChangeImportance.High : ChangeImportance.Medium,
                 Explanation = delta > 0
-                    ? $"The PC used noticeably more {name.ToLowerInvariant()} on average than on the reference day."
-                    : $"The PC used noticeably less {name.ToLowerInvariant()} on average than on the reference day.",
+                    ? (memory
+                        ? Strings.Changes_Usage_MoreMemory
+                        : Strings.Changes_Usage_MoreCpu)
+                    : (memory
+                        ? Strings.Changes_Usage_LessMemory
+                        : Strings.Changes_Usage_LessCpu),
                 Origin = UnknownOrigin,
                 Evidence = evidence,
                 Action = DiagnosisAction.AppImpact,
             });
         }
 
-        Add(ChangeType.MemoryUsageChanged, "Memory usage", before.MemoryAverage, after.MemoryAverage);
-        Add(ChangeType.CpuUsageChanged, "CPU usage", before.CpuAverage, after.CpuAverage);
+        Add(ChangeType.MemoryUsageChanged, before.MemoryAverage, after.MemoryAverage);
+        Add(ChangeType.CpuUsageChanged, before.CpuAverage, after.CpuAverage);
     }
 
     private static bool SameProduct(InstalledApp a, InstalledApp b) =>
@@ -426,8 +453,10 @@ public static partial class BaselineComparer
     private static AnalysisEvidence Evidence(string metric, InstalledApp app) =>
         new(metric, Join(app.Name, app.Version, app.Publisher))
         {
-            Source = app.Source.Length > 0 ? $"Windows installed applications ({app.Source})" : "Windows installed applications",
-            Reference = app.InstallDate is { } date ? $"Install date recorded by the installer: {date.ToString("d", CultureInfo.CurrentCulture)}" : null,
+            Source = app.Source.Length > 0
+                ? Text.Format(Strings.Changes_Ev_SourceOf, AppSourceText.Label(app.Source))
+                : Strings.Changes_Ev_Source,
+            Reference = app.InstallDate is { } date ? Text.Format(Strings.Changes_Ev_InstallDate, date.ToString("d", CultureInfo.CurrentCulture)) : null,
         };
 
     private static string Join(params string?[] parts) => string.Join(" · ", parts.Where(p => !string.IsNullOrWhiteSpace(p)));

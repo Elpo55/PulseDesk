@@ -1,0 +1,2340 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Shell_SysoraWasStartedWithDemoEveryValueOnScreenIs" xml:space="preserve">
+    <value>Sysora was started with --demo: every value on screen is simulated.</value>
+  </data>
+  <data name="Shell_DEMOMODESimulatedData" xml:space="preserve">
+    <value>DEMO MODE · simulated data</value>
+  </data>
+  <data name="Shell_MonitoringPaused" xml:space="preserve">
+    <value>Monitoring paused</value>
+  </data>
+  <data name="Common_Dashboard" xml:space="preserve">
+    <value>Dashboard</value>
+  </data>
+  <data name="Common_PCHealth" xml:space="preserve">
+    <value>PC Health</value>
+  </data>
+  <data name="Common_Timeline" xml:space="preserve">
+    <value>Timeline</value>
+  </data>
+  <data name="Shell_Investigate" xml:space="preserve">
+    <value>Investigate</value>
+  </data>
+  <data name="Common_Diagnosis" xml:space="preserve">
+    <value>Diagnosis</value>
+  </data>
+  <data name="Common_Troubleshooting" xml:space="preserve">
+    <value>Troubleshooting</value>
+  </data>
+  <data name="Shell_InvestigationInProgress" xml:space="preserve">
+    <value>Investigation in progress</value>
+  </data>
+  <data name="Common_Replay" xml:space="preserve">
+    <value>Replay</value>
+  </data>
+  <data name="Common_Compare" xml:space="preserve">
+    <value>Compare</value>
+  </data>
+  <data name="Common_AppImpact" xml:space="preserve">
+    <value>App Impact</value>
+  </data>
+  <data name="Common_Changes" xml:space="preserve">
+    <value>Changes</value>
+  </data>
+  <data name="Common_Alerts" xml:space="preserve">
+    <value>Alerts</value>
+  </data>
+  <data name="Shell_NewAlerts" xml:space="preserve">
+    <value>New alerts</value>
+  </data>
+  <data name="Common_Gaming" xml:space="preserve">
+    <value>Gaming</value>
+  </data>
+  <data name="Shell_GameRunning" xml:space="preserve">
+    <value>Game running</value>
+  </data>
+  <data name="Common_Details" xml:space="preserve">
+    <value>Details</value>
+  </data>
+  <data name="Common_Performance" xml:space="preserve">
+    <value>Performance</value>
+  </data>
+  <data name="Common_Processes" xml:space="preserve">
+    <value>Processes</value>
+  </data>
+  <data name="Common_Storage" xml:space="preserve">
+    <value>Storage</value>
+  </data>
+  <data name="Common_LargeFiles" xml:space="preserve">
+    <value>Large files</value>
+  </data>
+  <data name="Common_Network" xml:space="preserve">
+    <value>Network</value>
+  </data>
+  <data name="Common_System" xml:space="preserve">
+    <value>System</value>
+  </data>
+  <data name="Shell_OpenFolder" xml:space="preserve">
+    <value>Open folder</value>
+  </data>
+  <data name="Common_Export" xml:space="preserve">
+    <value>Export</value>
+  </data>
+  <data name="Alerts_SaveTheAlertsAsAnHTMLReportOrJSONData" xml:space="preserve">
+    <value>Save the alerts as an HTML report or JSON data</value>
+  </data>
+  <data name="Alerts_ProblemsThatLastOrAreUnusualForThisPCShortSpikes" xml:space="preserve">
+    <value>Problems that last or are unusual for this PC. Short spikes are never reported.</value>
+  </data>
+  <data name="Common_Show" xml:space="preserve">
+    <value>Show</value>
+  </data>
+  <data name="Alerts_MarkAllAsSeen" xml:space="preserve">
+    <value>Mark all as seen</value>
+  </data>
+  <data name="Alerts_AlertsAreTurnedOffInSettings" xml:space="preserve">
+    <value>Alerts are turned off in Settings.</value>
+  </data>
+  <data name="Common_OpenSettings" xml:space="preserve">
+    <value>Open Settings</value>
+  </data>
+  <data name="Alerts_Context" xml:space="preserve">
+    <value>Context</value>
+  </data>
+  <data name="Alerts_WhyThisAlert" xml:space="preserve">
+    <value>Why this alert</value>
+  </data>
+  <data name="Common_WhatYouCanDo" xml:space="preserve">
+    <value>What you can do</value>
+  </data>
+  <data name="Common_DataUsed" xml:space="preserve">
+    <value>Data used</value>
+  </data>
+  <data name="Alerts_ShowInReplay" xml:space="preserve">
+    <value>Show in Replay</value>
+  </data>
+  <data name="Alerts_WhatHappenedAroundThisAlert" xml:space="preserve">
+    <value>What happened around this alert</value>
+  </data>
+  <data name="Common_WhyNow" xml:space="preserve">
+    <value>Why now?</value>
+  </data>
+  <data name="Alerts_NothingToReport" xml:space="preserve">
+    <value>Nothing to report</value>
+  </data>
+  <data name="Alerts_SysoraRaisesAnAlertOnlyWhenAProblemLastsOrIs" xml:space="preserve">
+    <value>Sysora raises an alert only when a problem lasts or is unusual for this PC.</value>
+  </data>
+  <data name="Alerts_ActiveRules" xml:space="preserve">
+    <value>Active rules</value>
+  </data>
+  <data name="Alerts_AConditionMustLastBeforeItIsReportedWhileItLasts" xml:space="preserve">
+    <value>A condition must last before it is reported; while it lasts it updates a single alert, which resolves one minute after the condition ends. If it comes back soon after, the same alert reopens. At most a few new alerts are raised per hour.</value>
+  </data>
+  <data name="Alerts_ChangeTheRulesInSettings" xml:space="preserve">
+    <value>Change the rules in Settings</value>
+  </data>
+  <data name="AppImpact_SaveTheRankingAsAnHTMLReportOrJSONData" xml:space="preserve">
+    <value>Save the ranking as an HTML report or JSON data</value>
+  </data>
+  <data name="AppImpact_WhichApplicationsWeighTheMostOnYourPC" xml:space="preserve">
+    <value>Which applications weigh the most on your PC</value>
+  </data>
+  <data name="Common_Period" xml:space="preserve">
+    <value>Period</value>
+  </data>
+  <data name="Common_Refresh" xml:space="preserve">
+    <value>Refresh</value>
+  </data>
+  <data name="Common_RefreshNow" xml:space="preserve">
+    <value>Refresh now</value>
+  </data>
+  <data name="AppImpact_Application" xml:space="preserve">
+    <value>Application</value>
+  </data>
+  <data name="AppImpact_Impact" xml:space="preserve">
+    <value>Impact</value>
+  </data>
+  <data name="Common_CPU" xml:space="preserve">
+    <value>CPU</value>
+  </data>
+  <data name="AppImpact_AverageCPUWhileRunningShareOfTotalCapacity" xml:space="preserve">
+    <value>Average CPU while running, share of total capacity</value>
+  </data>
+  <data name="Common_Memory" xml:space="preserve">
+    <value>Memory</value>
+  </data>
+  <data name="AppImpact_AveragePrivateWorkingSetWhileRunning" xml:space="preserve">
+    <value>Average private working set while running</value>
+  </data>
+  <data name="Common_DiskIO" xml:space="preserve">
+    <value>Disk I/O</value>
+  </data>
+  <data name="AppImpact_AverageReadAndWriteIOWhileRunningFilesDevicesAnd" xml:space="preserve">
+    <value>Average read and write I/O while running (files, devices and network)</value>
+  </data>
+  <data name="AppImpact_Running" xml:space="preserve">
+    <value>Running</value>
+  </data>
+  <data name="AppImpact_MeasuredTimeTheApplicationWasRunning" xml:space="preserve">
+    <value>Measured time the application was running</value>
+  </data>
+  <data name="AppImpact_Trend" xml:space="preserve">
+    <value>Trend</value>
+  </data>
+  <data name="AppImpact_SecondHalfOfThePeriodComparedWithTheFirstHalf" xml:space="preserve">
+    <value>Second half of the period compared with the first half</value>
+  </data>
+  <data name="AppImpact_ApplicationsByImpact" xml:space="preserve">
+    <value>Applications by impact</value>
+  </data>
+  <data name="AppImpact_Running2" xml:space="preserve">
+    <value>running</value>
+  </data>
+  <data name="AppImpact_NoApplicationUsageRecordedForThisPeriodYet" xml:space="preserve">
+    <value>No application usage recorded for this period yet.</value>
+  </data>
+  <data name="AppImpact_ApplicationsAreIdentifiedByExecutablePath" xml:space="preserve">
+    <value>Applications are identified by executable path; processes sharing only a name are kept apart. Network usage per application is not available.</value>
+  </data>
+  <data name="AppImpact_SelectAnApplicationToSeeWhyItRanksThereAndIts" xml:space="preserve">
+    <value>Select an application to see why it ranks there and its history.</value>
+  </data>
+  <data name="AppImpact_WhenDidThePCsCPUOrMemoryRiseAndWhatChangedAtThe" xml:space="preserve">
+    <value>When did the PC's CPU or memory rise, and what changed at the same time</value>
+  </data>
+  <data name="AppImpact_WhatDrivesTheScore" xml:space="preserve">
+    <value>What drives the score</value>
+  </data>
+  <data name="Common_History" xml:space="preserve">
+    <value>History</value>
+  </data>
+  <data name="AppImpact_CPUShareOfTotalCapacity" xml:space="preserve">
+    <value>CPU (share of total capacity)</value>
+  </data>
+  <data name="AppImpact_ApplicationCPUHistory" xml:space="preserve">
+    <value>Application CPU history</value>
+  </data>
+  <data name="AppImpact_MemoryPrivateWorkingSet" xml:space="preserve">
+    <value>Memory (private working set)</value>
+  </data>
+  <data name="AppImpact_ApplicationMemoryHistory" xml:space="preserve">
+    <value>Application memory history</value>
+  </data>
+  <data name="AppImpact_WhyThisResultDataUsed" xml:space="preserve">
+    <value>Why this result? (data used)</value>
+  </data>
+  <data name="Changes_WhatChangedOnThisPCRecently" xml:space="preserve">
+    <value>What changed on this PC recently</value>
+  </data>
+  <data name="Common_View" xml:space="preserve">
+    <value>View</value>
+  </data>
+  <data name="Changes_TakeASnapshotOfThePCNowAndCompareIt" xml:space="preserve">
+    <value>Take a snapshot of the PC now and compare it</value>
+  </data>
+  <data name="Changes_CheckNow" xml:space="preserve">
+    <value>Check now</value>
+  </data>
+  <data name="Changes_SaveTheChangesAsAnHTMLReportOrJSONData" xml:space="preserve">
+    <value>Save the changes as an HTML report or JSON data</value>
+  </data>
+  <data name="Common_SINCEYESTERDAY" xml:space="preserve">
+    <value>SINCE YESTERDAY</value>
+  </data>
+  <data name="Common_Significant" xml:space="preserve">
+    <value> significant</value>
+  </data>
+  <data name="Common_Minor" xml:space="preserve">
+    <value> minor</value>
+  </data>
+  <data name="Common_MostOfYourSystemIsUnchanged" xml:space="preserve">
+    <value>Most of your system is unchanged</value>
+  </data>
+  <data name="Changes_WhatItMeans" xml:space="preserve">
+    <value>What it means</value>
+  </data>
+  <data name="Changes_Origin" xml:space="preserve">
+    <value>Origin</value>
+  </data>
+  <data name="Changes_NoChangeToShow" xml:space="preserve">
+    <value>No change to show</value>
+  </data>
+  <data name="Changes_SysoraNeverInventsAChangeOnlyDifferencesBetween" xml:space="preserve">
+    <value>Sysora never invents a change: only differences between real snapshots are listed.</value>
+  </data>
+  <data name="Common_WhatIsCompared" xml:space="preserve">
+    <value>What is compared</value>
+  </data>
+  <data name="Changes_InstalledApplicationsAppsAmpFeaturesAndStoreApps" xml:space="preserve">
+    <value>Installed applications (Apps &amp; features and Store apps), startup programs (Run keys and Startup folders), Windows build, BIOS version, installed memory, graphics and network adapters, fixed volumes and their used space, average CPU and memory usage, and programs that started running regularly. Snapshots are read-only and stay on this PC.</value>
+  </data>
+  <data name="Changes_NotCoveredDriversServicesScheduledTasksAnd" xml:space="preserve">
+    <value>Not covered: drivers, services, scheduled tasks and individual files.</value>
+  </data>
+  <data name="Compare_BeforeAfterHowThePCBehavedInTwoPeriods" xml:space="preserve">
+    <value>Before / after: how the PC behaved in two periods</value>
+  </data>
+  <data name="Compare_SaveThisComparisonAsAnHTMLReportOrJSONData" xml:space="preserve">
+    <value>Save this comparison as an HTML report or JSON data</value>
+  </data>
+  <data name="Compare_GameSession" xml:space="preserve">
+    <value>Game session</value>
+  </data>
+  <data name="Compare_NoGameSessionRecorded" xml:space="preserve">
+    <value>No game session recorded</value>
+  </data>
+  <data name="Compare_MomentDate" xml:space="preserve">
+    <value>Moment (date)</value>
+  </data>
+  <data name="Compare_Time" xml:space="preserve">
+    <value>Time</value>
+  </data>
+  <data name="Compare_SecondMomentDate" xml:space="preserve">
+    <value>Second moment (date)</value>
+  </data>
+  <data name="Compare_AMomentIsComparedOverThe10MinutesBeforeItQuot" xml:space="preserve">
+    <value>A moment is compared over the 10 minutes before it; "before vs after a moment" uses 15 minutes on each side. Recent periods use per-second measurements, older ones the per-minute or hourly history.</value>
+  </data>
+  <data name="Common_Metric" xml:space="preserve">
+    <value>Metric</value>
+  </data>
+  <data name="Compare_Change" xml:space="preserve">
+    <value>Change</value>
+  </data>
+  <data name="Compare_Importance" xml:space="preserve">
+    <value>Importance</value>
+  </data>
+  <data name="Compare_AveragesOfCPUMemoryDiskActivityGPUNetwork" xml:space="preserve">
+    <value>Averages of CPU, memory, disk activity, GPU, network, processes and free space on the Windows volume, over each period. A metric measured in only one period is shown as not available and not compared. Percentages differ in percentage points; amounts also show the relative change.</value>
+  </data>
+  <data name="Dashboard_PCStatusOpenTheDiagnosis" xml:space="preserve">
+    <value>PC status, open the diagnosis</value>
+  </data>
+  <data name="Dashboard_OpenTheDiagnosis" xml:space="preserve">
+    <value>Open the diagnosis</value>
+  </data>
+  <data name="Dashboard_MEMORY" xml:space="preserve">
+    <value>MEMORY</value>
+  </data>
+  <data name="Common_GPU" xml:space="preserve">
+    <value>GPU</value>
+  </data>
+  <data name="Dashboard_SYSTEMDISK" xml:space="preserve">
+    <value>SYSTEM DISK</value>
+  </data>
+  <data name="Dashboard_NETWORK" xml:space="preserve">
+    <value>NETWORK</value>
+  </data>
+  <data name="Dashboard_PCHealthOpenTheDetails" xml:space="preserve">
+    <value>PC Health, open the details</value>
+  </data>
+  <data name="Dashboard_PCHEALTH" xml:space="preserve">
+    <value>PC HEALTH</value>
+  </data>
+  <data name="Dashboard_SinceYesterdayOpenChanges" xml:space="preserve">
+    <value>Since yesterday, open Changes</value>
+  </data>
+  <data name="Dashboard_Insights" xml:space="preserve">
+    <value>Insights</value>
+  </data>
+  <data name="Dashboard_QuickActions" xml:space="preserve">
+    <value>Quick actions</value>
+  </data>
+  <data name="Dashboard_WhyIsMyPCSlow" xml:space="preserve">
+    <value>Why is my PC slow?</value>
+  </data>
+  <data name="Dashboard_Diagnose" xml:space="preserve">
+    <value>Diagnose</value>
+  </data>
+  <data name="Dashboard_InvestigateAProblemForAFewMinutesWithDetailed" xml:space="preserve">
+    <value>Investigate a problem for a few minutes with detailed collection</value>
+  </data>
+  <data name="Dashboard_Troubleshoot" xml:space="preserve">
+    <value>Troubleshoot</value>
+  </data>
+  <data name="Dashboard_EverythingThatHappenedInOrder" xml:space="preserve">
+    <value>Everything that happened, in order</value>
+  </data>
+  <data name="Dashboard_WhatHappenedInTheLastMinutes" xml:space="preserve">
+    <value>What happened in the last minutes?</value>
+  </data>
+  <data name="Dashboard_WhatChangedRecently" xml:space="preserve">
+    <value>What changed recently?</value>
+  </data>
+  <data name="Dashboard_ViewChanges" xml:space="preserve">
+    <value>View changes</value>
+  </data>
+  <data name="Dashboard_WhichApplicationWeighsTheMost" xml:space="preserve">
+    <value>Which application weighs the most?</value>
+  </data>
+  <data name="Dashboard_AppImpact" xml:space="preserve">
+    <value>App impact</value>
+  </data>
+  <data name="Dashboard_RecapsOfYourGameSessions" xml:space="preserve">
+    <value>Recaps of your game sessions</value>
+  </data>
+  <data name="Common_CPUUsage" xml:space="preserve">
+    <value>CPU usage</value>
+  </data>
+  <data name="Common_ChartTimeSpan" xml:space="preserve">
+    <value>Chart time span</value>
+  </data>
+  <data name="Common_CPUUsageHistory" xml:space="preserve">
+    <value>CPU usage history</value>
+  </data>
+  <data name="Common_MemoryUsageHistory" xml:space="preserve">
+    <value>Memory usage history</value>
+  </data>
+  <data name="Dashboard_TopApplications" xml:space="preserve">
+    <value>Top applications</value>
+  </data>
+  <data name="Dashboard_SortTopApplicationsBy" xml:space="preserve">
+    <value>Sort top applications by</value>
+  </data>
+  <data name="Dashboard_ViewAllProcesses" xml:space="preserve">
+    <value>View all processes</value>
+  </data>
+  <data name="Dashboard_SystemHealth" xml:space="preserve">
+    <value>System health</value>
+  </data>
+  <data name="Dashboard_InstantIndicatorsBasedOnYourHealthThresholds" xml:space="preserve">
+    <value>Instant indicators based on your health thresholds (Settings)</value>
+  </data>
+  <data name="Dashboard_OpenPerformanceDetails" xml:space="preserve">
+    <value>Open performance details</value>
+  </data>
+  <data name="Diagnosis_WhyItMatters" xml:space="preserve">
+    <value>Why it matters</value>
+  </data>
+  <data name="Diagnosis_WhenDidItStartWhatChangedAtTheSameTimeAndHow" xml:space="preserve">
+    <value>When did it start, what changed at the same time, and how often it happened before</value>
+  </data>
+  <data name="Diagnosis_WhyIsMyPCSlowSysoraChecksWhatItMeasuresAnd" xml:space="preserve">
+    <value>Why is my PC slow? Sysora checks what it measures and explains what it finds.</value>
+  </data>
+  <data name="Diagnosis_AnalyzeAgain" xml:space="preserve">
+    <value>Analyze again</value>
+  </data>
+  <data name="Diagnosis_SaveTheDiagnosisAsAnHTMLReportOrJSONData" xml:space="preserve">
+    <value>Save the diagnosis as an HTML report or JSON data</value>
+  </data>
+  <data name="Diagnosis_WhenAProblemStartedFromWhatLevelWhatChangedAtThe" xml:space="preserve">
+    <value>When a problem started, from what level, what changed at the same time and how often it happened before.</value>
+  </data>
+  <data name="Diagnosis_MetricToExplain" xml:space="preserve">
+    <value>Metric to explain</value>
+  </data>
+  <data name="Diagnosis_Explain" xml:space="preserve">
+    <value>Explain</value>
+  </data>
+  <data name="Diagnosis_ExportThisExplanation" xml:space="preserve">
+    <value>Export this explanation</value>
+  </data>
+  <data name="Common_Started" xml:space="preserve">
+    <value>Started</value>
+  </data>
+  <data name="Diagnosis_BeforeNow" xml:space="preserve">
+    <value>Before → now</value>
+  </data>
+  <data name="Common_Duration" xml:space="preserve">
+    <value>Duration</value>
+  </data>
+  <data name="Diagnosis_MainContributor" xml:space="preserve">
+    <value>Main contributor</value>
+  </data>
+  <data name="Diagnosis_AtTheSameTimeACoincidenceInTimeIsNotProofOfCause" xml:space="preserve">
+    <value>At the same time (a coincidence in time is not proof of cause)</value>
+  </data>
+  <data name="Diagnosis_SeeEverythingThatHappenedAroundItInTheTimeline" xml:space="preserve">
+    <value>See everything that happened around it in the Timeline</value>
+  </data>
+  <data name="Diagnosis_EveryStatementAndWhatItRestsOn" xml:space="preserve">
+    <value>Every statement and what it rests on</value>
+  </data>
+  <data name="Common_RecurringProblems" xml:space="preserve">
+    <value>Recurring problems</value>
+  </data>
+  <data name="Diagnosis_OpenPCHealth" xml:space="preserve">
+    <value>Open PC Health</value>
+  </data>
+  <data name="Diagnosis_ComparedWithYourUsualActivity" xml:space="preserve">
+    <value>Compared with your usual activity</value>
+  </data>
+  <data name="Common_Now" xml:space="preserve">
+    <value>Now</value>
+  </data>
+  <data name="Diagnosis_AverageOfTheLast15Minutes" xml:space="preserve">
+    <value>Average of the last 15 minutes</value>
+  </data>
+  <data name="Diagnosis_LastHour" xml:space="preserve">
+    <value>Last hour</value>
+  </data>
+  <data name="Diagnosis_Today" xml:space="preserve">
+    <value>Today</value>
+  </data>
+  <data name="Diagnosis_Yesterday" xml:space="preserve">
+    <value>Yesterday</value>
+  </data>
+  <data name="Diagnosis_7Days" xml:space="preserve">
+    <value>7 days</value>
+  </data>
+  <data name="Diagnosis_30Days" xml:space="preserve">
+    <value>30 days</value>
+  </data>
+  <data name="Diagnosis_UsualAtThisHour" xml:space="preserve">
+    <value>Usual at this hour</value>
+  </data>
+  <data name="Diagnosis_SameHourOfTheDayOverTheLast30DaysTodayExcluded" xml:space="preserve">
+    <value>Same hour of the day over the last 30 days (today excluded)</value>
+  </data>
+  <data name="Diagnosis_AveragesOfTheLocalHistoryAPeriodWithoutEnough" xml:space="preserve">
+    <value>Averages of the local history. A period without enough measured time shows a dash (hover it to see how much data exists): Sysora never fills the gap with an estimate.</value>
+  </data>
+  <data name="Diagnosis_ProblemsDetected" xml:space="preserve">
+    <value>Problems detected</value>
+  </data>
+  <data name="Common_Recommendations" xml:space="preserve">
+    <value>Recommendations</value>
+  </data>
+  <data name="Diagnosis_PointsToWatch" xml:space="preserve">
+    <value>Points to watch</value>
+  </data>
+  <data name="Diagnosis_CheckedAndNormal" xml:space="preserve">
+    <value>Checked and normal</value>
+  </data>
+  <data name="Diagnosis_NotAnalyzed" xml:space="preserve">
+    <value>Not analyzed</value>
+  </data>
+  <data name="Diagnosis_SysoraOnlyReportsWhatItMeasuresRulesAre" xml:space="preserve">
+    <value>Sysora only reports what it measures. Rules are deterministic: the same measurements always give the same diagnosis.</value>
+  </data>
+  <data name="Gaming_ARecapOfEachGameSessionWhatYourPCTheGameAndOther" xml:space="preserve">
+    <value>A recap of each game session: what your PC, the game and other applications used. FPS is never estimated.</value>
+  </data>
+  <data name="Gaming_GameSessionsAreTurnedOffInSettingsNoNewSessionIs" xml:space="preserve">
+    <value>Game sessions are turned off in Settings: no new session is recorded.</value>
+  </data>
+  <data name="Gaming_GAMERUNNINGRECORDINGWITHMINIMALIMPACT" xml:space="preserve">
+    <value>GAME RUNNING · RECORDING WITH MINIMAL IMPACT</value>
+  </data>
+  <data name="Gaming_NotAGame" xml:space="preserve">
+    <value>Not a game</value>
+  </data>
+  <data name="Gaming_StopFollowingThisApplicationAsAGameSettings" xml:space="preserve">
+    <value>Stop following this application as a game (Settings › Gaming to undo)</value>
+  </data>
+  <data name="Common_GameSessions" xml:space="preserve">
+    <value>Game sessions</value>
+  </data>
+  <data name="Gaming_NoGameSessionYet" xml:space="preserve">
+    <value>No game session yet</value>
+  </data>
+  <data name="Gaming_StartAGameSysoraFollowsItAutomaticallyWhen" xml:space="preserve">
+    <value>Start a game: Sysora follows it automatically when Windows recognizes it as a game (Game Bar's list), when a launcher reports it as installed (Steam, Epic, Riot, GOG) or when it is installed in a game library folder. When the game closes, a recap appears here. Sessions shorter than the minimum set in Settings are not kept.</value>
+  </data>
+  <data name="Gaming_MarkAnApplicationAsAGameInSettings" xml:space="preserve">
+    <value>Add a game in Settings</value>
+  </data>
+  <data name="Gaming_BeforeVsDuringTheGame" xml:space="preserve">
+    <value>Before vs during the game</value>
+  </data>
+  <data name="Gaming_BeforeVsAfterTheGame" xml:space="preserve">
+    <value>Before vs after the game</value>
+  </data>
+  <data name="Gaming_WithThePreviousSession" xml:space="preserve">
+    <value>With the previous session</value>
+  </data>
+  <data name="Gaming_ExportRecap" xml:space="preserve">
+    <value>Export recap</value>
+  </data>
+  <data name="Gaming_SaveThisRecapAsAnHTMLReportOrJSONData" xml:space="preserve">
+    <value>Save this recap as an HTML report or JSON data</value>
+  </data>
+  <data name="Gaming_StopFollowingThisApplicationAsAGamePastSessions" xml:space="preserve">
+    <value>Stop following this application as a game (past sessions are kept)</value>
+  </data>
+  <data name="Common_Measurements" xml:space="preserve">
+    <value>Measurements</value>
+  </data>
+  <data name="Common_Average" xml:space="preserve">
+    <value>Average</value>
+  </data>
+  <data name="Gaming_Maximum" xml:space="preserve">
+    <value>Maximum</value>
+  </data>
+  <data name="Gaming_Scope" xml:space="preserve">
+    <value>Scope</value>
+  </data>
+  <data name="Gaming_CPUDuringTheSession" xml:space="preserve">
+    <value>CPU during the session</value>
+  </data>
+  <data name="Gaming_GPUDuringTheSession" xml:space="preserve">
+    <value>GPU during the session</value>
+  </data>
+  <data name="Common_WhatHappened" xml:space="preserve">
+    <value>What happened</value>
+  </data>
+  <data name="Gaming_ComparedWithPreviousSessions" xml:space="preserve">
+    <value>Compared with previous sessions</value>
+  </data>
+  <data name="Gaming_NotableDifference" xml:space="preserve">
+    <value>Notable difference</value>
+  </data>
+  <data name="Gaming_OtherApplicationsDuringTheGame" xml:space="preserve">
+    <value>Other applications during the game</value>
+  </data>
+  <data name="Gaming_NoOtherApplicationUsedAMeasurableShareOfThe" xml:space="preserve">
+    <value>No other application used a measurable share of the processor.</value>
+  </data>
+  <data name="Gaming_OtherProcessesOfTheGame" xml:space="preserve">
+    <value>Other processes of the game</value>
+  </data>
+  <data name="Gaming_StartedByTheGameOrInstalledInItsFolderLaunchers" xml:space="preserve">
+    <value>Started by the game or installed in its folder (launchers, anti-cheat, crash reporters…).</value>
+  </data>
+  <data name="Gaming_EventsDuringTheSession" xml:space="preserve">
+    <value>Events during the session</value>
+  </data>
+  <data name="Gaming_NotMeasured" xml:space="preserve">
+    <value>Not measured</value>
+  </data>
+  <data name="LargeFiles_WhatTakesTheMostSpaceSysoraOnlyListsFilesItNever" xml:space="preserve">
+    <value>What takes the most space. Sysora only lists files: it never moves, changes or deletes them.</value>
+  </data>
+  <data name="LargeFiles_SaveTheResultsAsAnHTMLReportOrJSONData" xml:space="preserve">
+    <value>Save the results as an HTML report or JSON data</value>
+  </data>
+  <data name="LargeFiles_Where" xml:space="preserve">
+    <value>Where</value>
+  </data>
+  <data name="LargeFiles_ChooseAFolder" xml:space="preserve">
+    <value>Choose a folder…</value>
+  </data>
+  <data name="LargeFiles_FilesOf" xml:space="preserve">
+    <value>Files of</value>
+  </data>
+  <data name="LargeFiles_Scan" xml:space="preserve">
+    <value>Scan</value>
+  </data>
+  <data name="LargeFiles_Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="LargeFiles_TheScanRunsOnlyWhenYouAskAtLowPriorityAndCanBe" xml:space="preserve">
+    <value>The scan runs only when you ask, at low priority, and can be cancelled at any time. It reads folder listings only (no file is opened), does not follow links, skips online-only cloud files, and reports the folders Windows refuses to list instead of counting them as empty.</value>
+  </data>
+  <data name="LargeFiles_FoldersNotReadLinksAndExclusions" xml:space="preserve">
+    <value>Folders not read, links and exclusions</value>
+  </data>
+  <data name="LargeFiles_Type" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="LargeFiles_Search" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="LargeFiles_SearchByNameOrFolder" xml:space="preserve">
+    <value>Search by name or folder</value>
+  </data>
+  <data name="LargeFiles_Modified" xml:space="preserve">
+    <value> · modified </value>
+  </data>
+  <data name="LargeFiles_ShowInFileExplorer" xml:space="preserve">
+    <value>Show in File Explorer</value>
+  </data>
+  <data name="LargeFiles_CopyThePath" xml:space="preserve">
+    <value>Copy the path</value>
+  </data>
+  <data name="Network_LocalStatisticsOnlySysoraSendsNoNetworkTrafficTo" xml:space="preserve">
+    <value>Local statistics only — Sysora sends no network traffic to measure them</value>
+  </data>
+  <data name="Common_TimeSpan" xml:space="preserve">
+    <value>Time span</value>
+  </data>
+  <data name="Network_NetworkMonitoringIsTurnedOffInSettings" xml:space="preserve">
+    <value>Network monitoring is turned off in Settings.</value>
+  </data>
+  <data name="Network_CONNECTION" xml:space="preserve">
+    <value>CONNECTION</value>
+  </data>
+  <data name="Network_ACTIVEINTERFACE" xml:space="preserve">
+    <value>ACTIVE INTERFACE</value>
+  </data>
+  <data name="Network_Throughput" xml:space="preserve">
+    <value>Throughput</value>
+  </data>
+  <data name="Network_Download" xml:space="preserve">
+    <value>Download</value>
+  </data>
+  <data name="Network_Upload" xml:space="preserve">
+    <value>Upload</value>
+  </data>
+  <data name="Network_NetworkThroughputHistory" xml:space="preserve">
+    <value>Network throughput history</value>
+  </data>
+  <data name="Network_Interfaces" xml:space="preserve">
+    <value>Interfaces</value>
+  </data>
+  <data name="Network_LinkSpeed" xml:space="preserve">
+    <value>Link speed</value>
+  </data>
+  <data name="Network_Received" xml:space="preserve">
+    <value>Received</value>
+  </data>
+  <data name="Network_SinceTheInterfaceCameUp" xml:space="preserve">
+    <value>Since the interface came up</value>
+  </data>
+  <data name="Network_Sent" xml:space="preserve">
+    <value>Sent</value>
+  </data>
+  <data name="Network_IPv4" xml:space="preserve">
+    <value>IPv4</value>
+  </data>
+  <data name="Network_IPv6" xml:space="preserve">
+    <value>IPv6</value>
+  </data>
+  <data name="Network_LatencyIsNotMeasuredItWouldRequireContactingA" xml:space="preserve">
+    <value>Latency is not measured: it would require contacting a remote server. Internet availability comes from Windows' own connectivity checks.</value>
+  </data>
+  <data name="PcHealth_InWhatStateIsMyPCAScoreOutOf100ExplainedAreaBy" xml:space="preserve">
+    <value>In what state is my PC? A score out of 100, explained area by area.</value>
+  </data>
+  <data name="PcHealth_SaveThisAnalysisAsAnHTMLReportOrJSONData" xml:space="preserve">
+    <value>Save this analysis as an HTML report or JSON data</value>
+  </data>
+  <data name="PcHealth_PCHealthScore" xml:space="preserve">
+    <value>PC Health score</value>
+  </data>
+  <data name="PcHealth_OutOf100" xml:space="preserve">
+    <value>out of 100</value>
+  </data>
+  <data name="PcHealth_Areas" xml:space="preserve">
+    <value>Areas</value>
+  </data>
+  <data name="PcHealth_WhyThisImpact" xml:space="preserve">
+    <value>Why this impact</value>
+  </data>
+  <data name="PcHealth_AProblemIsCalledRecurringAfter3EpisodesOn2" xml:space="preserve">
+    <value>A problem is called recurring after 3 episodes on 2 different days in the last 7 days, from the alerts and events Sysora recorded. With less history, Sysora says so instead of guessing.</value>
+  </data>
+  <data name="PcHealth_DetailsAndIntensity" xml:space="preserve">
+    <value>Details and intensity</value>
+  </data>
+  <data name="PcHealth_HowTheScoreIsComputed" xml:space="preserve">
+    <value>How the score is computed</value>
+  </data>
+  <data name="PcHealth_NotCounted" xml:space="preserve">
+    <value>Not counted</value>
+  </data>
+  <data name="Performance_RealTimeUsageAndRecentHistory" xml:space="preserve">
+    <value>Real-time usage and recent history</value>
+  </data>
+  <data name="Performance_DiskActivity" xml:space="preserve">
+    <value>Disk activity</value>
+  </data>
+  <data name="Performance_Speed" xml:space="preserve">
+    <value>Speed</value>
+  </data>
+  <data name="Performance_EffectiveClockRatedFrequencyCurrentProcessor" xml:space="preserve">
+    <value>Effective clock: rated frequency × current processor performance, as computed by Task Manager.</value>
+  </data>
+  <data name="Performance_BaseSpeed" xml:space="preserve">
+    <value>Base speed</value>
+  </data>
+  <data name="Performance_PeakSpeedThisSession" xml:space="preserve">
+    <value>Peak speed (this session)</value>
+  </data>
+  <data name="Performance_Temperature" xml:space="preserve">
+    <value>Temperature</value>
+  </data>
+  <data name="Performance_Cores" xml:space="preserve">
+    <value>Cores</value>
+  </data>
+  <data name="Performance_LogicalProcessors" xml:space="preserve">
+    <value>Logical processors</value>
+  </data>
+  <data name="Performance_Sockets" xml:space="preserve">
+    <value>Sockets</value>
+  </data>
+  <data name="Performance_L2Cache" xml:space="preserve">
+    <value>L2 cache</value>
+  </data>
+  <data name="Performance_L3Cache" xml:space="preserve">
+    <value>L3 cache</value>
+  </data>
+  <data name="Common_Threads" xml:space="preserve">
+    <value>Threads</value>
+  </data>
+  <data name="Common_Handles" xml:space="preserve">
+    <value>Handles</value>
+  </data>
+  <data name="Performance_UpTime" xml:space="preserve">
+    <value>Up time</value>
+  </data>
+  <data name="Performance_UsagePerLogicalProcessor" xml:space="preserve">
+    <value>Usage per logical processor</value>
+  </data>
+  <data name="Common_MemoryInUse" xml:space="preserve">
+    <value>Memory in use</value>
+  </data>
+  <data name="Performance_InUse" xml:space="preserve">
+    <value>In use</value>
+  </data>
+  <data name="Performance_Available" xml:space="preserve">
+    <value>Available</value>
+  </data>
+  <data name="Performance_UsableByWindows" xml:space="preserve">
+    <value>Usable by Windows</value>
+  </data>
+  <data name="Performance_Installed" xml:space="preserve">
+    <value>Installed</value>
+  </data>
+  <data name="Common_Committed" xml:space="preserve">
+    <value>Committed</value>
+  </data>
+  <data name="Performance_CommitChargeCommitLimitPhysicalMemoryPlusPage" xml:space="preserve">
+    <value>Commit charge / commit limit (physical memory plus page files).</value>
+  </data>
+  <data name="Performance_SystemCache" xml:space="preserve">
+    <value>System cache</value>
+  </data>
+  <data name="Performance_StandbyListPlusSystemWorkingSetAsReportedBy" xml:space="preserve">
+    <value>Standby list plus system working set, as reported by GetPerformanceInfo.</value>
+  </data>
+  <data name="Performance_PagedPool" xml:space="preserve">
+    <value>Paged pool</value>
+  </data>
+  <data name="Performance_NonPagedPool" xml:space="preserve">
+    <value>Non-paged pool</value>
+  </data>
+  <data name="Performance_NoGraphicsAdapterDataIsAvailableGPUMonitoringMay" xml:space="preserve">
+    <value>No graphics adapter data is available. GPU monitoring may be turned off in Settings, or this system does not expose GPU performance counters.</value>
+  </data>
+  <data name="Performance_DedicatedMemory" xml:space="preserve">
+    <value>Dedicated memory</value>
+  </data>
+  <data name="Performance_SharedMemory" xml:space="preserve">
+    <value>Shared memory</value>
+  </data>
+  <data name="Performance_NotExposedByTheWindowsGPUPerformanceCounters" xml:space="preserve">
+    <value>Not exposed by the Windows GPU performance counters.</value>
+  </data>
+  <data name="Performance_ClockSpeed" xml:space="preserve">
+    <value>Clock speed</value>
+  </data>
+  <data name="Performance_BusiestEngines" xml:space="preserve">
+    <value>Busiest engines</value>
+  </data>
+  <data name="Performance_DiskActivityCountersAreNotAvailableOnThisSystem" xml:space="preserve">
+    <value>Disk activity counters are not available on this system.</value>
+  </data>
+  <data name="Common_Read" xml:space="preserve">
+    <value>Read</value>
+  </data>
+  <data name="Common_Write" xml:space="preserve">
+    <value>Write</value>
+  </data>
+  <data name="Processes_SearchProcesses" xml:space="preserve">
+    <value>Search processes</value>
+  </data>
+  <data name="Processes_SearchByNameOrPID" xml:space="preserve">
+    <value>Search by name or PID</value>
+  </data>
+  <data name="Processes_HIGHESTCPUUSAGE" xml:space="preserve">
+    <value>HIGHEST CPU USAGE</value>
+  </data>
+  <data name="Processes_HIGHESTMEMORYUSAGE" xml:space="preserve">
+    <value>HIGHEST MEMORY USAGE</value>
+  </data>
+  <data name="Processes_HIGHESTIOACTIVITY" xml:space="preserve">
+    <value>HIGHEST I/O ACTIVITY</value>
+  </data>
+  <data name="Processes_SortByName" xml:space="preserve">
+    <value>Sort by name</value>
+  </data>
+  <data name="Processes_Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="Processes_SortByPID" xml:space="preserve">
+    <value>Sort by PID</value>
+  </data>
+  <data name="Processes_PID" xml:space="preserve">
+    <value>PID</value>
+  </data>
+  <data name="Processes_SortByCPU" xml:space="preserve">
+    <value>Sort by CPU</value>
+  </data>
+  <data name="Processes_SortByMemory" xml:space="preserve">
+    <value>Sort by memory</value>
+  </data>
+  <data name="Processes_PrivateWorkingSetPhysicalMemoryUsedOnlyByThis" xml:space="preserve">
+    <value>Private working set: physical memory used only by this process</value>
+  </data>
+  <data name="Processes_SortByDiskIO" xml:space="preserve">
+    <value>Sort by disk I/O</value>
+  </data>
+  <data name="Processes_ReadAndWriteIOFilesDevicesAndNetwork" xml:space="preserve">
+    <value>Read and write I/O (files, devices and network)</value>
+  </data>
+  <data name="Processes_CPUIsAShareOfTotalCapacityMemoryIsThePrivate" xml:space="preserve">
+    <value>CPU is a share of total capacity. Memory is the private working set. Per-process network usage is not measured (it requires administrator-level tracing).</value>
+  </data>
+  <data name="Processes_SelectAProcessToSeeItsDetails" xml:space="preserve">
+    <value>Select a process to see its details.</value>
+  </data>
+  <data name="Processes_ThisProcessHasExited" xml:space="preserve">
+    <value>This process has exited.</value>
+  </data>
+  <data name="Processes_CriticalWindowsProcessEndingItWouldStopTheSystem" xml:space="preserve">
+    <value>Critical Windows process: ending it would stop the system.</value>
+  </data>
+  <data name="Processes_ParentPID" xml:space="preserve">
+    <value>Parent PID</value>
+  </data>
+  <data name="Processes_Session" xml:space="preserve">
+    <value>Session</value>
+  </data>
+  <data name="Processes_PrivateWorkingSet" xml:space="preserve">
+    <value>Private working set</value>
+  </data>
+  <data name="Processes_WorkingSet" xml:space="preserve">
+    <value>Working set</value>
+  </data>
+  <data name="Processes_IncludesMemorySharedWithOtherProcesses" xml:space="preserve">
+    <value>Includes memory shared with other processes</value>
+  </data>
+  <data name="Processes_PrivateBytes" xml:space="preserve">
+    <value>Private bytes</value>
+  </data>
+  <data name="Processes_IORead" xml:space="preserve">
+    <value>I/O read</value>
+  </data>
+  <data name="Processes_IOWrite" xml:space="preserve">
+    <value>I/O write</value>
+  </data>
+  <data name="Processes_Path" xml:space="preserve">
+    <value>Path</value>
+  </data>
+  <data name="Processes_Company" xml:space="preserve">
+    <value>Company</value>
+  </data>
+  <data name="Common_Version" xml:space="preserve">
+    <value>Version</value>
+  </data>
+  <data name="Processes_EndProcess" xml:space="preserve">
+    <value>End process…</value>
+  </data>
+  <data name="Replay_WhatHappenedOnYourPCInTheLastMinutesOrHours" xml:space="preserve">
+    <value>What happened on your PC in the last minutes or hours</value>
+  </data>
+  <data name="Replay_BackToNow" xml:space="preserve">
+    <value>Back to now</value>
+  </data>
+  <data name="Replay_ZoomIn" xml:space="preserve">
+    <value>Zoom in</value>
+  </data>
+  <data name="Replay_ZoomInShorterPeriodAroundTheCursor" xml:space="preserve">
+    <value>Zoom in (shorter period around the cursor)</value>
+  </data>
+  <data name="Replay_ZoomOut" xml:space="preserve">
+    <value>Zoom out</value>
+  </data>
+  <data name="Replay_ZoomOutLongerPeriod" xml:space="preserve">
+    <value>Zoom out (longer period)</value>
+  </data>
+  <data name="Replay_CompareBeforeAndAfterTheCursor" xml:space="preserve">
+    <value>Compare before and after the cursor</value>
+  </data>
+  <data name="Replay_CompareThe15MinutesBeforeAndAfterTheCursor" xml:space="preserve">
+    <value>Compare the 15 minutes before and after the cursor</value>
+  </data>
+  <data name="Replay_SaveThisPeriodAsAnHTMLReportOrJSONData" xml:space="preserve">
+    <value>Save this period as an HTML report or JSON data</value>
+  </data>
+  <data name="Replay_MoveTheCursorToThisMoment" xml:space="preserve">
+    <value>Move the cursor to this moment</value>
+  </data>
+  <data name="Replay_ReplayPosition" xml:space="preserve">
+    <value>Replay position</value>
+  </data>
+  <data name="Replay_CPUUsageReplay" xml:space="preserve">
+    <value>CPU usage replay</value>
+  </data>
+  <data name="Replay_MemoryUsageReplay" xml:space="preserve">
+    <value>Memory usage replay</value>
+  </data>
+  <data name="Replay_DiskBusiestVolumeActiveTime" xml:space="preserve">
+    <value>Disk (busiest volume, active time)</value>
+  </data>
+  <data name="Replay_DiskActivityReplay" xml:space="preserve">
+    <value>Disk activity replay</value>
+  </data>
+  <data name="Replay_NetworkDownloadAndUpload" xml:space="preserve">
+    <value>Network (download and upload)</value>
+  </data>
+  <data name="Replay_NetworkReplay" xml:space="preserve">
+    <value>Network replay</value>
+  </data>
+  <data name="Replay_GPUBusiestAdapter" xml:space="preserve">
+    <value>GPU (busiest adapter)</value>
+  </data>
+  <data name="Replay_GPUUsageReplay" xml:space="preserve">
+    <value>GPU usage replay</value>
+  </data>
+  <data name="Replay_AtTheCursor" xml:space="preserve">
+    <value>At the cursor</value>
+  </data>
+  <data name="Replay_Disk" xml:space="preserve">
+    <value>Disk</value>
+  </data>
+  <data name="Replay_Applications" xml:space="preserve">
+    <value>Applications</value>
+  </data>
+  <data name="Replay_EventsAroundThisTime" xml:space="preserve">
+    <value>Events around this time</value>
+  </data>
+  <data name="Replay_NoMeasurementsForThisPeriodLongerPeriodsUseThe" xml:space="preserve">
+    <value>No measurements for this period. Longer periods use the local history, which fills up while Sysora runs.</value>
+  </data>
+  <data name="Settings_Settings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Settings_ChangesAreAppliedAndSavedImmediately" xml:space="preserve">
+    <value>Changes are applied and saved immediately.</value>
+  </data>
+  <data name="Settings_General" xml:space="preserve">
+    <value>General</value>
+  </data>
+  <data name="Settings_FollowWindowsOrAlwaysUseLightOrDarkColors" xml:space="preserve">
+    <value>Follow Windows, or always use light or dark colors</value>
+  </data>
+  <data name="Settings_Theme" xml:space="preserve">
+    <value>Theme</value>
+  </data>
+  <data name="Settings_WhatHappensWhenYouCloseTheSysoraWindow" xml:space="preserve">
+    <value>What happens when you close the Sysora window</value>
+  </data>
+  <data name="Settings_CloseWindow" xml:space="preserve">
+    <value>Close window</value>
+  </data>
+  <data name="Settings_Startup" xml:space="preserve">
+    <value>Startup</value>
+  </data>
+  <data name="Settings_StartSysoraWithWindows" xml:space="preserve">
+    <value>Start Sysora with Windows</value>
+  </data>
+  <data name="Settings_WhenStartedWithWindowsOpenTheWindowMinimizedTo" xml:space="preserve">
+    <value>When started with Windows, open the window minimized to the taskbar</value>
+  </data>
+  <data name="Settings_StartMinimized" xml:space="preserve">
+    <value>Start minimized</value>
+  </data>
+  <data name="Settings_WhenStartedWithWindowsStayInTheNotificationArea" xml:space="preserve">
+    <value>When started with Windows, stay in the notification area without opening the window</value>
+  </data>
+  <data name="Settings_StartInTray" xml:space="preserve">
+    <value>Start in tray</value>
+  </data>
+  <data name="Settings_Monitoring" xml:space="preserve">
+    <value>Monitoring</value>
+  </data>
+  <data name="Settings_StopCollectingMetricsUntilYouResumeAlsoAvailable" xml:space="preserve">
+    <value>Stop collecting metrics until you resume (also available from the title bar and the tray icon)</value>
+  </data>
+  <data name="Settings_PauseMonitoring" xml:space="preserve">
+    <value>Pause monitoring</value>
+  </data>
+  <data name="Settings_MonitoringIntensity" xml:space="preserve">
+    <value>Monitoring intensity</value>
+  </data>
+  <data name="Settings_CPUMemoryAndNetworkSamplingInterval" xml:space="preserve">
+    <value>CPU, memory and network sampling interval</value>
+  </data>
+  <data name="Settings_RealTimeMetrics" xml:space="preserve">
+    <value>Real-time metrics</value>
+  </data>
+  <data name="Settings_RealTimeMetricsInterval" xml:space="preserve">
+    <value>Real-time metrics interval</value>
+  </data>
+  <data name="Settings_ProcessesGPUAndDiskActivitySamplingInterval" xml:space="preserve">
+    <value>Processes, GPU and disk activity sampling interval</value>
+  </data>
+  <data name="Settings_DetailedMetrics" xml:space="preserve">
+    <value>Detailed metrics</value>
+  </data>
+  <data name="Settings_DetailedMetricsInterval" xml:space="preserve">
+    <value>Detailed metrics interval</value>
+  </data>
+  <data name="Settings_HowOftenFreeSpaceIsChecked" xml:space="preserve">
+    <value>How often free space is checked</value>
+  </data>
+  <data name="Settings_StorageCapacity" xml:space="preserve">
+    <value>Storage capacity</value>
+  </data>
+  <data name="Settings_StorageCapacityInterval" xml:space="preserve">
+    <value>Storage capacity interval</value>
+  </data>
+  <data name="Settings_DefaultTimeSpanOfChartsHistoryIsKeptInMemoryOnly" xml:space="preserve">
+    <value>Default time span of charts (history is kept in memory only)</value>
+  </data>
+  <data name="Settings_ChartHistory" xml:space="preserve">
+    <value>Chart history</value>
+  </data>
+  <data name="Settings_GraphicsAdapterUsageAndMemory" xml:space="preserve">
+    <value>Graphics adapter usage and memory</value>
+  </data>
+  <data name="Settings_MonitorGPU" xml:space="preserve">
+    <value>Monitor GPU</value>
+  </data>
+  <data name="Settings_InterfaceThroughputAndConnectivityReportedBy" xml:space="preserve">
+    <value>Interface throughput and connectivity reported by Windows</value>
+  </data>
+  <data name="Settings_MonitorNetwork" xml:space="preserve">
+    <value>Monitor network</value>
+  </data>
+  <data name="Settings_WhileTheWindowIsHiddenOrMinimizedSampleProcesses" xml:space="preserve">
+    <value>While the window is hidden or minimized, sample processes, GPU, disk and network less often</value>
+  </data>
+  <data name="Settings_ReduceActivityInTheBackground" xml:space="preserve">
+    <value>Reduce activity in the background</value>
+  </data>
+  <data name="Settings_MaximumCPUSysoraMayUseInOfTotalCapacityAboveIt" xml:space="preserve">
+    <value>Maximum CPU Sysora may use, in % of total capacity. Above it, intervals are stretched automatically. 0 = no limit.</value>
+  </data>
+  <data name="Settings_CPUBudgetForSysora" xml:space="preserve">
+    <value>CPU budget for Sysora</value>
+  </data>
+  <data name="Settings_HealthThresholds" xml:space="preserve">
+    <value>Health thresholds</value>
+  </data>
+  <data name="Settings_UsedByTheSystemHealthPanelCPUAndMemoryMustStay" xml:space="preserve">
+    <value>Used by the System health panel. CPU and memory must stay above a threshold for the given duration before being reported, which avoids alerts for short spikes.</value>
+  </data>
+  <data name="Settings_CPUWarning" xml:space="preserve">
+    <value>CPU warning (%)</value>
+  </data>
+  <data name="Settings_CPUCritical" xml:space="preserve">
+    <value>CPU critical (%)</value>
+  </data>
+  <data name="Settings_CPUDurationS" xml:space="preserve">
+    <value>CPU duration (s)</value>
+  </data>
+  <data name="Settings_MemoryWarning" xml:space="preserve">
+    <value>Memory warning (%)</value>
+  </data>
+  <data name="Settings_MemoryCritical" xml:space="preserve">
+    <value>Memory critical (%)</value>
+  </data>
+  <data name="Settings_MemoryDurationS" xml:space="preserve">
+    <value>Memory duration (s)</value>
+  </data>
+  <data name="Settings_DiskWarning" xml:space="preserve">
+    <value>Disk warning (%)</value>
+  </data>
+  <data name="Settings_DiskCritical" xml:space="preserve">
+    <value>Disk critical (%)</value>
+  </data>
+  <data name="Settings_AppMemoryOfRAM" xml:space="preserve">
+    <value>App memory (% of RAM)</value>
+  </data>
+  <data name="Settings_AppCPU" xml:space="preserve">
+    <value>App CPU (%)</value>
+  </data>
+  <data name="Settings_RestoreDefaultThresholds" xml:space="preserve">
+    <value>Restore default thresholds</value>
+  </data>
+  <data name="Settings_RaiseAlertsForProblemsThatLastOrAreUnusualFor" xml:space="preserve">
+    <value>Raise alerts for problems that last or are unusual for this PC (shown in Alerts)</value>
+  </data>
+  <data name="Settings_SmartAlerts" xml:space="preserve">
+    <value>Smart alerts</value>
+  </data>
+  <data name="Settings_AlsoShowAWindowsNotificationForNewWarningsAnd" xml:space="preserve">
+    <value>Also show a Windows notification for new warnings and critical alerts</value>
+  </data>
+  <data name="Settings_Notifications" xml:space="preserve">
+    <value>Notifications</value>
+  </data>
+  <data name="Settings_AlertNotifications" xml:space="preserve">
+    <value>Alert notifications</value>
+  </data>
+  <data name="Settings_EachConditionMustLastForTheGivenDurationBeforeAn" xml:space="preserve">
+    <value>Each condition must last for the given duration before an alert is raised. While it lasts, a single alert is updated; it resolves one minute after the condition ends.</value>
+  </data>
+  <data name="Settings_CPUAbove" xml:space="preserve">
+    <value>CPU above (%)</value>
+  </data>
+  <data name="Settings_ForMinutes" xml:space="preserve">
+    <value>for (minutes)</value>
+  </data>
+  <data name="Settings_MemoryAbove" xml:space="preserve">
+    <value>Memory above (%)</value>
+  </data>
+  <data name="Settings_DiskBusyAbove" xml:space="preserve">
+    <value>Disk busy above (%)</value>
+  </data>
+  <data name="Settings_OneAppAboveCPU" xml:space="preserve">
+    <value>One app above (% CPU)</value>
+  </data>
+  <data name="Settings_MemoryRisingByPoints" xml:space="preserve">
+    <value>Memory rising by (points)</value>
+  </data>
+  <data name="Settings_WithinMinutes" xml:space="preserve">
+    <value>within (minutes)</value>
+  </data>
+  <data name="Settings_SystemDiskFreeBelow" xml:space="preserve">
+    <value>System disk free below (%)</value>
+  </data>
+  <data name="Settings_ReopenInsteadOfNewWithinMin" xml:space="preserve">
+    <value>Reopen instead of new within (min)</value>
+  </data>
+  <data name="Settings_NewAlertsPerHourMax" xml:space="preserve">
+    <value>New alerts per hour (max)</value>
+  </data>
+  <data name="Settings_UnusualActivity" xml:space="preserve">
+    <value>Unusual activity</value>
+  </data>
+  <data name="Settings_AlertWhenCPUMemoryOrDiskStayAboveYourUsualRange" xml:space="preserve">
+    <value>Alert when CPU, memory or disk stay above your usual range (learned from at least 4 hours of history) for the given duration.</value>
+  </data>
+  <data name="Settings_UnusualActivityDurationMinutes" xml:space="preserve">
+    <value>Unusual activity duration (minutes)</value>
+  </data>
+  <data name="Settings_UnusualActivityAlerts" xml:space="preserve">
+    <value>Unusual activity alerts</value>
+  </data>
+  <data name="Settings_RestoreDefaultAlertRules" xml:space="preserve">
+    <value>Restore default alert rules</value>
+  </data>
+  <data name="Settings_SaveAggregatedPerformanceApplicationUsageEvents" xml:space="preserve">
+    <value>Save aggregated performance, application usage, events, alerts, changes and game sessions to a local database. Needed for App Impact over days, Changes, Gaming recaps and the usual-behavior baseline.</value>
+  </data>
+  <data name="Settings_RecordHistory" xml:space="preserve">
+    <value>Record history</value>
+  </data>
+  <data name="Settings_DetailedDataEverySecondKeptInMemoryForReplay" xml:space="preserve">
+    <value>Detailed data (every second) kept in memory for Replay. Never written to disk.</value>
+  </data>
+  <data name="Settings_ReplayBuffer" xml:space="preserve">
+    <value>Replay buffer</value>
+  </data>
+  <data name="Settings_MinuteLevelSystemDataAndFiveMinuteApplication" xml:space="preserve">
+    <value>Minute-level system data and five-minute application data (1–31 days)</value>
+  </data>
+  <data name="Settings_KeepDetailedHistoryDays" xml:space="preserve">
+    <value>Keep detailed history (days)</value>
+  </data>
+  <data name="Settings_HourlySummariesEventsAlertsChangesAndGame" xml:space="preserve">
+    <value>Hourly summaries, events, alerts, changes and game sessions (7–365 days). Older data is deleted automatically.</value>
+  </data>
+  <data name="Settings_KeepSummariesDays" xml:space="preserve">
+    <value>Keep summaries (days)</value>
+  </data>
+  <data name="Settings_DeleteHistory" xml:space="preserve">
+    <value>Delete history</value>
+  </data>
+  <data name="Settings_Delete" xml:space="preserve">
+    <value>Delete…</value>
+  </data>
+  <data name="Settings_FollowGameSessionsAutomaticallyAndShowARecapWhen" xml:space="preserve">
+    <value>Follow game sessions automatically and show a recap when the game closes. FPS is never estimated.</value>
+  </data>
+  <data name="Settings_ExecutablesThatWindowsItselfRecognizesAsGames" xml:space="preserve">
+    <value>Executables that Windows itself recognizes as games (Game Bar's list for your account)</value>
+  </data>
+  <data name="Settings_GamesRecognizedByWindows" xml:space="preserve">
+    <value>Games recognized by Windows</value>
+  </data>
+  <data name="Settings_ExecutablesInstalledInAGameLibraryFolderSteam" xml:space="preserve">
+    <value>Executables installed in a game library folder (Steam, Epic, Xbox, GOG, Riot, EA, Ubisoft…); launchers, anti-cheat and crash reporters are left out</value>
+  </data>
+  <data name="Settings_GamesInLibraryFolders" xml:space="preserve">
+    <value>Games in library folders</value>
+  </data>
+  <data name="Settings_ShorterSessionsAreNotKept130Minutes" xml:space="preserve">
+    <value>Shorter sessions are not kept (1–30 minutes)</value>
+  </data>
+  <data name="Settings_MinimumSessionLengthMinutes" xml:space="preserve">
+    <value>Minimum session length (minutes)</value>
+  </data>
+  <data name="Settings_ShowAWindowsNotificationWhenAGameRecapIsReady" xml:space="preserve">
+    <value>Show a Windows notification when a game recap is ready</value>
+  </data>
+  <data name="Settings_RecapNotification" xml:space="preserve">
+    <value>Recap notification</value>
+  </data>
+  <data name="Settings_WhileAGameIsInFrontPauseTheWindowsLiveUpdatesAnd" xml:space="preserve">
+    <value>While a game is in front, pause the window's live updates and sample detailed metrics less often. Recording continues.</value>
+  </data>
+  <data name="Settings_LighterMonitoringDuringGames" xml:space="preserve">
+    <value>Lighter monitoring during games</value>
+  </data>
+  <data name="Settings_YourGameLists" xml:space="preserve">
+    <value>Your game lists</value>
+  </data>
+  <data name="Settings_MarkARunningApplicationAsAGameWhenSysoraDoesNot" xml:space="preserve">
+    <value>Mark a running application as a game when Sysora does not recognize it, or remove a mark. Applications marked as not a game are never followed.</value>
+  </data>
+  <data name="Settings_RunningApplication" xml:space="preserve">
+    <value>Running application</value>
+  </data>
+  <data name="Settings_ChooseARunningApplication" xml:space="preserve">
+    <value>Choose a running application</value>
+  </data>
+  <data name="Settings_RefreshTheListOfRunningApplications" xml:space="preserve">
+    <value>Refresh the list of running applications</value>
+  </data>
+  <data name="Settings_MarkAsAGame" xml:space="preserve">
+    <value>Mark as a game</value>
+  </data>
+  <data name="Settings_MarkedAsGames" xml:space="preserve">
+    <value>Marked as games</value>
+  </data>
+  <data name="Settings_None" xml:space="preserve">
+    <value>None</value>
+  </data>
+  <data name="Settings_Remove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="Settings_MarkedAsNotGames" xml:space="preserve">
+    <value>Marked as not games</value>
+  </data>
+  <data name="Settings_Privacy" xml:space="preserve">
+    <value>Privacy</value>
+  </data>
+  <data name="Settings_SysoraIsLocalFirst" xml:space="preserve">
+    <value>Sysora is local-first.</value>
+  </data>
+  <data name="Settings_NoTelemetryIsEnabledByDefault" xml:space="preserve">
+    <value>No telemetry is enabled by default.</value>
+  </data>
+  <data name="Settings_NoAccountIsRequired" xml:space="preserve">
+    <value>No account is required.</value>
+  </data>
+  <data name="Settings_NoSystemMetricsAreUploaded" xml:space="preserve">
+    <value>No system metrics are uploaded.</value>
+  </data>
+  <data name="Settings_SysoraWorksOfflineAndNeverContactsAServer" xml:space="preserve">
+    <value>Sysora works offline and never contacts a server. Settings, logs and the local history (performance, application names, alerts, detected changes, game sessions) stay in the folder below, on this PC.</value>
+  </data>
+  <data name="Settings_OpenDataFolder" xml:space="preserve">
+    <value>Open data folder</value>
+  </data>
+  <data name="Settings_OpenLogsFolder" xml:space="preserve">
+    <value>Open logs folder</value>
+  </data>
+  <data name="Settings_Diagnostics" xml:space="preserve">
+    <value>Diagnostics</value>
+  </data>
+  <data name="Settings_SysoraMeasuresItsOwnProcessEveryTenSecondsAFew" xml:space="preserve">
+    <value>Sysora measures its own process every ten seconds (a few counter reads, no extra collection), so you can check that it never becomes the problem it looks for.</value>
+  </data>
+  <data name="Settings_DetailLevelOfTheLocalLogFilesKept14Days" xml:space="preserve">
+    <value>Detail level of the local log files (kept 14 days)</value>
+  </data>
+  <data name="Settings_LogLevel" xml:space="preserve">
+    <value>Log level</value>
+  </data>
+  <data name="Settings_About" xml:space="preserve">
+    <value>About</value>
+  </data>
+  <data name="Settings_RunningInDemoModeAllMetricsAreSimulated" xml:space="preserve">
+    <value>Running in demo mode: all metrics are simulated.</value>
+  </data>
+  <data name="Storage_FindLargeFiles" xml:space="preserve">
+    <value>Find large files</value>
+  </data>
+  <data name="Storage_FindTheFilesThatTakeTheMostSpaceReadOnly" xml:space="preserve">
+    <value>Find the files that take the most space (read-only)</value>
+  </data>
+  <data name="Storage_VolumeInformationCouldNotBeReadDetailsAreInThe" xml:space="preserve">
+    <value>Volume information could not be read. Details are in the log file.</value>
+  </data>
+  <data name="Storage_Windows" xml:space="preserve">
+    <value>Windows</value>
+  </data>
+  <data name="Storage_Used" xml:space="preserve">
+    <value>Used</value>
+  </data>
+  <data name="Storage_Free" xml:space="preserve">
+    <value>Free</value>
+  </data>
+  <data name="Storage_Total" xml:space="preserve">
+    <value>Total</value>
+  </data>
+  <data name="Storage_ActiveTime" xml:space="preserve">
+    <value>Active time</value>
+  </data>
+  <data name="Storage_StorageAnalyzer" xml:space="preserve">
+    <value>Storage analyzer</value>
+  </data>
+  <data name="Storage_FindLargeFoldersPlanned" xml:space="preserve">
+    <value>Find large folders — planned</value>
+  </data>
+  <data name="Storage_AFutureVersionWillMeasureFolderSizesOnDemandTo" xml:space="preserve">
+    <value>A future version will measure folder sizes on demand to show where space goes. It will be read-only: Sysora never deletes files. Network drives are not listed, because querying a disconnected drive can block for a long time.</value>
+  </data>
+  <data name="System_OnlyInformationWindowsActuallyReportsIsShown" xml:space="preserve">
+    <value>Only information Windows actually reports is shown</value>
+  </data>
+  <data name="System_ReadHardwareInformationAgain" xml:space="preserve">
+    <value>Read hardware information again</value>
+  </data>
+  <data name="System_SYSTEMUPTIME" xml:space="preserve">
+    <value>SYSTEM UPTIME</value>
+  </data>
+  <data name="System_LastStart" xml:space="preserve">
+    <value>Last start</value>
+  </data>
+  <data name="System_WithFastStartupShuttingDownAndTurningOnAgainDoes" xml:space="preserve">
+    <value>With Fast Startup, shutting down and turning on again does not restart this counter: only Restart does.</value>
+  </data>
+  <data name="System_WINDOWS" xml:space="preserve">
+    <value>WINDOWS</value>
+  </data>
+  <data name="System_Edition" xml:space="preserve">
+    <value>Edition</value>
+  </data>
+  <data name="System_InstalledOn" xml:space="preserve">
+    <value>Installed on</value>
+  </data>
+  <data name="System_Architecture" xml:space="preserve">
+    <value>Architecture</value>
+  </data>
+  <data name="System_ComputerName" xml:space="preserve">
+    <value>Computer name</value>
+  </data>
+  <data name="System_HARDWARE" xml:space="preserve">
+    <value>HARDWARE</value>
+  </data>
+  <data name="System_Processor" xml:space="preserve">
+    <value>Processor</value>
+  </data>
+  <data name="System_Graphics" xml:space="preserve">
+    <value>Graphics</value>
+  </data>
+  <data name="System_FIRMWARE" xml:space="preserve">
+    <value>FIRMWARE</value>
+  </data>
+  <data name="System_SystemModel" xml:space="preserve">
+    <value>System model</value>
+  </data>
+  <data name="System_Motherboard" xml:space="preserve">
+    <value>Motherboard</value>
+  </data>
+  <data name="System_BIOS" xml:space="preserve">
+    <value>BIOS</value>
+  </data>
+  <data name="System_BIOSDate" xml:space="preserve">
+    <value>BIOS date</value>
+  </data>
+  <data name="Timeline_WhatHappenedOnThisPCInOrder" xml:space="preserve">
+    <value>What happened on this PC, in order</value>
+  </data>
+  <data name="Timeline_ApplicationsStartedAndClosed" xml:space="preserve">
+    <value>Applications started and closed</value>
+  </data>
+  <data name="Timeline_Games" xml:space="preserve">
+    <value>Games</value>
+  </data>
+  <data name="Timeline_SpikesAndAnomalies" xml:space="preserve">
+    <value>Spikes and anomalies</value>
+  </data>
+  <data name="Timeline_DetectedChanges" xml:space="preserve">
+    <value>Detected changes</value>
+  </data>
+  <data name="Timeline_SleepNetworkAndDevices" xml:space="preserve">
+    <value>Sleep, network and devices</value>
+  </data>
+  <data name="Timeline_TroubleshootingInvestigations" xml:space="preserve">
+    <value>Troubleshooting investigations</value>
+  </data>
+  <data name="Timeline_SysorasOwnEventsMonitoringStartedGaps" xml:space="preserve">
+    <value>Sysora's own events (monitoring started, gaps)</value>
+  </data>
+  <data name="Timeline_Order" xml:space="preserve">
+    <value>Order</value>
+  </data>
+  <data name="Timeline_OldestFirst" xml:space="preserve">
+    <value>Oldest first</value>
+  </data>
+  <data name="Timeline_NewestFirst" xml:space="preserve">
+    <value>Newest first</value>
+  </data>
+  <data name="Timeline_SaveTheEntriesShownAsAnHTMLReportOrJSONData" xml:space="preserve">
+    <value>Save the entries shown as an HTML report or JSON data</value>
+  </data>
+  <data name="Timeline_ShowThisMomentInReplay" xml:space="preserve">
+    <value>Show this moment in Replay</value>
+  </data>
+  <data name="Timeline_CompareBeforeAndAfter" xml:space="preserve">
+    <value>Compare before and after</value>
+  </data>
+  <data name="Timeline_CompareThe15MinutesBeforeAndAfter" xml:space="preserve">
+    <value>Compare the 15 minutes before and after</value>
+  </data>
+  <data name="Timeline_NoEntryToShow" xml:space="preserve">
+    <value>No entry to show</value>
+  </data>
+  <data name="Timeline_ChooseALongerPeriodOrShowMoreKindsOfEntries" xml:space="preserve">
+    <value>Choose a longer period or show more kinds of entries. Sysora never adds an entry it did not observe.</value>
+  </data>
+  <data name="Troubleshooting_InvestigateAProblemForALimitedTimeSysoraCollects" xml:space="preserve">
+    <value>Investigate a problem for a limited time: Sysora collects more context, then explains what it measured.</value>
+  </data>
+  <data name="Troubleshooting_StartInvestigation" xml:space="preserve">
+    <value>Start investigation</value>
+  </data>
+  <data name="Troubleshooting_StopNow" xml:space="preserve">
+    <value>Stop now</value>
+  </data>
+  <data name="Troubleshooting_DuringTheInvestigationSysoraSamplesWithThe" xml:space="preserve">
+    <value>During the investigation Sysora samples with the Detailed intensity (CPU and memory every 0.5 s, processes, GPU and disks every second), even while its window is hidden, and keeps every event. It still stays within its CPU budget, and returns to your usual intensity by itself at the end. Nothing leaves this PC.</value>
+  </data>
+  <data name="Troubleshooting_Investigation" xml:space="preserve">
+    <value>Investigation</value>
+  </data>
+  <data name="Troubleshooting_OpenInReplay" xml:space="preserve">
+    <value>Open in Replay</value>
+  </data>
+  <data name="Troubleshooting_ShowTheInvestigatedPeriodInReplay" xml:space="preserve">
+    <value>Show the investigated period in Replay</value>
+  </data>
+  <data name="Troubleshooting_SaveTheReportAsAnHTMLPageOrJSONData" xml:space="preserve">
+    <value>Save the report as an HTML page or JSON data</value>
+  </data>
+  <data name="Troubleshooting_CPUUsageDuringTheInvestigation" xml:space="preserve">
+    <value>CPU usage during the investigation</value>
+  </data>
+  <data name="Troubleshooting_MemoryUsageDuringTheInvestigation" xml:space="preserve">
+    <value>Memory usage during the investigation</value>
+  </data>
+  <data name="Troubleshooting_Peak" xml:space="preserve">
+    <value>Peak</value>
+  </data>
+  <data name="Troubleshooting_ColumnsAverageThenPeak" xml:space="preserve">
+    <value>Columns: average, then peak.</value>
+  </data>
+  <data name="Troubleshooting_Anomalies" xml:space="preserve">
+    <value>Anomalies</value>
+  </data>
+  <data name="Troubleshooting_CorrelationsAndLikelyExplanations" xml:space="preserve">
+    <value>Correlations and likely explanations</value>
+  </data>
+  <data name="Troubleshooting_ObservedMeasuredInferredACoincidenceInThe" xml:space="preserve">
+    <value>Observed = measured. Inferred = a coincidence in the measurements: evidence suggests it, it is not proven.</value>
+  </data>
+  <data name="Troubleshooting_ApplicationsInvolved" xml:space="preserve">
+    <value>Applications involved</value>
+  </data>
+  <data name="Troubleshooting_Events" xml:space="preserve">
+    <value>Events</value>
+  </data>
+  <data name="Troubleshooting_WhatCouldNotBeKnown" xml:space="preserve">
+    <value>What could not be known</value>
+  </data>
+  <data name="Network_DownloadHeader" xml:space="preserve">
+    <value>DOWNLOAD</value>
+  </data>
+  <data name="Network_UploadHeader" xml:space="preserve">
+    <value>UPLOAD</value>
+  </data>
+  <data name="Common_Checking" xml:space="preserve">
+    <value>Checking…</value>
+  </data>
+  <data name="Dashboard_NoIssue" xml:space="preserve">
+    <value>No issue detected</value>
+  </data>
+  <data name="Dashboard_ItemsAttention_One" xml:space="preserve">
+    <value>{0} item needs attention</value>
+  </data>
+  <data name="Dashboard_ItemsAttention_Other" xml:space="preserve">
+    <value>{0} items need attention</value>
+  </data>
+  <data name="Dashboard_DiagnosisNotAvailable" xml:space="preserve">
+    <value>Diagnosis not available</value>
+  </data>
+  <data name="Dashboard_SinceYesterday_NoReference" xml:space="preserve">
+    <value>Sysora compares with a snapshot from yesterday; the first one is taken a minute after it starts.</value>
+  </data>
+  <data name="Dashboard_SinceYesterday_Nothing" xml:space="preserve">
+    <value>Nothing changed in the areas compared ({0}).</value>
+  </data>
+  <data name="Dashboard_AlertsNew" xml:space="preserve">
+    <value>Alerts ({0} new)</value>
+  </data>
+  <data name="Dashboard_AlertsActive" xml:space="preserve">
+    <value>Alerts ({0} active)</value>
+  </data>
+  <data name="Common_Off" xml:space="preserve">
+    <value>Off</value>
+  </data>
+  <data name="Dashboard_NetworkOff" xml:space="preserve">
+    <value>Network monitoring is turned off</value>
+  </data>
+  <data name="Dashboard_NotConnected" xml:space="preserve">
+    <value>Not connected</value>
+  </data>
+  <data name="Dashboard_ConnectivityUnknown" xml:space="preserve">
+    <value>Connectivity unknown</value>
+  </data>
+  <data name="Dashboard_SpeedNotAvailable" xml:space="preserve">
+    <value>Speed not available</value>
+  </data>
+  <data name="Count_Thread_One" xml:space="preserve">
+    <value>{0} thread</value>
+  </data>
+  <data name="Count_Thread_Other" xml:space="preserve">
+    <value>{0} threads</value>
+  </data>
+  <data name="Dashboard_Temperature" xml:space="preserve">
+    <value>Temperature: {0}</value>
+  </data>
+  <data name="Dashboard_MemoryOf" xml:space="preserve">
+    <value>of {0} · {1}</value>
+  </data>
+  <data name="Dashboard_MemoryAvailable" xml:space="preserve">
+    <value>{0} available</value>
+  </data>
+  <data name="Dashboard_GpuOff" xml:space="preserve">
+    <value>GPU monitoring is turned off</value>
+  </data>
+  <data name="Dashboard_GpuMemory" xml:space="preserve">
+    <value>Memory {0} / {1}</value>
+  </data>
+  <data name="Dashboard_DiskFree" xml:space="preserve">
+    <value>{0} · {1} free of {2}</value>
+  </data>
+  <data name="Dashboard_ActiveTime" xml:space="preserve">
+    <value>Active time {0}</value>
+  </data>
+  <data name="Dashboard_ActiveTimeNotAvailable" xml:space="preserve">
+    <value>Active time not available</value>
+  </data>
+  <data name="LargeFiles_View_Files" xml:space="preserve">
+    <value>Files</value>
+  </data>
+  <data name="LargeFiles_View_ByType" xml:space="preserve">
+    <value>By type</value>
+  </data>
+  <data name="LargeFiles_View_ByExtension" xml:space="preserve">
+    <value>By extension</value>
+  </data>
+  <data name="LargeFiles_View_ByFolder" xml:space="preserve">
+    <value>By folder</value>
+  </data>
+  <data name="LargeFiles_AllTypes" xml:space="preserve">
+    <value>All types</value>
+  </data>
+  <data name="LargeFiles_OrMore" xml:space="preserve">
+    <value>{0} or more</value>
+  </data>
+  <data name="LargeFiles_Starting" xml:space="preserve">
+    <value>Starting…</value>
+  </data>
+  <data name="LargeFiles_ScanFailed" xml:space="preserve">
+    <value>The scan failed: {0}</value>
+  </data>
+  <data name="LargeFiles_FolderTarget" xml:space="preserve">
+    <value>Folder: {0}</value>
+  </data>
+  <data name="LargeFiles_VolumeTarget" xml:space="preserve">
+    <value>{0}{1}{2} · {3} free of {4}</value>
+  </data>
+  <data name="LargeFiles_AllFixed" xml:space="preserve">
+    <value>All fixed volumes</value>
+  </data>
+  <data name="LargeFiles_Progress" xml:space="preserve">
+    <value>{0} · {1} · {2} seen · {3} so far</value>
+  </data>
+  <data name="Count_FileN0_One" xml:space="preserve">
+    <value>{0:N0} file</value>
+  </data>
+  <data name="Count_FileN0_Other" xml:space="preserve">
+    <value>{0:N0} files</value>
+  </data>
+  <data name="Count_LargeFile_One" xml:space="preserve">
+    <value>{0} large file</value>
+  </data>
+  <data name="Count_LargeFile_Other" xml:space="preserve">
+    <value>{0} large files</value>
+  </data>
+  <data name="LargeFiles_LastScan" xml:space="preserve">
+    <value>Scanned {0}: {1} · {2} of {3} or more</value>
+  </data>
+  <data name="LargeFiles_Truncated" xml:space="preserve">
+    <value>(the {0} largest are listed)</value>
+  </data>
+  <data name="LargeFiles_Problem_Denied" xml:space="preserve">
+    <value>Access denied: {0} could not be read, so their content is unknown (not empty). For example: {1}.</value>
+  </data>
+  <data name="LargeFiles_Problem_Unavailable" xml:space="preserve">
+    <value>Unavailable: {0} could not be read (removed during the scan, device error or path too long).</value>
+  </data>
+  <data name="LargeFiles_Problem_Cloud" xml:space="preserve">
+    <value>{0} skipped: they are stored in the cloud, not on this PC.</value>
+  </data>
+  <data name="LargeFiles_Problem_Links" xml:space="preserve">
+    <value>{0} not followed (junctions and symbolic links point to data counted elsewhere).</value>
+  </data>
+  <data name="LargeFiles_Problem_Excluded" xml:space="preserve">
+    <value>Not scanned: {0} — {1}</value>
+  </data>
+  <data name="Diagnosis_WhyNowFailed" xml:space="preserve">
+    <value>The analysis could not be completed. See the log for details.</value>
+  </data>
+  <data name="Diagnosis_BeforeData" xml:space="preserve">
+    <value>Before the analyzed data</value>
+  </data>
+  <data name="Diagnosis_UsualNotKnown" xml:space="preserve">
+    <value>Usual range not known yet.</value>
+  </data>
+  <data name="Diagnosis_Failed" xml:space="preserve">
+    <value>The diagnosis could not be completed. See the log for details.</value>
+  </data>
+  <data name="Diagnosis_Analyzed" xml:space="preserve">
+    <value>Analyzed: last {0} · {1} · updated {2}</value>
+  </data>
+  <data name="Diagnosis_ObservedFor" xml:space="preserve">
+    <value>{0}: {1} for {2}</value>
+  </data>
+  <data name="Diagnosis_Reference" xml:space="preserve">
+    <value>Reference: {0}</value>
+  </data>
+  <data name="Diagnosis_ObservedAt" xml:space="preserve">
+    <value>Observed {0}</value>
+  </data>
+  <data name="State_ProblemDetected" xml:space="preserve">
+    <value>Problem detected</value>
+  </data>
+  <data name="State_Healthy" xml:space="preserve">
+    <value>Healthy</value>
+  </data>
+  <data name="Alerts_Filter_All" xml:space="preserve">
+    <value>All</value>
+  </data>
+  <data name="Alerts_Filter_Active" xml:space="preserve">
+    <value>Active</value>
+  </data>
+  <data name="Alerts_Filter_Resolved" xml:space="preserve">
+    <value>Resolved</value>
+  </data>
+  <data name="Alerts_NoneIn7Days" xml:space="preserve">
+    <value>No alert recorded in the last 7 days.</value>
+  </data>
+  <data name="Alerts_Summary" xml:space="preserve">
+    <value>{0} · {1} new · {2} in the last 7 days</value>
+  </data>
+  <data name="Count_ActiveAlert_One" xml:space="preserve">
+    <value>{0} active alert</value>
+  </data>
+  <data name="Count_ActiveAlert_Other" xml:space="preserve">
+    <value>{0} active alerts</value>
+  </data>
+  <data name="Alerts_Rule_Cpu" xml:space="preserve">
+    <value>CPU above {0} for {1}</value>
+  </data>
+  <data name="Alerts_Rule_Memory" xml:space="preserve">
+    <value>memory above {0} for {1}</value>
+  </data>
+  <data name="Alerts_Rule_Disk" xml:space="preserve">
+    <value>disk busy above {0} for {1}</value>
+  </data>
+  <data name="Alerts_Rule_App" xml:space="preserve">
+    <value>one application above {0} CPU for {1}</value>
+  </data>
+  <data name="Alerts_Rule_Growth" xml:space="preserve">
+    <value>memory rising {0:0} points in {1}</value>
+  </data>
+  <data name="Alerts_Rule_Unusual" xml:space="preserve">
+    <value>activity above your usual range for {0}</value>
+  </data>
+  <data name="Alerts_Rule_UnusualOff" xml:space="preserve">
+    <value>unusual activity off</value>
+  </data>
+  <data name="Alerts_Rule_Space" xml:space="preserve">
+    <value>less than {0} free on the system disk</value>
+  </data>
+  <data name="Alerts_Lasted" xml:space="preserve">
+    <value>lasted {0}</value>
+  </data>
+  <data name="Alerts_SinceOngoing" xml:space="preserve">
+    <value>Since {0} · ongoing{1}</value>
+  </data>
+  <data name="Count_Occurrence_One" xml:space="preserve">
+    <value>{0} occurrence</value>
+  </data>
+  <data name="Count_Occurrence_Other" xml:space="preserve">
+    <value>{0} occurrences</value>
+  </data>
+  <data name="Changes_View_Timeline" xml:space="preserve">
+    <value>Timeline (last 30 days)</value>
+  </data>
+  <data name="Changes_View_Morning" xml:space="preserve">
+    <value>Since this morning</value>
+  </data>
+  <data name="Changes_View_Yesterday" xml:space="preserve">
+    <value>Since yesterday</value>
+  </data>
+  <data name="Changes_View_7Days" xml:space="preserve">
+    <value>Since 7 days ago</value>
+  </data>
+  <data name="Changes_View_30Days" xml:space="preserve">
+    <value>Since 30 days ago</value>
+  </data>
+  <data name="Changes_SinceFailed" xml:space="preserve">
+    <value>The comparison with yesterday could not be made.</value>
+  </data>
+  <data name="Changes_NoSnapshotYet" xml:space="preserve">
+    <value>No snapshot recorded yet. Sysora takes one a minute after it starts, then every six hours.</value>
+  </data>
+  <data name="Changes_Snapshots" xml:space="preserve">
+    <value>{0} since {1} · last one {2}</value>
+  </data>
+  <data name="Count_DailySnapshot_One" xml:space="preserve">
+    <value>{0} daily snapshot</value>
+  </data>
+  <data name="Count_DailySnapshot_Other" xml:space="preserve">
+    <value>{0} daily snapshots</value>
+  </data>
+  <data name="Changes_NoChangeYet" xml:space="preserve">
+    <value>No change recorded yet. Changes appear here as Sysora compares daily snapshots of the PC (applications, startup programs, Windows version, devices, disk space and average usage).</value>
+  </data>
+  <data name="Changes_DetectedNote" xml:space="preserve">
+    <value>Detected by comparing snapshots of the PC. Desktop applications installed or updated in the last 30 days are also listed from the dates recorded in Windows.</value>
+  </data>
+  <data name="Changes_LoadFailed" xml:space="preserve">
+    <value>Changes could not be loaded. See the log for details.</value>
+  </data>
+  <data name="Changes_Group_ThisWeek" xml:space="preserve">
+    <value>This week</value>
+  </data>
+  <data name="Changes_Group_Earlier" xml:space="preserve">
+    <value>Earlier</value>
+  </data>
+  <data name="Importance_HighLong" xml:space="preserve">
+    <value>High importance</value>
+  </data>
+  <data name="Changes_On" xml:space="preserve">
+    <value>On {0}</value>
+  </data>
+  <data name="Changes_Between" xml:space="preserve">
+    <value>Between {0} and {1}</value>
+  </data>
+  <data name="Changes_SameDayBetween" xml:space="preserve">
+    <value>{0}, between {1} and {2}</value>
+  </data>
+  <data name="Changes_BeforeTime" xml:space="preserve">
+    <value>Before {0}</value>
+  </data>
+  <data name="Recurring_OccurrencesShort" xml:space="preserve">
+    <value>{0}× on {1} days</value>
+  </data>
+  <data name="AppImpact_Failed" xml:space="preserve">
+    <value>App impact could not be computed. See the log for details.</value>
+  </data>
+  <data name="AppImpact_Summary" xml:space="preserve">
+    <value>{0} · {1} measured</value>
+  </data>
+  <data name="AppImpact_SummaryApps" xml:space="preserve">
+    <value>{0} · {1} measured · {2}</value>
+  </data>
+  <data name="Count_Application_One" xml:space="preserve">
+    <value>{0} application</value>
+  </data>
+  <data name="Count_Application_Other" xml:space="preserve">
+    <value>{0} applications</value>
+  </data>
+  <data name="AppImpact_LastHourPerMinute" xml:space="preserve">
+    <value>Last hour, per minute</value>
+  </data>
+  <data name="AppImpact_PathNotAccessible" xml:space="preserve">
+    <value>Path not accessible: identified by name only</value>
+  </data>
+  <data name="AppImpact_PathProtected" xml:space="preserve">
+    <value>Executable path not accessible (protected process): identified by name only.</value>
+  </data>
+  <data name="AppImpact_RelativeScore" xml:space="preserve">
+    <value>Relative score {0}/100</value>
+  </data>
+  <data name="AppImpact_Peaks" xml:space="preserve">
+    <value>Peak CPU {0} · peak memory {1} · peak I/O {2}</value>
+  </data>
+  <data name="AppImpact_Starts_One" xml:space="preserve">
+    <value>{0} start observed</value>
+  </data>
+  <data name="AppImpact_Starts_Other" xml:space="preserve">
+    <value>{0} starts observed</value>
+  </data>
+  <data name="AppImpact_NoStart" xml:space="preserve">
+    <value>No start observed in this period</value>
+  </data>
+  <data name="AppImpact_RunningNow" xml:space="preserve">
+    <value>Running now · {0}</value>
+  </data>
+  <data name="AppImpact_LastSeen" xml:space="preserve">
+    <value>Last seen {0}</value>
+  </data>
+  <data name="AppImpact_NoHistory" xml:space="preserve">
+    <value>No history for this application in this period.</value>
+  </data>
+  <data name="AppImpact_ChartPerHour" xml:space="preserve">
+    <value>Average while running, per hour. Gaps: not running or not measured.</value>
+  </data>
+  <data name="AppImpact_ChartPerMinutes" xml:space="preserve">
+    <value>Average while running, per {0}. Gaps: not running or not measured.</value>
+  </data>
+  <data name="AppImpact_MostOfTheTime" xml:space="preserve">
+    <value>Most of the time</value>
+  </data>
+  <data name="AppImpact_PartOfTheTime" xml:space="preserve">
+    <value>Part of the time</value>
+  </data>
+  <data name="AppImpact_Briefly" xml:space="preserve">
+    <value>Briefly</value>
+  </data>
+  <data name="Replay_LoadFailed" xml:space="preserve">
+    <value>Replay data could not be loaded. See the log for details.</value>
+  </data>
+  <data name="Replay_Live" xml:space="preserve">
+    <value>Live · {0}</value>
+  </data>
+  <data name="Replay_Paused" xml:space="preserve">
+    <value>Paused · {0}</value>
+  </data>
+  <data name="Replay_NoMeasurementAtTime" xml:space="preserve">
+    <value>No measurement at this time</value>
+  </data>
+  <data name="Replay_NowAt" xml:space="preserve">
+    <value>Now ({0})</value>
+  </data>
+  <data name="Replay_DiskActive" xml:space="preserve">
+    <value>{0} active{1}</value>
+  </data>
+  <data name="Replay_AppsNotAvailable" xml:space="preserve">
+    <value>Application data not available for this moment.</value>
+  </data>
+  <data name="Replay_AppAverage" xml:space="preserve">
+    <value>{0} — {1} CPU, {2} (5-minute average)</value>
+  </data>
+  <data name="Replay_NoAppRecorded" xml:space="preserve">
+    <value>No application recorded for this five-minute period.</value>
+  </data>
+  <data name="Replay_AppNow" xml:space="preserve">
+    <value>{0}{1} — {2} CPU, {3}</value>
+  </data>
+  <data name="Trend_MemoryRisingBy" xml:space="preserve">
+    <value>Memory rising (+{0})</value>
+  </data>
+  <data name="Trend_MemoryRising" xml:space="preserve">
+    <value>Memory rising</value>
+  </data>
+  <data name="Trend_CpuRisingBy" xml:space="preserve">
+    <value>CPU rising (+{0})</value>
+  </data>
+  <data name="Trend_CpuRising" xml:space="preserve">
+    <value>CPU rising</value>
+  </data>
+  <data name="Trend_MemoryFallingBy" xml:space="preserve">
+    <value>Memory falling ({0})</value>
+  </data>
+  <data name="Trend_MemoryFalling" xml:space="preserve">
+    <value>Memory falling</value>
+  </data>
+  <data name="Trend_CpuFallingBy" xml:space="preserve">
+    <value>CPU falling ({0})</value>
+  </data>
+  <data name="Trend_CpuFalling" xml:space="preserve">
+    <value>CPU falling</value>
+  </data>
+  <data name="Trend_NotEnoughData" xml:space="preserve">
+    <value>Not enough data</value>
+  </data>
+  <data name="Trend_Stable" xml:space="preserve">
+    <value>Stable</value>
+  </data>
+  <data name="Count_MeasurementN0_One" xml:space="preserve">
+    <value>{0:N0} measurement</value>
+  </data>
+  <data name="Count_MeasurementN0_Other" xml:space="preserve">
+    <value>{0:N0} measurements</value>
+  </data>
+  <data name="Evidence_Source" xml:space="preserve">
+    <value>Source: {0}</value>
+  </data>
+  <data name="Action_Compare" xml:space="preserve">
+    <value>Compare before / after</value>
+  </data>
+  <data name="Action_Open" xml:space="preserve">
+    <value>Open {0}</value>
+  </data>
+  <data name="Gaming_NotFollowed" xml:space="preserve">
+    <value>{0} will not be followed as a game any more. You can undo this in Settings › Gaming.</value>
+  </data>
+  <data name="Gaming_LiveTitle" xml:space="preserve">
+    <value>{0} · running for {1}</value>
+  </data>
+  <data name="Gaming_LiveCpu" xml:space="preserve">
+    <value>CPU {0} avg ({1} peak)</value>
+  </data>
+  <data name="Gaming_LiveGpu" xml:space="preserve">
+    <value>GPU {0} avg ({1} peak)</value>
+  </data>
+  <data name="Gaming_LiveMemory" xml:space="preserve">
+    <value>memory {0} avg</value>
+  </data>
+  <data name="Gaming_LiveGameMemory" xml:space="preserve">
+    <value>game {0} avg</value>
+  </data>
+  <data name="Gaming_Collecting" xml:space="preserve">
+    <value>Collecting the first measurements…</value>
+  </data>
+  <data name="Gaming_SelfCpu" xml:space="preserve">
+    <value>Sysora itself: {0} of CPU on average during this session. FPS: Not available.</value>
+  </data>
+  <data name="Gaming_FpsNotAvailable" xml:space="preserve">
+    <value>FPS: Not available.</value>
+  </data>
+  <data name="Gaming_NoSessionYet" xml:space="preserve">
+    <value>No game session recorded yet.</value>
+  </data>
+  <data name="Gaming_Summary" xml:space="preserve">
+    <value>{0} in the last 90 days · {1} of play measured</value>
+  </data>
+  <data name="Count_Session_One" xml:space="preserve">
+    <value>{0} session</value>
+  </data>
+  <data name="Count_Session_Other" xml:space="preserve">
+    <value>{0} sessions</value>
+  </data>
+  <data name="Gaming_LoadFailed" xml:space="preserve">
+    <value>Game sessions could not be loaded: {0}</value>
+  </data>
+  <data name="Gaming_Detection" xml:space="preserve">
+    <value>Identified as a game: {0} ({1})</value>
+  </data>
+  <data name="Gaming_CpuLegend" xml:space="preserve">
+    <value>Whole PC (filled) and the game (line), {0}</value>
+  </data>
+  <data name="Gaming_GpuLegendNoGame" xml:space="preserve">
+    <value>Busiest graphics adapter, {0} (GPU usage of the game: not available)</value>
+  </data>
+  <data name="Gaming_GpuLegend" xml:space="preserve">
+    <value>Busiest graphics adapter (filled) and the game (line), {0}</value>
+  </data>
+  <data name="Gaming_StepMinute" xml:space="preserve">
+    <value>average per minute</value>
+  </data>
+  <data name="Gaming_StepOther" xml:space="preserve">
+    <value>average per {0}</value>
+  </data>
+  <data name="Gaming_AppLine" xml:space="preserve">
+    <value>{0}: {1} CPU on average (peak {2}), up to {3}</value>
+  </data>
+  <data name="Timeline_LoadFailed" xml:space="preserve">
+    <value>The timeline could not be loaded. See the log for details.</value>
+  </data>
+  <data name="Timeline_Empty" xml:space="preserve">
+    <value>Nothing recorded in this period yet. Entries come from what Sysora observes while it runs: applications, games, alerts, spikes, changes, sleep and investigations.</value>
+  </data>
+  <data name="Timeline_Shown" xml:space="preserve">
+    <value>{0} shown of {1}. Times are those observed by Sysora; ≈ marks a change found by comparing snapshots (it happened at the latest at that time).</value>
+  </data>
+  <data name="Network_Connected" xml:space="preserve">
+    <value>Connected to the Internet</value>
+  </data>
+  <data name="Network_RestrictedDetail" xml:space="preserve">
+    <value>Windows reports restricted access, for example a sign-in page</value>
+  </data>
+  <data name="Network_LocalOnly" xml:space="preserve">
+    <value>Connected to a local network only</value>
+  </data>
+  <data name="Network_NoInterface" xml:space="preserve">
+    <value>No active network interface</value>
+  </data>
+  <data name="Network_StatusUnknown" xml:space="preserve">
+    <value>Connection status unknown</value>
+  </data>
+  <data name="Network_NoLevel" xml:space="preserve">
+    <value>Windows did not report a connectivity level</value>
+  </data>
+  <data name="Network_Cellular" xml:space="preserve">
+    <value>Cellular</value>
+  </data>
+  <data name="Network_DefaultRoute" xml:space="preserve">
+    <value>Default route</value>
+  </data>
+  <data name="Network_NoAddress" xml:space="preserve">
+    <value>None</value>
+  </data>
+  <data name="Compare_Preset_HourAgo" xml:space="preserve">
+    <value>Now vs 1 hour ago</value>
+  </data>
+  <data name="Compare_Preset_Yesterday" xml:space="preserve">
+    <value>Now vs yesterday at this time</value>
+  </data>
+  <data name="Compare_Preset_TodayYesterday" xml:space="preserve">
+    <value>Today vs yesterday</value>
+  </data>
+  <data name="Compare_Preset_GameDuring" xml:space="preserve">
+    <value>Game session: before vs during</value>
+  </data>
+  <data name="Compare_Preset_GameAfter" xml:space="preserve">
+    <value>Game session: before vs after</value>
+  </data>
+  <data name="Compare_Preset_GamePrevious" xml:space="preserve">
+    <value>Game session vs the previous one</value>
+  </data>
+  <data name="Compare_Preset_Moment" xml:space="preserve">
+    <value>Before vs after a moment</value>
+  </data>
+  <data name="Compare_Preset_TwoMoments" xml:space="preserve">
+    <value>Two moments</value>
+  </data>
+  <data name="Compare_Failed" xml:space="preserve">
+    <value>The comparison could not be made. See the log for details.</value>
+  </data>
+  <data name="Compare_NotCompared" xml:space="preserve">
+    <value>Not compared</value>
+  </data>
+  <data name="Troubleshooting_Idle" xml:space="preserve">
+    <value>Choose how long to investigate, then start while the problem happens (or just before).</value>
+  </data>
+  <data name="Troubleshooting_Active" xml:space="preserve">
+    <value>Troubleshooting mode active · Collecting additional context…</value>
+  </data>
+  <data name="Troubleshooting_Elapsed" xml:space="preserve">
+    <value>{0} of {1} · ends by itself, then collection returns to normal</value>
+  </data>
+  <data name="Count_Event_One" xml:space="preserve">
+    <value>{0} event</value>
+  </data>
+  <data name="Count_Event_Other" xml:space="preserve">
+    <value>{0} events</value>
+  </data>
+  <data name="Troubleshooting_Period" xml:space="preserve">
+    <value>{0} · {1} · detailed collection</value>
+  </data>
+  <data name="Troubleshooting_EndedByItself" xml:space="preserve">
+    <value>ended by itself</value>
+  </data>
+  <data name="Troubleshooting_Stopped" xml:space="preserve">
+    <value>stopped</value>
+  </data>
+  <data name="Troubleshooting_EndedOnClose" xml:space="preserve">
+    <value>ended when Sysora closed</value>
+  </data>
+  <data name="Troubleshooting_AppCpu" xml:space="preserve">
+    <value>{0} avg · {1} peak</value>
+  </data>
+  <data name="Troubleshooting_AppMemory" xml:space="preserve">
+    <value>{0} peak</value>
+  </data>
+  <data name="Troubleshooting_BusiestCpu_One" xml:space="preserve">
+    <value>Busiest in {0} high-CPU moment</value>
+  </data>
+  <data name="Troubleshooting_BusiestCpu_Other" xml:space="preserve">
+    <value>Busiest in {0} high-CPU moments</value>
+  </data>
+  <data name="Troubleshooting_MostIo_One" xml:space="preserve">
+    <value>Most I/O in {0} busy-disk moment</value>
+  </data>
+  <data name="Troubleshooting_MostIo_Other" xml:space="preserve">
+    <value>Most I/O in {0} busy-disk moments</value>
+  </data>
+  <data name="Storage_Summary" xml:space="preserve">
+    <value>{0} · {1} free of {2}</value>
+  </data>
+  <data name="Count_Volume_One" xml:space="preserve">
+    <value>{0} volume</value>
+  </data>
+  <data name="Count_Volume_Other" xml:space="preserve">
+    <value>{0} volumes</value>
+  </data>
+  <data name="Storage_UsedPercent" xml:space="preserve">
+    <value>{0} used</value>
+  </data>
+  <data name="Storage_RemovableDisk" xml:space="preserve">
+    <value>Removable disk</value>
+  </data>
+  <data name="Storage_OpticalDrive" xml:space="preserve">
+    <value>Optical drive</value>
+  </data>
+  <data name="Storage_RamDisk" xml:space="preserve">
+    <value>RAM disk</value>
+  </data>
+  <data name="Storage_LocalDisk" xml:space="preserve">
+    <value>Local disk</value>
+  </data>
+  <data name="Storage_Kind_Fixed" xml:space="preserve">
+    <value>Fixed</value>
+  </data>
+  <data name="Storage_Kind_Removable" xml:space="preserve">
+    <value>Removable</value>
+  </data>
+  <data name="Storage_Kind_Optical" xml:space="preserve">
+    <value>Optical</value>
+  </data>
+  <data name="Processes_EndTitle" xml:space="preserve">
+    <value>End {0}?</value>
+  </data>
+  <data name="Processes_EndMessage" xml:space="preserve">
+    <value>Sysora will end {0} (PID {1}). Any unsaved work in this application will be lost.</value>
+  </data>
+  <data name="Processes_EndButton" xml:space="preserve">
+    <value>End process</value>
+  </data>
+  <data name="Processes_Ended" xml:space="preserve">
+    <value>Process ended</value>
+  </data>
+  <data name="Processes_EndedMessage" xml:space="preserve">
+    <value>{0} (PID {1}) was ended.</value>
+  </data>
+  <data name="Processes_NotEnded" xml:space="preserve">
+    <value>{0} was not ended</value>
+  </data>
+  <data name="Processes_UnknownError" xml:space="preserve">
+    <value>Unknown error.</value>
+  </data>
+  <data name="Processes_Filtered" xml:space="preserve">
+    <value>{0} of {1}</value>
+  </data>
+  <data name="Common_Loading" xml:space="preserve">
+    <value>Loading…</value>
+  </data>
+  <data name="System_VersionBuild" xml:space="preserve">
+    <value>Version {0} (build {1})</value>
+  </data>
+  <data name="System_Build" xml:space="preserve">
+    <value>Build {0}</value>
+  </data>
+  <data name="System_RunsAs" xml:space="preserve">
+    <value>{0} (Sysora runs as {1})</value>
+  </data>
+  <data name="Count_Core_One" xml:space="preserve">
+    <value>{0} core</value>
+  </data>
+  <data name="Count_Core_Other" xml:space="preserve">
+    <value>{0} cores</value>
+  </data>
+  <data name="System_Base" xml:space="preserve">
+    <value>base {0}</value>
+  </data>
+  <data name="System_Usable" xml:space="preserve">
+    <value>{0} usable</value>
+  </data>
+  <data name="System_Bits64x64" xml:space="preserve">
+    <value>64-bit (x64)</value>
+  </data>
+  <data name="System_Bits64Arm" xml:space="preserve">
+    <value>64-bit (ARM64)</value>
+  </data>
+  <data name="System_Bits32" xml:space="preserve">
+    <value>32-bit (x86)</value>
+  </data>
+  <data name="PcHealth_Failed" xml:space="preserve">
+    <value>The score could not be computed. See the log for details.</value>
+  </data>
+  <data name="PcHealth_BasedOn" xml:space="preserve">
+    <value>Based on {0} · {1} · updated {2}</value>
+  </data>
+  <data name="PcHealth_SelfMeasures" xml:space="preserve">
+    <value>Sysora measures its own usage every ten seconds.</value>
+  </data>
+  <data name="Performance_TemperatureHint" xml:space="preserve">
+    <value>Windows does not expose CPU temperature through a documented API. Reading it requires a kernel driver, which Sysora deliberately does not install.</value>
+  </data>
+  <data name="Performance_CoreN" xml:space="preserve">
+    <value>CPU {0}</value>
+  </data>
+  <data name="Performance_DiskN" xml:space="preserve">
+    <value>Disk {0}</value>
+  </data>
+  <data name="Usual_CurrentAverage" xml:space="preserve">
+    <value>Average of the last {0:0} minutes</value>
+  </data>
+  <data name="Usual_NotMeasuredRecently" xml:space="preserve">
+    <value>Not measured in the last minutes</value>
+  </data>
+  <data name="Usual_PeriodAverage" xml:space="preserve">
+    <value>{0}: average over {1} of measurements ({2})</value>
+  </data>
+  <data name="Duration_Second_One" xml:space="preserve">
+    <value>{0} second</value>
+  </data>
+  <data name="Duration_Second_Other" xml:space="preserve">
+    <value>{0} seconds</value>
+  </data>
+  <data name="Chart_Rising" xml:space="preserve">
+    <value>Rising</value>
+  </data>
+  <data name="Chart_Falling" xml:space="preserve">
+    <value>Falling</value>
+  </data>
+  <data name="Chart_Stats" xml:space="preserve">
+    <value>Average {0} · Peak {1}{2}</value>
+  </data>
+  <data name="Shell_ResumeMonitoring" xml:space="preserve">
+    <value>Resume monitoring</value>
+  </data>
+  <data name="Tray_Open" xml:space="preserve">
+    <value>Open Sysora</value>
+  </data>
+  <data name="Tray_Exit" xml:space="preserve">
+    <value>Exit</value>
+  </data>
+  <data name="Tray_StillRunning" xml:space="preserve">
+    <value>Sysora is still running</value>
+  </data>
+  <data name="Tray_StillRunningText" xml:space="preserve">
+    <value>Monitoring continues in the notification area. Right-click the icon to exit.</value>
+  </data>
+  <data name="Tray_GameRecap" xml:space="preserve">
+    <value>Game recap: {0}</value>
+  </data>
+  <data name="Tray_GameRecapText" xml:space="preserve">
+    <value>{0} · {1}. Click to open the recap.</value>
+  </data>
+  <data name="Tray_InvestigationComplete" xml:space="preserve">
+    <value>Investigation complete</value>
+  </data>
+  <data name="Tray_InvestigationText" xml:space="preserve">
+    <value>{0}. Click to open the report.</value>
+  </data>
+  <data name="Tray_AlertText" xml:space="preserve">
+    <value>{0}. Click to open Alerts.</value>
+  </data>
+  <data name="Tray_Paused" xml:space="preserve">
+    <value>(paused)</value>
+  </data>
+  <data name="Tray_Tooltip" xml:space="preserve">
+    <value>CPU {0} · Memory {1}</value>
+  </data>
+  <data name="Export_PrepareFailed" xml:space="preserve">
+    <value>The report could not be prepared. See the log for details.</value>
+  </data>
+  <data name="Export_Html" xml:space="preserve">
+    <value>Report (HTML page)</value>
+  </data>
+  <data name="Export_Json" xml:space="preserve">
+    <value>Structured data (JSON)</value>
+  </data>
+  <data name="Export_Saved" xml:space="preserve">
+    <value>Report saved: {0}</value>
+  </data>
+  <data name="Export_SaveFailed" xml:space="preserve">
+    <value>The report could not be saved: {0}</value>
+  </data>
+</root>

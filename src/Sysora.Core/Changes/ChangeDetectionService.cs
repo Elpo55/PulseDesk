@@ -4,6 +4,7 @@ using Sysora.Core.History;
 using Sysora.Core.Interfaces;
 using Sysora.Core.Models;
 using Sysora.Core.Settings;
+using Sysora.Localization;
 
 namespace Sysora.Core.Changes;
 
@@ -118,19 +119,19 @@ public sealed class ChangeDetectionService : IChangeDetectionService, IAsyncDisp
         if (chosen is null)
         {
             var oldest = snapshots.Count > 0
-                ? $"The oldest snapshot is from {snapshots[0].CapturedAt.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)}."
-                : "No snapshot has been recorded yet; the first one is taken a minute after Sysora starts.";
-            return new ChangeComparison(reference, null, [], $"Not enough history for this comparison yet. {oldest}");
+                ? Text.Format(Strings.Changes_OldestSnapshot, snapshots[0].CapturedAt.ToLocalTime().ToString("g", CultureInfo.CurrentCulture))
+                : Strings.Changes_NoSnapshot;
+            return new ChangeComparison(reference, null, [], Text.Format(Strings.Changes_NotEnough, oldest));
         }
 
         var changes = BaselineComparer.Compare(chosen, current)
             .OrderByDescending(c => c.Importance)
             .ThenBy(c => c.Type)
             .ToArray();
-        var note = $"Current state compared with the snapshot of {chosen.CapturedAt.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)}.";
+        var note = Text.Format(Strings.Changes_Note, chosen.CapturedAt.ToLocalTime().ToString("g", CultureInfo.CurrentCulture));
         if (!chosen.Inventory.AppsAvailable || !current.Inventory.AppsAvailable)
         {
-            note += " Installed applications could not be compared (not readable in one of the snapshots).";
+            note += " " + Strings.Changes_Note_AppsUnreadable;
         }
 
         return new ChangeComparison(reference, chosen, changes, note);

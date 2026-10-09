@@ -4,6 +4,7 @@ using Sysora.Core.Analysis;
 using Sysora.Core.Diagnosis;
 using Sysora.Core.Formatting;
 using Sysora.Core.Interfaces;
+using Sysora.Localization;
 
 namespace Sysora.Core.Changes;
 
@@ -82,7 +83,7 @@ public sealed record SinceYesterdaySummary
     {
         Time = DateTimeOffset.MinValue,
         HasReference = false,
-        Headline = "Comparing with yesterday…",
+        Headline = Strings.Since_Loading,
         Note = string.Empty,
     };
 }
@@ -94,15 +95,23 @@ public sealed record SinceYesterdaySummary
 /// </summary>
 public static class SinceYesterdayBuilder
 {
-    private const string Applications = "Applications";
-    private const string Startup = "Startup programs";
-    private const string Windows = "Windows version";
-    private const string Firmware = "Firmware (BIOS)";
-    private const string Memory = "Installed memory";
-    private const string Devices = "Devices";
-    private const string DiskSpace = "Disk space";
-    private const string Usage = "Usage";
-    private const string Alerts = "Alerts";
+    private static string Applications => Strings.Since_Area_Applications;
+
+    private static string Startup => Strings.Since_Area_Startup;
+
+    private static string Windows => Strings.Since_Area_Windows;
+
+    private static string Firmware => Strings.Since_Area_Firmware;
+
+    private static string Memory => Strings.Since_Area_Memory;
+
+    private static string Devices => Strings.Since_Area_Devices;
+
+    private static string DiskSpace => Strings.Since_Area_DiskSpace;
+
+    private static string Usage => Strings.Since_Area_Usage;
+
+    private static string Alerts => Strings.Since_Area_Alerts;
 
     /// <param name="inventory">Current state compared with yesterday's snapshot.</param>
     /// <param name="behavior">Today's activity compared with yesterday's, when computed.</param>
@@ -120,7 +129,7 @@ public static class SinceYesterdayBuilder
             {
                 Time = now,
                 HasReference = false,
-                Headline = "Not enough history yet",
+                Headline = Strings.Since_NotEnough,
                 Note = inventory.Note,
             };
         }
@@ -148,13 +157,15 @@ public static class SinceYesterdayBuilder
                 items.Add(new SinceYesterdayItem
                 {
                     Area = Usage,
-                    Title = $"{row.Name} {row.ChangeText} today",
-                    OldValue = $"{row.BeforeText} yesterday",
-                    NewValue = $"{row.AfterText} today",
+                    Title = Text.Format(Strings.Since_Usage_Title, row.Name, row.ChangeText),
+                    OldValue = Text.Format(Strings.Since_Yesterday, row.BeforeText),
+                    NewValue = Text.Format(Strings.Since_Today, row.AfterText),
                     Importance = row.Importance,
-                    Explanation = $"{row.Explanation.Replace("in the second period", "today", StringComparison.Ordinal)} Averages over each day.",
-                    When = "Today so far, compared with yesterday",
-                    Origin = $"{behavior.Before.Source} (yesterday) and {behavior.After.Source.ToLowerInvariant()} (today).",
+                    Explanation = Text.Format(
+                        Strings.Since_Usage_Explanation,
+                        row.Explanation.Replace(Strings.Since_SecondPeriodPhrase, Strings.Since_TodayPhrase, StringComparison.Ordinal)),
+                    When = Strings.Since_When,
+                    Origin = Text.Format(Strings.Since_Usage_Origin, behavior.Before.Source, behavior.After.Source.ToLower(CultureInfo.CurrentCulture)),
                     Confidence = thin ? ConfidenceLevel.Low : ConfidenceLevel.Medium,
                     Action = DiagnosisAction.Compare,
                 });
@@ -171,13 +182,17 @@ public static class SinceYesterdayBuilder
             items.Add(new SinceYesterdayItem
             {
                 Area = Alerts,
-                Title = more ? $"More alerts today ({today.Length})" : $"Fewer alerts today ({today.Length})",
-                OldValue = $"{MetricFormatter.Plural(yesterday, "alert")} yesterday",
-                NewValue = $"{MetricFormatter.Plural(today.Length, "alert")} today",
+                Title = more
+                    ? Text.Format(Strings.Since_MoreAlerts, today.Length)
+                    : Text.Format(Strings.Since_FewerAlerts, today.Length),
+                OldValue = Text.Format(Strings.Since_Yesterday, Text.Plural(yesterday, Strings.Count_Alert_One, Strings.Count_Alert_Other)),
+                NewValue = Text.Format(Strings.Since_Today, Text.Plural(today.Length, Strings.Count_Alert_One, Strings.Count_Alert_Other)),
                 Importance = more && today.Any(a => a.Severity == AlertSeverity.Critical) ? ChangeImportance.High : more ? ChangeImportance.Medium : ChangeImportance.Low,
-                Explanation = more ? "More lasting or unusual problems were detected today than yesterday." : "Fewer problems were detected today than yesterday.",
-                When = "Today so far, compared with yesterday",
-                Origin = "Alerts recorded by Sysora.",
+                Explanation = more
+                    ? Strings.Since_MoreAlerts_Explanation
+                    : Strings.Since_FewerAlerts_Explanation,
+                When = Strings.Since_When,
+                Origin = Strings.Since_AlertsOrigin,
                 Confidence = ConfidenceLevel.High,
                 Action = DiagnosisAction.Alerts,
             });
@@ -194,18 +209,18 @@ public static class SinceYesterdayBuilder
             }
             else
             {
-                notCompared.Add($"{area}: {reason}");
+                notCompared.Add(Text.Format(Strings.Common_NameValue, area, reason));
             }
         }
 
-        Area(Applications, reference.Inventory.AppsAvailable, "the list of installed applications could not be read in one of the snapshots");
-        Area(Startup, reference.Inventory.StartupAvailable, "the startup programs could not be read in one of the snapshots");
-        Area(Windows, reference.OsBuild is not null, "the Windows build was not recorded");
-        Area(Firmware, reference.BiosVersion is not null, "the BIOS version is not reported by this PC");
-        Area(Memory, reference.InstalledMemoryBytes is not null, "the installed memory is not reported by the firmware");
+        Area(Applications, reference.Inventory.AppsAvailable, Strings.Since_Reason_Apps);
+        Area(Startup, reference.Inventory.StartupAvailable, Strings.Since_Reason_Startup);
+        Area(Windows, reference.OsBuild is not null, Strings.Since_Reason_Windows);
+        Area(Firmware, reference.BiosVersion is not null, Strings.Since_Reason_Bios);
+        Area(Memory, reference.InstalledMemoryBytes is not null, Strings.Since_Reason_Memory);
         Area(Devices, true, string.Empty);
-        Area(DiskSpace, reference.Inventory.Devices.Any(d => d.Category == "Volume"), "no volume was recorded");
-        Area(Usage, behaviorKnown, "not enough history for today or yesterday");
+        Area(DiskSpace, reference.Inventory.Devices.Any(d => d.Category == "Volume"), Strings.Since_Reason_Volumes);
+        Area(Usage, behaviorKnown, Strings.Since_Reason_Usage);
         Area(Alerts, true, string.Empty);
 
         var changedAreas = items.Select(i => i.Area).ToHashSet(StringComparer.Ordinal);
@@ -219,11 +234,11 @@ public static class SinceYesterdayBuilder
         var minor = ordered.Length - significant;
         var mostlyUnchanged = compared.Count > 0 && unchanged.Length >= compared.Count * 0.6;
         var headline = ordered.Length == 0
-            ? "No change since yesterday"
+            ? Strings.Since_NoChange
             : string.Join(" · ", new[]
             {
-                significant > 0 ? MetricFormatter.Plural(significant, "significant change") : null,
-                minor > 0 ? MetricFormatter.Plural(minor, "minor change") : null,
+                significant > 0 ? Text.Plural(significant, Strings.Count_SignificantChange_One, Strings.Count_SignificantChange_Other) : null,
+                minor > 0 ? Text.Plural(minor, Strings.Count_MinorChange_One, Strings.Count_MinorChange_Other) : null,
             }.Where(p => p is not null));
         return new SinceYesterdaySummary
         {
@@ -237,7 +252,7 @@ public static class SinceYesterdayBuilder
             NotCompared = notCompared,
             MostlyUnchanged = mostlyUnchanged,
             Headline = headline,
-            Note = $"Compared with the snapshot of {reference.CapturedAt.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)}. Only differences Sysora observed are listed; their origin is stated when it is known.",
+            Note = Text.Format(Strings.Since_Note, reference.CapturedAt.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)),
         };
     }
 
@@ -260,8 +275,8 @@ public static class SinceYesterdayBuilder
         Importance = change.Importance,
         Explanation = change.Explanation,
         When = change.After is { } after
-            ? $"Between {after.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)} and {change.Before.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)}"
-            : $"Before {change.Before.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)}",
+            ? Text.Format(Strings.Since_Between, after.ToLocalTime().ToString("g", CultureInfo.CurrentCulture), change.Before.ToLocalTime().ToString("g", CultureInfo.CurrentCulture))
+            : Text.Format(Strings.Since_Before, change.Before.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)),
         Origin = change.Origin,
         Confidence = change.Type is ChangeType.CpuUsageChanged or ChangeType.MemoryUsageChanged or ChangeType.NewFrequentApp ? ConfidenceLevel.Medium : ConfidenceLevel.High,
         After = change.After,

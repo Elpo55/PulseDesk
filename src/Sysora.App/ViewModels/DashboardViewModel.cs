@@ -1,13 +1,14 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Sysora.App.Controls;
 using Sysora.App.Services;
 using Sysora.Core.Alerts;
 using Sysora.Core.Analysis;
+using Sysora.Core.Changes;
 using Sysora.Core.Diagnosis;
 using Sysora.Core.Formatting;
-using Sysora.Core.Changes;
 using Sysora.Core.Gaming;
 using Sysora.Core.Health;
 using Sysora.Core.Interfaces;
@@ -15,6 +16,7 @@ using Sysora.Core.Metrics;
 using Sysora.Core.Models;
 using Sysora.Core.Monitoring;
 using Sysora.Core.Settings;
+using Sysora.Localization;
 
 namespace Sysora.App.ViewModels;
 
@@ -78,14 +80,14 @@ public sealed partial class DashboardViewModel : PageViewModel
         _history = history;
         _navigator = navigator;
         _games = games;
-        GamingText = "Gaming";
+        GamingText = UiStrings.Common_Gaming;
         StatusText = HealthGlyphs.Text(PcHealthState.Unknown);
         StatusDetail = DiagnosisReport.Empty.Headline;
         StatusGlyph = HealthGlyphs.Unknown;
         StatusBrushKey = "StatusUnknownBrush";
-        AlertsText = "Alerts";
+        AlertsText = UiStrings.Common_Alerts;
         Subtitle = string.Empty;
-        HealthSummary = "Checking…";
+        HealthSummary = UiStrings.Common_Checking;
         CpuStats = string.Empty;
         MemoryStats = string.Empty;
         MemoryText = MetricFormatter.Pending;
@@ -340,10 +342,9 @@ public sealed partial class DashboardViewModel : PageViewModel
     protected override void OnHealthChanged(HealthReport report)
     {
         var problems = report.Indicators.Count(i => i.Status is HealthStatus.Warning or HealthStatus.Critical);
-        HealthSummary = report.Indicators.Count == 0 ? "Checking…"
-            : problems == 0 ? "No issue detected"
-            : problems == 1 ? "1 item needs attention"
-            : $"{problems} items need attention";
+        HealthSummary = report.Indicators.Count == 0 ? UiStrings.Common_Checking
+            : problems == 0 ? UiStrings.Dashboard_NoIssue
+            : Text.Plural(problems, UiStrings.Dashboard_ItemsAttention_One, UiStrings.Dashboard_ItemsAttention_Other);
 
         HealthItems.Clear();
         foreach (var indicator in report.Indicators.OrderByDescending(i => i.Status))
@@ -381,7 +382,7 @@ public sealed partial class DashboardViewModel : PageViewModel
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             // The diagnosis service logs its own failures; the dashboard keeps working without insights.
-            StatusDetail = "Diagnosis not available";
+            StatusDetail = UiStrings.Dashboard_DiagnosisNotAvailable;
         }
         finally
         {
@@ -416,8 +417,8 @@ public sealed partial class DashboardViewModel : PageViewModel
         HasMinorChanges = summary.Minor > 0;
         IsMostlyUnchanged = summary.HasReference && summary.MostlyUnchanged;
         SinceYesterdayDetail = !summary.HasReference
-            ? "Sysora compares with a snapshot from yesterday; the first one is taken a minute after it starts."
-            : summary.Items.Count == 0 ? $"Nothing changed in the areas compared ({string.Join(", ", summary.UnchangedAreas).ToLowerInvariant()})."
+            ? UiStrings.Dashboard_SinceYesterday_NoReference
+            : summary.Items.Count == 0 ? Text.Format(UiStrings.Dashboard_SinceYesterday_Nothing, string.Join(Strings.List_Separator, summary.UnchangedAreas).ToLower(CultureInfo.CurrentCulture))
             : string.Join(" · ", summary.Items.Take(2).Select(i => i.Title));
     }
 
@@ -431,10 +432,12 @@ public sealed partial class DashboardViewModel : PageViewModel
 
         var active = alerts.Count(a => a.IsActive);
         var unseen = alerts.Count(a => a.Status == AlertStatus.New);
-        AlertsText = unseen > 0 ? $"Alerts ({unseen} new)" : active > 0 ? $"Alerts ({active} active)" : "Alerts";
+        AlertsText = unseen > 0
+            ? Text.Format(UiStrings.Dashboard_AlertsNew, unseen)
+            : active > 0 ? Text.Format(UiStrings.Dashboard_AlertsActive, active) : UiStrings.Common_Alerts;
 
         var games = _games.ActiveSessions;
-        GamingText = games.Count > 0 ? $"Gaming · {games[0].Name}" : "Gaming";
+        GamingText = games.Count > 0 ? $"{UiStrings.Common_Gaming} · {games[0].Name}" : UiStrings.Common_Gaming;
         var insights = DashboardInsights.Build(report, alerts, _history.GetRecent(TimeSpan.FromMinutes(10)), _baseline.Current, games, _games.LatestRecap, health, _recurring.Latest);
         CollectionSync.Resize(Insights, insights.Count, _ => new InsightItemViewModel(i => _navigator.Open(i.Action, i.AppKey)), (item, i) => item.Set(insights[i]));
     }
@@ -447,8 +450,8 @@ public sealed partial class DashboardViewModel : PageViewModel
         {
             var off = !_settings.Current.Monitoring.NetworkEnabled;
             Network.Set(
-                off ? "Off" : Display.Format<NetworkMetrics>(snapshot, MetricKind.Network, null, _ => string.Empty),
-                off ? "Network monitoring is turned off" : string.Empty,
+                off ? UiStrings.Common_Off : Display.Format<NetworkMetrics>(snapshot, MetricKind.Network, null, _ => string.Empty),
+                off ? UiStrings.Dashboard_NetworkOff : string.Empty,
                 string.Empty,
                 double.NaN);
             return;
@@ -456,11 +459,11 @@ public sealed partial class DashboardViewModel : PageViewModel
 
         var connectivity = network.Connectivity switch
         {
-            NetworkConnectivity.InternetAccess => "Internet access",
-            NetworkConnectivity.ConstrainedInternetAccess => "Limited Internet access",
-            NetworkConnectivity.LocalAccess => "No Internet access",
-            NetworkConnectivity.None => "Not connected",
-            _ => "Connectivity unknown",
+            NetworkConnectivity.InternetAccess => Strings.Connectivity_Internet,
+            NetworkConnectivity.ConstrainedInternetAccess => Strings.Connectivity_Constrained,
+            NetworkConnectivity.LocalAccess => Strings.Diag_Net_LocalTitle,
+            NetworkConnectivity.None => UiStrings.Dashboard_NotConnected,
+            _ => UiStrings.Dashboard_ConnectivityUnknown,
         };
         var hasRates = network.Interfaces.Any(i => i.ReceiveBitsPerSecond is not null);
         Network.Set(
@@ -519,11 +522,11 @@ public sealed partial class DashboardViewModel : PageViewModel
             return;
         }
 
-        var speed = cpu.CurrentFrequencyGHz is { } ghz ? MetricFormatter.FrequencyGHz(ghz) : "Speed not available";
+        var speed = cpu.CurrentFrequencyGHz is { } ghz ? MetricFormatter.FrequencyGHz(ghz) : UiStrings.Dashboard_SpeedNotAvailable;
         Cpu.Set(
             MetricFormatter.Percent(cpu.UsagePercent),
-            $"{speed} · {MetricFormatter.Plural(cpu.LogicalProcessors, "thread")}",
-            $"Temperature: {MetricFormatter.Temperature(cpu.TemperatureCelsius)}",
+            $"{speed} · {Text.Plural(cpu.LogicalProcessors, UiStrings.Count_Thread_One, UiStrings.Count_Thread_Other)}",
+            Text.Format(UiStrings.Dashboard_Temperature, MetricFormatter.Temperature(cpu.TemperatureCelsius)),
             cpu.UsagePercent);
     }
 
@@ -539,8 +542,8 @@ public sealed partial class DashboardViewModel : PageViewModel
 
         Memory.Set(
             MetricFormatter.Bytes(memory.UsedBytes),
-            $"of {MetricFormatter.Bytes(memory.TotalBytes)} · {MetricFormatter.Percent(memory.UsedPercent)}",
-            $"{MetricFormatter.Bytes(memory.AvailableBytes)} available",
+            Text.Format(UiStrings.Dashboard_MemoryOf, MetricFormatter.Bytes(memory.TotalBytes), MetricFormatter.Percent(memory.UsedPercent)),
+            Text.Format(UiStrings.Dashboard_MemoryAvailable, MetricFormatter.Bytes(memory.AvailableBytes)),
             memory.UsedPercent);
         MemoryText = $"{MetricFormatter.Bytes(memory.UsedBytes)} / {MetricFormatter.Bytes(memory.TotalBytes)}";
         MemoryPercent = memory.UsedPercent;
@@ -552,16 +555,16 @@ public sealed partial class DashboardViewModel : PageViewModel
         {
             var settingsDisabled = !_settings.Current.Monitoring.GpuEnabled;
             Gpu.Set(
-                settingsDisabled ? "Off" : Display.Format<GpuMetrics>(snapshot, MetricKind.Gpu, null, _ => string.Empty),
-                settingsDisabled ? "GPU monitoring is turned off" : string.Empty,
+                settingsDisabled ? UiStrings.Common_Off : Display.Format<GpuMetrics>(snapshot, MetricKind.Gpu, null, _ => string.Empty),
+                settingsDisabled ? UiStrings.Dashboard_GpuOff : string.Empty,
                 string.Empty,
                 double.NaN);
             return;
         }
 
         var memory = gpu.DedicatedMemoryUsedBytes is { } used && gpu.DedicatedMemoryTotalBytes is > 0
-            ? $"Memory {MetricFormatter.Bytes(used)} / {MetricFormatter.Bytes(gpu.DedicatedMemoryTotalBytes)}"
-            : $"Temperature: {MetricFormatter.Temperature(gpu.TemperatureCelsius)}";
+            ? Text.Format(UiStrings.Dashboard_GpuMemory, MetricFormatter.Bytes(used), MetricFormatter.Bytes(gpu.DedicatedMemoryTotalBytes))
+            : Text.Format(UiStrings.Dashboard_Temperature, MetricFormatter.Temperature(gpu.TemperatureCelsius));
         Gpu.Set(MetricFormatter.Percent(gpu.UsagePercent), gpu.Name, memory, gpu.UsagePercent ?? double.NaN);
     }
 
@@ -576,8 +579,10 @@ public sealed partial class DashboardViewModel : PageViewModel
         var activity = snapshot.DiskActivity?.FirstOrDefault(d => string.Equals(d.Drive, drive.Letter, StringComparison.OrdinalIgnoreCase));
         Disk.Set(
             MetricFormatter.Percent(drive.UsedPercent),
-            $"{drive.Letter} · {MetricFormatter.Bytes(drive.FreeBytes)} free of {MetricFormatter.Bytes(drive.TotalBytes)}",
-            activity?.ActiveTimePercent is { } active ? $"Active time {MetricFormatter.Percent(active)}" : "Active time not available",
+            Text.Format(UiStrings.Dashboard_DiskFree, drive.Letter, MetricFormatter.Bytes(drive.FreeBytes), MetricFormatter.Bytes(drive.TotalBytes)),
+            activity?.ActiveTimePercent is { } active
+                ? Text.Format(UiStrings.Dashboard_ActiveTime, MetricFormatter.Percent(active))
+                : UiStrings.Dashboard_ActiveTimeNotAvailable,
             drive.UsedPercent);
     }
 
@@ -599,7 +604,7 @@ public sealed partial class DashboardViewModel : PageViewModel
             return;
         }
 
-        ProcessCountText = MetricFormatter.Plural(processes.ProcessCount, "process", "processes");
+        ProcessCountText = Text.Plural(processes.ProcessCount, Strings.Count_Process_One, Strings.Count_Process_Other);
         var groups = ProcessAggregation.GroupByName(processes.Processes);
         var top = SortTopByMemory ? ProcessAggregation.TopByMemory(groups, TopCount) : ProcessAggregation.TopByCpu(groups, TopCount);
         // Bars are relative to the first entry: they show the ranking, the numbers show the values.

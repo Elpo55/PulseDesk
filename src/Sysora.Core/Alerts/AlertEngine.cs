@@ -241,6 +241,7 @@ public sealed class AlertEngine(IEnumerable<AlertRule> rules) : IAlertEngine
         Recommendation = condition.Recommendation,
         Evidence = condition.Evidence,
         AppKey = condition.AppKey,
+        AppName = condition.AppName,
         Action = condition.Action,
     };
 

@@ -7,6 +7,7 @@ using Sysora.Core.Metrics;
 using Sysora.Core.Models;
 using Sysora.Core.Monitoring;
 using Sysora.Core.Settings;
+using Sysora.Localization;
 
 namespace Sysora.App.ViewModels;
 
@@ -84,7 +85,7 @@ public sealed partial class NetworkViewModel : PageViewModel
         IsDisabled = !_settings.Current.Monitoring.NetworkEnabled;
         if (snapshot.Network is not { } network)
         {
-            var text = IsDisabled ? "Network monitoring is turned off" : Display.Format<NetworkMetrics>(snapshot, MetricKind.Network, null, _ => string.Empty);
+            var text = IsDisabled ? UiStrings.Dashboard_NetworkOff : Display.Format<NetworkMetrics>(snapshot, MetricKind.Network, null, _ => string.Empty);
             ConnectionStatus = HealthStatus.Unknown;
             ConnectionTitle = text;
             ConnectionDetail = string.Empty;
@@ -96,11 +97,11 @@ public sealed partial class NetworkViewModel : PageViewModel
 
         (ConnectionStatus, ConnectionTitle, ConnectionDetail) = network.Connectivity switch
         {
-            NetworkConnectivity.InternetAccess => (HealthStatus.Normal, "Connected to the Internet", "As reported by Windows"),
-            NetworkConnectivity.ConstrainedInternetAccess => (HealthStatus.Warning, "Limited Internet access", "Windows reports restricted access, for example a sign-in page"),
-            NetworkConnectivity.LocalAccess => (HealthStatus.Warning, "Network available but Internet unavailable", "Connected to a local network only"),
-            NetworkConnectivity.None => (HealthStatus.Warning, "No network connection", "No active network interface"),
-            _ => (HealthStatus.Unknown, "Connection status unknown", "Windows did not report a connectivity level"),
+            NetworkConnectivity.InternetAccess => (HealthStatus.Normal, UiStrings.Network_Connected, Strings.Event_AsReportedByWindows),
+            NetworkConnectivity.ConstrainedInternetAccess => (HealthStatus.Warning, Strings.Diag_Net_LimitedTitle, UiStrings.Network_RestrictedDetail),
+            NetworkConnectivity.LocalAccess => (HealthStatus.Warning, Strings.Indicator_NetworkNoInternet, UiStrings.Network_LocalOnly),
+            NetworkConnectivity.None => (HealthStatus.Warning, Strings.Diag_Net_NoneTitle, UiStrings.Network_NoInterface),
+            _ => (HealthStatus.Unknown, UiStrings.Network_StatusUnknown, UiStrings.Network_NoLevel),
         };
 
         Download = MetricFormatter.BitsPerSecond(network.ReceiveBitsPerSecond);
@@ -121,8 +122,8 @@ public sealed partial class NetworkViewModel : PageViewModel
     {
         NetworkInterfaceKind.Ethernet => "Ethernet",
         NetworkInterfaceKind.WiFi => "Wi-Fi",
-        NetworkInterfaceKind.Cellular => "Cellular",
-        _ => "Other",
+        NetworkInterfaceKind.Cellular => UiStrings.Network_Cellular,
+        _ => Strings.LargeFiles_Cat_Other,
     };
 }
 
@@ -174,12 +175,12 @@ public sealed partial class NetworkInterfaceItemViewModel : ObservableObject
     {
         Name = network.Name;
         Description = network.Description;
-        Kind = NetworkViewModel.KindName(network.Kind) + (network.HasGateway ? " · Default route" : string.Empty);
+        Kind = NetworkViewModel.KindName(network.Kind) + (network.HasGateway ? " · " + UiStrings.Network_DefaultRoute : string.Empty);
         Glyph = network.Kind == NetworkInterfaceKind.WiFi ? "" : "";
         HasGateway = network.HasGateway;
         Speed = MetricFormatter.BitsPerSecond(network.LinkSpeedBitsPerSecond);
-        IPv4 = network.IPv4Addresses.Count > 0 ? string.Join(", ", network.IPv4Addresses) : "None";
-        IPv6 = network.IPv6Addresses.Count > 0 ? network.IPv6Addresses[0] : "None";
+        IPv4 = network.IPv4Addresses.Count > 0 ? string.Join(", ", network.IPv4Addresses) : UiStrings.Network_NoAddress;
+        IPv6 = network.IPv6Addresses.Count > 0 ? network.IPv6Addresses[0] : UiStrings.Network_NoAddress;
         Receive = network.ReceiveBitsPerSecond is { } rx ? MetricFormatter.BitsPerSecond(rx) : MetricFormatter.Pending;
         Send = network.SendBitsPerSecond is { } tx ? MetricFormatter.BitsPerSecond(tx) : MetricFormatter.Pending;
         Received = MetricFormatter.Bytes((ulong)Math.Max(network.BytesReceived, 0));

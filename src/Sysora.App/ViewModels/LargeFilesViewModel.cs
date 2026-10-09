@@ -11,13 +11,15 @@ using Sysora.Core.Models;
 using Sysora.Core.Reports;
 using Sysora.Core.Storage;
 using Sysora.Infrastructure.Storage;
+using Sysora.Localization;
 
 namespace Sysora.App.ViewModels;
 
 /// <summary>A place that can be scanned.</summary>
 /// <param name="Roots">Folders scanned.</param>
 /// <param name="Label">Display text.</param>
-public sealed record ScanTargetOption(IReadOnlyList<string> Roots, string Label)
+/// <param name="IsCustom">A folder the user chose (kept when the list of volumes is refreshed).</param>
+public sealed record ScanTargetOption(IReadOnlyList<string> Roots, string Label, bool IsCustom = false)
 {
     public override string ToString() => Label;
 }
@@ -56,7 +58,7 @@ public sealed partial class LargeFilesViewModel : PageViewModel
         _logger = logger;
         MinimumSize = MinimumSizes[1];
         ProgressText = CurrentFolder = Message = ProblemsText = SearchText = LastScanText = string.Empty;
-        Category = "All types";
+        Category = AllTypes;
         _service.ProgressChanged += (_, progress) =>
         {
             // Progress arrives from the scan thread up to four times a second: keep at most one UI update queued.
@@ -75,16 +77,27 @@ public sealed partial class LargeFilesViewModel : PageViewModel
 
     public IReadOnlyList<SizeOption> MinimumSizes { get; } =
     [
-        new(50 * MB, "50 MB or more"),
-        new(100 * MB, "100 MB or more"),
-        new(500 * MB, "500 MB or more"),
-        new(1024 * MB, "1 GB or more"),
-        new(5 * 1024 * MB, "5 GB or more"),
+        new(50 * MB, OrMore(50 * MB)),
+        new(100 * MB, OrMore(100 * MB)),
+        new(500 * MB, OrMore(500 * MB)),
+        new(1024 * MB, OrMore(1024 * MB)),
+        new(5 * 1024 * MB, OrMore(5 * 1024 * MB)),
     ];
 
-    public IReadOnlyList<string> Views { get; } = ["Files", "By type", "By extension", "By folder"];
+    public IReadOnlyList<string> Views { get; } =
+    [
+        UiStrings.LargeFiles_View_Files,
+        UiStrings.LargeFiles_View_ByType,
+        UiStrings.LargeFiles_View_ByExtension,
+        UiStrings.LargeFiles_View_ByFolder,
+    ];
 
-    public ObservableCollection<string> Categories { get; } = ["All types"];
+    public ObservableCollection<string> Categories { get; } = [AllTypes];
+
+    /// <summary>The category filter that shows every type.</summary>
+    private static string AllTypes => UiStrings.LargeFiles_AllTypes;
+
+    private static string OrMore(long bytes) => Text.Format(UiStrings.LargeFiles_OrMore, MetricFormatter.Bytes(bytes));
 
     public ObservableCollection<LargeFileItemViewModel> Files { get; } = [];
 
@@ -157,7 +170,7 @@ public sealed partial class LargeFilesViewModel : PageViewModel
         }
 
         IsScanning = true;
-        ProgressText = "Starting…";
+        ProgressText = UiStrings.LargeFiles_Starting;
         CurrentFolder = string.Empty;
         try
         {
@@ -175,7 +188,7 @@ public sealed partial class LargeFilesViewModel : PageViewModel
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             _logger.LogWarning(ex, "The large-file scan failed.");
-            Message = $"The scan failed: {ex.Message}";
+            Message = Text.Format(UiStrings.LargeFiles_ScanFailed, ex.Message);
             MessageSeverity = InfoBarSeverity.Error;
             HasResult = false;
         }
@@ -197,7 +210,7 @@ public sealed partial class LargeFilesViewModel : PageViewModel
             return;
         }
 
-        var option = new ScanTargetOption([folder], $"Folder: {folder}");
+        var option = new ScanTargetOption([folder], Text.Format(UiStrings.LargeFiles_FolderTarget, folder), IsCustom: true);
         Targets.Add(option);
         Target = option;
     }
@@ -244,16 +257,16 @@ public sealed partial class LargeFilesViewModel : PageViewModel
         {
             var label = volume.Label is { } name ? $" {name}" : string.Empty;
             var system = volume.IsSystemDrive ? " (Windows)" : string.Empty;
-            options.Add(new ScanTargetOption([volume.Drive], $"{volume.Letter}{label}{system} · {MetricFormatter.Bytes(volume.FreeBytes)} free of {MetricFormatter.Bytes(volume.TotalBytes)}"));
+            options.Add(new ScanTargetOption([volume.Drive], Text.Format(UiStrings.LargeFiles_VolumeTarget, volume.Letter, label, system, MetricFormatter.Bytes(volume.FreeBytes), MetricFormatter.Bytes(volume.TotalBytes))));
         }
 
         var fixedVolumes = volumes.Where(v => v.Kind == DriveKind.Fixed).Select(v => v.Drive).ToArray();
         if (fixedVolumes.Length > 1)
         {
-            options.Add(new ScanTargetOption(fixedVolumes, "All fixed volumes"));
+            options.Add(new ScanTargetOption(fixedVolumes, UiStrings.LargeFiles_AllFixed));
         }
 
-        var custom = Targets.Where(t => t.Label.StartsWith("Folder: ", StringComparison.Ordinal)).ToArray();
+        var custom = Targets.Where(t => t.IsCustom).ToArray();
         var selected = Target?.Label;
         Targets.Clear();
         foreach (var option in options.Concat(custom))
@@ -271,7 +284,12 @@ public sealed partial class LargeFilesViewModel : PageViewModel
             return;
         }
 
-        ProgressText = $"{progress.Directories:N0} folders · {progress.Files:N0} files · {MetricFormatter.Bytes(progress.BytesSeen)} seen · {MetricFormatter.Plural(progress.Found, "large file")} so far";
+        ProgressText = Text.Format(
+            UiStrings.LargeFiles_Progress,
+            Text.Plural(progress.Directories, Strings.Count_Folder_One, Strings.Count_Folder_Other),
+            Text.Plural(progress.Files, UiStrings.Count_FileN0_One, UiStrings.Count_FileN0_Other),
+            MetricFormatter.Bytes(progress.BytesSeen),
+            Text.Plural(progress.Found, UiStrings.Count_LargeFile_One, UiStrings.Count_LargeFile_Other));
         CurrentFolder = progress.CurrentDirectory ?? string.Empty;
     }
 
@@ -286,42 +304,47 @@ public sealed partial class LargeFilesViewModel : PageViewModel
             LargeFileScanOutcome.Failed => InfoBarSeverity.Error,
             _ => result.AccessDenied > 0 || result.Unavailable > 0 ? InfoBarSeverity.Informational : InfoBarSeverity.Success,
         };
-        LastScanText = $"Scanned {InsightDisplay.Time(result.Finished)}: {string.Join(", ", result.Roots)} · {MetricFormatter.Plural(result.MatchingFiles, "file")} of {MetricFormatter.Bytes(result.MinimumSizeBytes)} or more"
-            + (result.IsTruncated ? $" (the {result.Files.Count} largest are listed)" : string.Empty);
+        LastScanText = Text.Format(
+                UiStrings.LargeFiles_LastScan,
+                InsightDisplay.Time(result.Finished),
+                string.Join(Strings.List_Separator, result.Roots),
+                Text.Plural(result.MatchingFiles, Strings.Count_File_One, Strings.Count_File_Other),
+                MetricFormatter.Bytes(result.MinimumSizeBytes))
+            + (result.IsTruncated ? " " + Text.Format(UiStrings.LargeFiles_Truncated, result.Files.Count) : string.Empty);
         var problems = new List<string>();
         if (result.AccessDenied > 0)
         {
-            problems.Add($"Access denied: {MetricFormatter.Plural(result.AccessDenied, "folder")} could not be read, so their content is unknown (not empty). For example: {string.Join(", ", result.AccessDeniedSamples.Take(3))}.");
+            problems.Add(Text.Format(UiStrings.LargeFiles_Problem_Denied, Text.Plural(result.AccessDenied, Strings.Count_Folder_One, Strings.Count_Folder_Other), string.Join(Strings.List_Separator, result.AccessDeniedSamples.Take(3))));
         }
 
         if (result.Unavailable > 0)
         {
-            problems.Add($"Unavailable: {MetricFormatter.Plural(result.Unavailable, "folder")} could not be read (removed during the scan, device error or path too long).");
+            problems.Add(Text.Format(UiStrings.LargeFiles_Problem_Unavailable, Text.Plural(result.Unavailable, Strings.Count_Folder_One, Strings.Count_Folder_Other)));
         }
 
         if (result.CloudOnlyFiles > 0)
         {
-            problems.Add($"{MetricFormatter.Plural(result.CloudOnlyFiles, "online-only file")} skipped: they are stored in the cloud, not on this PC.");
+            problems.Add(Text.Format(UiStrings.LargeFiles_Problem_Cloud, Text.Plural(result.CloudOnlyFiles, Strings.Count_CloudFile_One, Strings.Count_CloudFile_Other)));
         }
 
         if (result.SkippedLinks > 0)
         {
-            problems.Add($"{MetricFormatter.Plural(result.SkippedLinks, "link")} not followed (junctions and symbolic links point to data counted elsewhere).");
+            problems.Add(Text.Format(UiStrings.LargeFiles_Problem_Links, Text.Plural(result.SkippedLinks, Strings.Count_Link_One, Strings.Count_Link_Other)));
         }
 
-        problems.AddRange(result.Exclusions.Select(e => $"Not scanned: {e.Path} — {e.Reason}"));
+        problems.AddRange(result.Exclusions.Select(e => Text.Format(UiStrings.LargeFiles_Problem_Excluded, e.Path, e.Reason)));
         ProblemsText = string.Join(Environment.NewLine, problems);
         HasProblems = problems.Count > 0;
 
         var categories = result.Files.Select(f => LargeFileCategorizer.Name(f.Category)).Distinct().Order(StringComparer.CurrentCulture).ToList();
         Categories.Clear();
-        Categories.Add("All types");
+        Categories.Add(AllTypes);
         foreach (var category in categories)
         {
             Categories.Add(category);
         }
 
-        Category = "All types";
+        Category = AllTypes;
         Filter();
         ShowGroupsOf(result);
     }
@@ -337,7 +360,7 @@ public sealed partial class LargeFilesViewModel : PageViewModel
         var category = Category;
         var largest = result.Files.Count > 0 ? result.Files[0].SizeBytes : 1;
         var files = result.Files.Where(f =>
-            (category == "All types" || LargeFileCategorizer.Name(f.Category) == category)
+            (category == AllTypes || LargeFileCategorizer.Name(f.Category) == category)
             && (search.Length == 0 || f.FullPath.Contains(search, StringComparison.OrdinalIgnoreCase)));
         Files.Clear();
         foreach (var file in files)
@@ -404,7 +427,7 @@ public sealed class LargeFileGroupViewModel(LargeFileGroup group, long total)
 {
     public string Name { get; } = group.Name;
 
-    public string Count { get; } = MetricFormatter.Plural(group.Count, "file");
+    public string Count { get; } = Text.Plural(group.Count, Strings.Count_File_One, Strings.Count_File_Other);
 
     public string Size { get; } = MetricFormatter.Bytes(group.TotalBytes);
 

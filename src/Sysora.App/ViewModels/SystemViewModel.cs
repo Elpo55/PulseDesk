@@ -5,6 +5,7 @@ using Sysora.App.Services;
 using Sysora.Core.Formatting;
 using Sysora.Core.Interfaces;
 using Sysora.Core.Models;
+using Sysora.Localization;
 
 namespace Sysora.App.ViewModels;
 
@@ -108,25 +109,27 @@ public sealed partial class SystemViewModel : PageViewModel
         var culture = CultureInfo.CurrentCulture;
         var os = info.OperatingSystem;
         Windows = os.ProductName;
-        WindowsVersion = os.DisplayVersion is { } display ? $"Version {display} (build {os.Build})" : $"Build {os.Build}";
+        WindowsVersion = os.DisplayVersion is { } display
+            ? Text.Format(UiStrings.System_VersionBuild, display, os.Build)
+            : Text.Format(UiStrings.System_Build, os.Build);
         InstalledOn = os.InstallDate?.ToString("d", culture) ?? MetricFormatter.NotAvailable;
         ComputerName = info.ComputerName;
         Architecture = info.OsArchitecture == info.ProcessArchitecture
             ? Bitness(info.OsArchitecture)
-            : $"{Bitness(info.OsArchitecture)} (Sysora runs as {info.ProcessArchitecture})";
+            : Text.Format(UiStrings.System_RunsAs, Bitness(info.OsArchitecture), info.ProcessArchitecture);
 
         var processor = info.Processor;
         Processor = processor.Name ?? MetricFormatter.NotAvailable;
         var parts = new List<string>();
         if (processor.PhysicalCores is { } cores)
         {
-            parts.Add(MetricFormatter.Plural(cores, "core"));
+            parts.Add(Text.Plural(cores, UiStrings.Count_Core_One, UiStrings.Count_Core_Other));
         }
 
-        parts.Add(MetricFormatter.Plural(processor.LogicalProcessors, "thread"));
+        parts.Add(Text.Plural(processor.LogicalProcessors, UiStrings.Count_Thread_One, UiStrings.Count_Thread_Other));
         if (processor.BaseFrequencyGHz is { } ghz)
         {
-            parts.Add($"base {MetricFormatter.FrequencyGHz(ghz)}");
+            parts.Add(Text.Format(UiStrings.System_Base, MetricFormatter.FrequencyGHz(ghz)));
         }
 
         ProcessorDetails = string.Join(" · ", parts);
@@ -137,7 +140,7 @@ public sealed partial class SystemViewModel : PageViewModel
                 g.DedicatedMemoryBytes is > 0 ? $"{g.Name} ({MetricFormatter.Bytes(g.DedicatedMemoryBytes)})" : g.Name));
 
         Memory = MetricFormatter.Bytes(info.InstalledMemoryBytes ?? info.UsableMemoryBytes);
-        MemoryDetails = info.UsableMemoryBytes is { } usable ? $"{MetricFormatter.Bytes(usable)} usable" : string.Empty;
+        MemoryDetails = info.UsableMemoryBytes is { } usable ? Text.Format(UiStrings.System_Usable, MetricFormatter.Bytes(usable)) : string.Empty;
 
         var firmware = info.Firmware;
         SystemModel = Join(firmware.SystemManufacturer, firmware.SystemModel);
@@ -154,9 +157,9 @@ public sealed partial class SystemViewModel : PageViewModel
 
     private static string Bitness(string architecture) => architecture switch
     {
-        "X64" => "64-bit (x64)",
-        "Arm64" => "64-bit (ARM64)",
-        "X86" => "32-bit (x86)",
+        "X64" => UiStrings.System_Bits64x64,
+        "Arm64" => UiStrings.System_Bits64Arm,
+        "X86" => UiStrings.System_Bits32,
         _ => architecture,
     };
 

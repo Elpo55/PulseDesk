@@ -2,6 +2,7 @@
     x:Class="Sysora.App.Views.TimelinePage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:l="using:Sysora.Localization"
     xmlns:controls="using:Sysora.App.Controls"
     xmlns:vm="using:Sysora.App.ViewModels"
     NavigationCacheMode="Required">
@@ -22,44 +23,44 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <StackPanel>
-                <TextBlock Style="{StaticResource PageTitleTextStyle}" Text="Timeline" />
-                <TextBlock Style="{StaticResource PageSubtitleTextStyle}" Text="What happened on this PC, in order" />
+                <TextBlock Style="{StaticResource PageTitleTextStyle}" Text="{x:Bind l:UiStrings.Common_Timeline}" />
+                <TextBlock Style="{StaticResource PageSubtitleTextStyle}" Text="{x:Bind l:UiStrings.Timeline_WhatHappenedOnThisPCInOrder}" />
             </StackPanel>
             <ComboBox
                 Grid.Column="1"
                 MinWidth="150"
                 VerticalAlignment="Center"
-                AutomationProperties.Name="Period"
+                AutomationProperties.Name="{x:Bind l:UiStrings.Common_Period}"
                 ItemsSource="{x:Bind ViewModel.Ranges}"
                 SelectedIndex="{x:Bind ViewModel.RangeIndex, Mode=TwoWay}" />
-            <DropDownButton Grid.Column="2" VerticalAlignment="Center" AutomationProperties.Name="Show">
+            <DropDownButton Grid.Column="2" VerticalAlignment="Center" AutomationProperties.Name="{x:Bind l:UiStrings.Common_Show}">
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <FontIcon FontSize="14" Glyph="&#xE71C;" />
-                    <TextBlock Text="Show" />
+                    <TextBlock Text="{x:Bind l:UiStrings.Common_Show}" />
                 </StackPanel>
                 <DropDownButton.Flyout>
                     <Flyout Placement="Bottom">
                         <StackPanel Spacing="2">
-                            <CheckBox Content="Applications started and closed" IsChecked="{x:Bind ViewModel.ShowApplications, Mode=TwoWay}" />
-                            <CheckBox Content="Games" IsChecked="{x:Bind ViewModel.ShowGames, Mode=TwoWay}" />
-                            <CheckBox Content="Alerts" IsChecked="{x:Bind ViewModel.ShowAlerts, Mode=TwoWay}" />
-                            <CheckBox Content="Spikes and anomalies" IsChecked="{x:Bind ViewModel.ShowAnomalies, Mode=TwoWay}" />
-                            <CheckBox Content="Detected changes" IsChecked="{x:Bind ViewModel.ShowChanges, Mode=TwoWay}" />
-                            <CheckBox Content="Sleep, network and devices" IsChecked="{x:Bind ViewModel.ShowSystem, Mode=TwoWay}" />
-                            <CheckBox Content="Troubleshooting investigations" IsChecked="{x:Bind ViewModel.ShowInvestigations, Mode=TwoWay}" />
-                            <CheckBox Content="Sysora's own events (monitoring started, gaps)" IsChecked="{x:Bind ViewModel.ShowMonitoring, Mode=TwoWay}" />
-                            <ToggleSwitch Margin="0,6,0,0" Header="Order" IsOn="{x:Bind ViewModel.NewestFirst, Mode=TwoWay}" OffContent="Oldest first" OnContent="Newest first" />
+                            <CheckBox Content="{x:Bind l:UiStrings.Timeline_ApplicationsStartedAndClosed}" IsChecked="{x:Bind ViewModel.ShowApplications, Mode=TwoWay}" />
+                            <CheckBox Content="{x:Bind l:UiStrings.Timeline_Games}" IsChecked="{x:Bind ViewModel.ShowGames, Mode=TwoWay}" />
+                            <CheckBox Content="{x:Bind l:UiStrings.Common_Alerts}" IsChecked="{x:Bind ViewModel.ShowAlerts, Mode=TwoWay}" />
+                            <CheckBox Content="{x:Bind l:UiStrings.Timeline_SpikesAndAnomalies}" IsChecked="{x:Bind ViewModel.ShowAnomalies, Mode=TwoWay}" />
+                            <CheckBox Content="{x:Bind l:UiStrings.Timeline_DetectedChanges}" IsChecked="{x:Bind ViewModel.ShowChanges, Mode=TwoWay}" />
+                            <CheckBox Content="{x:Bind l:UiStrings.Timeline_SleepNetworkAndDevices}" IsChecked="{x:Bind ViewModel.ShowSystem, Mode=TwoWay}" />
+                            <CheckBox Content="{x:Bind l:UiStrings.Timeline_TroubleshootingInvestigations}" IsChecked="{x:Bind ViewModel.ShowInvestigations, Mode=TwoWay}" />
+                            <CheckBox Content="{x:Bind l:UiStrings.Timeline_SysorasOwnEventsMonitoringStartedGaps}" IsChecked="{x:Bind ViewModel.ShowMonitoring, Mode=TwoWay}" />
+                            <ToggleSwitch Margin="0,6,0,0" Header="{x:Bind l:UiStrings.Timeline_Order}" IsOn="{x:Bind ViewModel.NewestFirst, Mode=TwoWay}" OffContent="{x:Bind l:UiStrings.Timeline_OldestFirst}" OnContent="{x:Bind l:UiStrings.Timeline_NewestFirst}" />
                         </StackPanel>
                     </Flyout>
                 </DropDownButton.Flyout>
             </DropDownButton>
-            <Button Grid.Column="3" VerticalAlignment="Center" AutomationProperties.Name="Refresh" Command="{x:Bind ViewModel.RefreshCommand}" ToolTipService.ToolTip="Refresh">
+            <Button Grid.Column="3" VerticalAlignment="Center" AutomationProperties.Name="{x:Bind l:UiStrings.Common_Refresh}" Command="{x:Bind ViewModel.RefreshCommand}" ToolTipService.ToolTip="{x:Bind l:UiStrings.Common_Refresh}">
                 <FontIcon FontSize="14" Glyph="&#xE72C;" />
             </Button>
-            <Button AutomationProperties.Name="Export" Grid.Column="4" VerticalAlignment="Center" Command="{x:Bind ViewModel.ExportCommand}" ToolTipService.ToolTip="Save the entries shown as an HTML report or JSON data">
+            <Button AutomationProperties.Name="{x:Bind l:UiStrings.Common_Export}" Grid.Column="4" VerticalAlignment="Center" Command="{x:Bind ViewModel.ExportCommand}" ToolTipService.ToolTip="{x:Bind l:UiStrings.Timeline_SaveTheEntriesShownAsAnHTMLReportOrJSONData}">
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <FontIcon FontSize="14" Glyph="&#xEDE1;" />
-                    <TextBlock Text="Export" />
+                    <TextBlock Text="{x:Bind l:UiStrings.Common_Export}" />
                 </StackPanel>
             </Button>
         </Grid>
@@ -100,10 +101,10 @@
                                 <TextBlock Style="{StaticResource LabelTextStyle}" Text="{x:Bind Source}" />
                             </StackPanel>
                             <StackPanel Grid.Column="3" VerticalAlignment="Top" Orientation="Horizontal" Spacing="2">
-                                <Button AutomationProperties.Name="Show this moment in Replay" Command="{x:Bind ReplayCommand}" Style="{StaticResource SubtleButtonStyle}" ToolTipService.ToolTip="Show this moment in Replay" Visibility="{x:Bind IsExact}">
+                                <Button AutomationProperties.Name="{x:Bind l:UiStrings.Timeline_ShowThisMomentInReplay}" Command="{x:Bind ReplayCommand}" Style="{StaticResource SubtleButtonStyle}" ToolTipService.ToolTip="{x:Bind l:UiStrings.Timeline_ShowThisMomentInReplay}" Visibility="{x:Bind IsExact}">
                                     <FontIcon FontSize="14" Glyph="&#xE81C;" />
                                 </Button>
-                                <Button AutomationProperties.Name="Compare before and after" Command="{x:Bind CompareCommand}" Style="{StaticResource SubtleButtonStyle}" ToolTipService.ToolTip="Compare the 15 minutes before and after" Visibility="{x:Bind IsExact}">
+                                <Button AutomationProperties.Name="{x:Bind l:UiStrings.Timeline_CompareBeforeAndAfter}" Command="{x:Bind CompareCommand}" Style="{StaticResource SubtleButtonStyle}" ToolTipService.ToolTip="{x:Bind l:UiStrings.Timeline_CompareThe15MinutesBeforeAndAfter}" Visibility="{x:Bind IsExact}">
                                     <FontIcon FontSize="14" Glyph="&#xE81E;" />
                                 </Button>
                                 <Button AutomationProperties.Name="{x:Bind ActionLabel}" Command="{x:Bind OpenCommand}" Style="{StaticResource SubtleButtonStyle}" ToolTipService.ToolTip="{x:Bind ActionLabel}" Visibility="{x:Bind HasAction}">
@@ -124,8 +125,8 @@
             Visibility="{x:Bind ViewModel.IsEmpty, Mode=OneWay}">
             <StackPanel HorizontalAlignment="Center" Spacing="8">
                 <FontIcon FontSize="32" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Glyph="&#xE81C;" />
-                <TextBlock HorizontalAlignment="Center" Style="{StaticResource BodyStrongTextBlockStyle}" Text="No entry to show" />
-                <TextBlock HorizontalAlignment="Center" Style="{StaticResource SecondaryTextStyle}" Text="Choose a longer period or show more kinds of entries. Sysora never adds an entry it did not observe." TextAlignment="Center" />
+                <TextBlock HorizontalAlignment="Center" Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind l:UiStrings.Timeline_NoEntryToShow}" />
+                <TextBlock HorizontalAlignment="Center" Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind l:UiStrings.Timeline_ChooseALongerPeriodOrShowMoreKindsOfEntries}" TextAlignment="Center" />
             </StackPanel>
         </Border>
     </Grid>

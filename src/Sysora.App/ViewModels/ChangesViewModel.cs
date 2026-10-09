@@ -8,6 +8,7 @@ using Sysora.App.Services;
 using Sysora.Core.Changes;
 using Sysora.Core.Formatting;
 using Sysora.Core.Models;
+using Sysora.Localization;
 
 namespace Sysora.App.ViewModels;
 
@@ -38,7 +39,14 @@ public sealed partial class ChangesViewModel : PageViewModel
         Note = SnapshotText = string.Empty;
     }
 
-    public IReadOnlyList<string> Views { get; } = ["Timeline (last 30 days)", "Since this morning", "Since yesterday", "Since 7 days ago", "Since 30 days ago"];
+    public IReadOnlyList<string> Views { get; } =
+    [
+        UiStrings.Changes_View_Timeline,
+        UiStrings.Changes_View_Morning,
+        UiStrings.Changes_View_Yesterday,
+        UiStrings.Changes_View_7Days,
+        UiStrings.Changes_View_30Days,
+    ];
 
     public ObservableCollection<ChangeGroupViewModel> Groups { get; } = [];
 
@@ -129,8 +137,8 @@ public sealed partial class ChangesViewModel : PageViewModel
             HasSignificant = summary.Significant > 0;
             HasMinor = summary.Minor > 0;
             IsMostlyUnchanged = summary.HasReference && summary.MostlyUnchanged;
-            SinceUnchanged = summary.UnchangedAreas.Count > 0 ? $"Unchanged: {string.Join(", ", summary.UnchangedAreas)}." : string.Empty;
-            SinceNotCompared = string.Join(Environment.NewLine, summary.NotCompared.Select(n => $"Not compared — {n}"));
+            SinceUnchanged = summary.UnchangedAreas.Count > 0 ? Text.Format(Strings.Report_Unchanged, string.Join(Strings.List_Separator, summary.UnchangedAreas)) + "." : string.Empty;
+            SinceNotCompared = string.Join(Environment.NewLine, summary.NotCompared.Select(n => Text.Format(Strings.Report_NotCompared, n)));
             HasSinceNotCompared = summary.NotCompared.Count > 0;
             SinceItems.Clear();
             foreach (var item in summary.Items)
@@ -141,7 +149,7 @@ public sealed partial class ChangesViewModel : PageViewModel
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             _logger.LogWarning(ex, "The comparison with yesterday failed.");
-            SinceHeadline = "The comparison with yesterday could not be made.";
+            SinceHeadline = UiStrings.Changes_SinceFailed;
         }
     }
 
@@ -170,8 +178,12 @@ public sealed partial class ChangesViewModel : PageViewModel
         {
             var snapshots = await _changes.GetSnapshotsAsync(load.Token);
             SnapshotText = snapshots.Count == 0
-                ? "No snapshot recorded yet. Sysora takes one a minute after it starts, then every six hours."
-                : $"{MetricFormatter.Plural(snapshots.Count, "daily snapshot")} since {snapshots[0].CapturedAt.ToLocalTime().ToString("d", CultureInfo.CurrentCulture)} · last one {InsightDisplay.Time(snapshots[^1].CapturedAt)}";
+                ? UiStrings.Changes_NoSnapshotYet
+                : Text.Format(
+                    UiStrings.Changes_Snapshots,
+                    Text.Plural(snapshots.Count, UiStrings.Count_DailySnapshot_One, UiStrings.Count_DailySnapshot_Other),
+                    snapshots[0].CapturedAt.ToLocalTime().ToString("d", CultureInfo.CurrentCulture),
+                    InsightDisplay.Time(snapshots[^1].CapturedAt));
 
             if (ViewIndex == 0)
             {
@@ -182,8 +194,8 @@ public sealed partial class ChangesViewModel : PageViewModel
                 }
 
                 Note = timeline.Count == 0
-                    ? "No change recorded yet. Changes appear here as Sysora compares daily snapshots of the PC (applications, startup programs, Windows version, devices, disk space and average usage)."
-                    : "Detected by comparing snapshots of the PC. Desktop applications installed or updated in the last 30 days are also listed from the dates recorded in Windows.";
+                    ? UiStrings.Changes_NoChangeYet
+                    : UiStrings.Changes_DetectedNote;
                 ShowTimeline(timeline);
             }
             else
@@ -197,7 +209,7 @@ public sealed partial class ChangesViewModel : PageViewModel
                 Note = comparison.ReferenceSnapshot is null || comparison.Changes.Count > 0
                     ? comparison.Note
                     : $"{comparison.Note} No change found.";
-                ShowGroups([(comparison.ReferenceSnapshot is null ? string.Empty : "Changes", comparison.Changes)]);
+                ShowGroups([(comparison.ReferenceSnapshot is null ? string.Empty : UiStrings.Common_Changes, comparison.Changes)]);
             }
         }
         catch (OperationCanceledException)
@@ -207,7 +219,7 @@ public sealed partial class ChangesViewModel : PageViewModel
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             _logger.LogWarning(ex, "Changes could not be loaded.");
-            Note = "Changes could not be loaded. See the log for details.";
+            Note = UiStrings.Changes_LoadFailed;
         }
         finally
         {
@@ -224,13 +236,13 @@ public sealed partial class ChangesViewModel : PageViewModel
         string GroupOf(DetectedChange change)
         {
             var day = ChangeItemViewModel.Day(change).ToLocalTime().Date;
-            return day >= today ? "Today"
-                : day >= today.AddDays(-1) ? "Yesterday"
-                : day >= today.AddDays(-7) ? "This week"
-                : "Earlier";
+            return day >= today ? Strings.Usual_Period_Today
+                : day >= today.AddDays(-1) ? Strings.Usual_Period_Yesterday
+                : day >= today.AddDays(-7) ? UiStrings.Changes_Group_ThisWeek
+                : UiStrings.Changes_Group_Earlier;
         }
 
-        var order = new[] { "Today", "Yesterday", "This week", "Earlier" };
+        var order = new[] { Strings.Usual_Period_Today, Strings.Usual_Period_Yesterday, UiStrings.Changes_Group_ThisWeek, UiStrings.Changes_Group_Earlier };
         ShowGroups(order.Select(name => (name, (IReadOnlyList<DetectedChange>)changes.Where(c => GroupOf(c) == name).ToList())).ToList());
     }
 
@@ -274,22 +286,22 @@ public sealed partial class ChangeItemViewModel : ObservableObject
         Glyph = GlyphOf(change.Type);
         (ImportanceText, ImportanceBrushKey) = change.Importance switch
         {
-            ChangeImportance.High => ("High importance", "LevelHighBrush"),
-            ChangeImportance.Medium => ("Medium", "LevelModerateBrush"),
-            _ => ("Low", "LevelLowBrush"),
+            ChangeImportance.High => (UiStrings.Importance_HighLong, "LevelHighBrush"),
+            ChangeImportance.Medium => (Strings.Importance_Medium, "LevelModerateBrush"),
+            _ => (Strings.Importance_Low, "LevelLowBrush"),
         };
         WhenText = IsWholeDay(change)
-            ? $"On {change.After!.Value.ToLocalTime().ToString("D", CultureInfo.CurrentCulture)}"
+            ? Text.Format(UiStrings.Changes_On, change.After!.Value.ToLocalTime().ToString("D", CultureInfo.CurrentCulture))
             : change.After is { } after && after.ToLocalTime().Date != change.Before.ToLocalTime().Date
-            ? $"Between {InsightDisplay.Time(after)} and {InsightDisplay.Time(change.Before)}"
+            ? Text.Format(UiStrings.Changes_Between, InsightDisplay.Time(after), InsightDisplay.Time(change.Before))
             : change.After is { } sameDay
-                ? $"{change.Before.ToLocalTime().ToString("d", CultureInfo.CurrentCulture)}, between {sameDay.ToLocalTime().ToString("t", CultureInfo.CurrentCulture)} and {change.Before.ToLocalTime().ToString("t", CultureInfo.CurrentCulture)}"
-                : $"Before {InsightDisplay.Time(change.Before)}";
+                ? Text.Format(UiStrings.Changes_SameDayBetween, change.Before.ToLocalTime().ToString("d", CultureInfo.CurrentCulture), sameDay.ToLocalTime().ToString("t", CultureInfo.CurrentCulture), change.Before.ToLocalTime().ToString("t", CultureInfo.CurrentCulture))
+                : Text.Format(UiStrings.Changes_BeforeTime, InsightDisplay.Time(change.Before));
         Values = (change.OldValue, change.NewValue) switch
         {
             ({ } old, { } current) => $"{old} → {current}",
             (null, { } current) => current,
-            ({ } old, null) => $"Was: {old}",
+            ({ } old, null) => Text.Format(Strings.Timeline_Was, old),
             _ => string.Empty,
         };
         HasValues = Values.Length > 0;

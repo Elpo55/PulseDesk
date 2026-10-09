@@ -1,4 +1,5 @@
 using Sysora.Core.Models;
+using Sysora.Localization;
 
 namespace Sysora.Core.Analysis;
 
@@ -24,8 +25,8 @@ public sealed record AppIdentity(string Key, string Name, string? ExecutablePath
 
     /// <summary>Human-readable description of how the application was identified.</summary>
     public string IdentificationEvidence => IsIdentifiedByPath
-        ? "Identified by its executable path."
-        : "Identified by process name only: Windows does not give access to the executable path.";
+        ? Strings.Identity_ByPath
+        : Strings.Identity_ByName;
 
     /// <summary>Builds the identity of a process.</summary>
     public static AppIdentity For(ProcessMetrics process)

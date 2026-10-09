@@ -10,6 +10,7 @@ using Sysora.Core.Models;
 using Sysora.Core.Monitoring;
 using Sysora.Core.Reports;
 using Sysora.Core.Settings;
+using Sysora.Localization;
 
 namespace Sysora.App.ViewModels;
 
@@ -148,7 +149,7 @@ public sealed partial class PcHealthViewModel : PageViewModel
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             _logger.LogWarning(ex, "The PC Health score could not be computed.");
-            Summary = "The score could not be computed. See the log for details.";
+            Summary = UiStrings.PcHealth_Failed;
         }
         finally
         {
@@ -175,7 +176,7 @@ public sealed partial class PcHealthViewModel : PageViewModel
         };
         Summary = report.Summary;
         UpdatedText = report.From is { } from && report.To is { } to
-            ? $"Based on {InsightDisplay.Period(from, to)} · {report.SampleCount:N0} measurements · updated {InsightDisplay.Time(report.Timestamp)}"
+            ? Text.Format(UiStrings.PcHealth_BasedOn, InsightDisplay.Period(from, to), Text.Plural(report.SampleCount, UiStrings.Count_MeasurementN0_One, UiStrings.Count_MeasurementN0_Other), InsightDisplay.Time(report.Timestamp))
             : string.Empty;
 
         var items = report.Components.Select(c =>
@@ -210,7 +211,7 @@ public sealed partial class PcHealthViewModel : PageViewModel
 
     private void ApplyRecurring(RecurringProblemReport report)
     {
-        RecurringSummary = report.Time == DateTimeOffset.MinValue ? "Not analyzed yet." : report.Summary;
+        RecurringSummary = report.Time == DateTimeOffset.MinValue ? Strings.Recurring_NotAnalyzed : report.Summary;
         Recurring.Clear();
         foreach (var problem in report.Problems)
         {
@@ -226,7 +227,7 @@ public sealed partial class PcHealthViewModel : PageViewModel
         var report = SelfImpactAssessor.Assess(monitor.SelfUsage, monitor.ScheduleInfo, _settings.Current.Monitoring.MaxSelfCpuPercent);
         SelfImpactHeadline = report.Headline;
         SelfImpactText = report.Level == SelfImpactLevel.Unknown
-            ? "Sysora measures its own usage every ten seconds."
+            ? UiStrings.PcHealth_SelfMeasures
             : string.Join(" · ", report.Items.Take(2).Select(i => $"{i.Label} {i.Value}")) + (report.Warnings.Count > 0 ? $" · {report.Warnings[0]}" : string.Empty);
     }
 }

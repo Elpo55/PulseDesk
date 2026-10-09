@@ -1,5 +1,6 @@
 using Sysora.Core.History;
 using Sysora.Core.Interfaces;
+using Sysora.Localization;
 
 namespace Sysora.Core.Analysis;
 
@@ -30,8 +31,8 @@ public sealed class AppImpactService(
             return new AppImpactReport(period, start, now, sessions.MonitoredSeconds, ranked)
             {
                 Note = sessions.SessionStart is null
-                    ? "Waiting for the first process measurements."
-                    : "Every application seen since Sysora started, measured every few seconds.",
+                    ? Strings.Impact_Note_Waiting
+                    : Strings.Impact_Note_Session,
             };
         }
 
@@ -42,8 +43,8 @@ public sealed class AppImpactService(
         return new AppImpactReport(period, from, now, monitored, results)
         {
             Note = monitored <= 0
-                ? "No application history recorded for this period yet. History is saved every five minutes while Sysora runs."
-                : "From the local history: the most significant applications of each five-minute period (applications below that are not recorded). The last few minutes appear once their five-minute period ends.",
+                ? Strings.Impact_Note_NoHistory
+                : Strings.Impact_Note_History,
         };
     }
 

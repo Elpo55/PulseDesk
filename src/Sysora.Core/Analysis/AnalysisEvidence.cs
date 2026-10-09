@@ -1,4 +1,5 @@
 using Sysora.Core.History;
+using Sysora.Localization;
 
 namespace Sysora.Core.Analysis;
 
@@ -40,20 +41,50 @@ public sealed record AnalysisEvidence(string Metric, string Observed)
     public int? SampleCount { get; init; }
 }
 
+/// <summary>Confidence levels in words.</summary>
+public static class ConfidenceText
+{
+    /// <summary>"high", "medium", "low" (lowercase, to go inside a sentence).</summary>
+    public static string Lower(ConfidenceLevel level) => level switch
+    {
+        ConfidenceLevel.High => Strings.Confidence_High_Lower,
+        ConfidenceLevel.Medium => Strings.Confidence_Medium_Lower,
+        _ => Strings.Confidence_Low_Lower,
+    };
+
+    /// <summary>"High confidence", "Medium confidence", "Low confidence".</summary>
+    public static string Label(ConfidenceLevel level) => level switch
+    {
+        ConfidenceLevel.High => Strings.Confidence_High,
+        ConfidenceLevel.Medium => Strings.Confidence_Medium,
+        _ => Strings.Confidence_Low,
+    };
+}
+
 /// <summary>Plain-language description of where each metric comes from.</summary>
 public static class MetricSources
 {
-    public const string Cpu = "Windows performance counter \\Processor Information(_Total)\\% Processor Utility";
-    public const string Memory = "GlobalMemoryStatusEx (physical memory in use)";
-    public const string Commit = "GetPerformanceInfo (commit charge and limit)";
-    public const string Disk = "Windows performance counter \\LogicalDisk(*)\\% Idle Time (active time = 100 − idle)";
-    public const string Network = "IP Helper interface statistics (interfaces with a default gateway)";
-    public const string Gpu = "Windows performance counter \\GPU Engine(*)\\Utilization Percentage";
-    public const string Processes = "NtQuerySystemInformation (per-process CPU time, private working set and I/O counters)";
-    public const string ProcessIo = "Per-process I/O counters (files, devices and network combined)";
-    public const string Storage = "GetDiskFreeSpaceEx (volume capacity)";
-    public const string Uptime = "GetTickCount64 (time since Windows started, including sleep)";
-    public const string Connectivity = "Windows Network Connectivity Status Indicator";
+    public static string Cpu => Strings.Source_Cpu;
+
+    public static string Memory => Strings.Source_Memory;
+
+    public static string Commit => Strings.Source_Commit;
+
+    public static string Disk => Strings.Source_Disk;
+
+    public static string Network => Strings.Source_Network;
+
+    public static string Gpu => Strings.Source_Gpu;
+
+    public static string Processes => Strings.Source_Processes;
+
+    public static string ProcessIo => Strings.Source_ProcessIo;
+
+    public static string Storage => Strings.Source_Storage;
+
+    public static string Uptime => Strings.Source_Uptime;
+
+    public static string Connectivity => Strings.Source_Connectivity;
 
     /// <summary>Source of a history metric.</summary>
     public static string For(HistoryMetric metric) => metric switch
@@ -65,6 +96,6 @@ public static class MetricSources
         HistoryMetric.Gpu => Gpu,
         HistoryMetric.ProcessCount => Processes,
         HistoryMetric.SystemDriveFree => Storage,
-        _ => "Sysora measurements",
+        _ => Strings.Source_Sysora,
     };
 }

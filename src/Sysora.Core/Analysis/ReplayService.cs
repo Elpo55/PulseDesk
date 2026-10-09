@@ -1,5 +1,6 @@
 using Sysora.Core.History;
 using Sysora.Core.Interfaces;
+using Sysora.Localization;
 
 namespace Sysora.Core.Analysis;
 
@@ -44,14 +45,14 @@ public sealed class ReplayService(IPerformanceHistory history, IHistoryRepositor
             var points = history.GetSnapshots(from, to);
             var events = history.GetEvents(from, to);
             var story = await Task.Run(() => ReplayNarrator.Narrate(points, events), cancellationToken).ConfigureAwait(false);
-            return new ReplayData(from, to, true, points, events, story, "Detailed measurements kept in memory (one per CPU sample).");
+            return new ReplayData(from, to, true, points, events, story, Strings.Replay_Source_Memory);
         }
 
         var minutes = await repository.GetSystemUsageAsync(from, to, HistoryResolution.Minute, cancellationToken).ConfigureAwait(false);
         var stored = await repository.GetEventsAsync(from, to, MaxEvents, cancellationToken).ConfigureAwait(false);
         var converted = minutes.Select(ToSnapshot).ToArray();
         var narrated = await Task.Run(() => ReplayNarrator.Narrate(converted, stored), cancellationToken).ConfigureAwait(false);
-        return new ReplayData(from, to, false, converted, stored, narrated, "Per-minute averages from the local history.");
+        return new ReplayData(from, to, false, converted, stored, narrated, Strings.Replay_Source_History);
     }
 
     /// <summary>

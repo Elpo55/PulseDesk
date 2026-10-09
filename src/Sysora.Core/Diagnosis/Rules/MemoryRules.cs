@@ -2,6 +2,7 @@ using Sysora.Core.Analysis;
 using Sysora.Core.Formatting;
 using Sysora.Core.History;
 using Sysora.Core.Metrics;
+using Sysora.Localization;
 
 namespace Sysora.Core.Diagnosis.Rules;
 
@@ -25,8 +26,8 @@ public sealed class MemoryPressureRule : DiagnosisRule
         var span = SnapshotStatistics.Sustained(context.Recent, s => s.MemoryPercent, thresholds.MemoryWarningPercent);
         var available = latest.MemoryTotalBytes is { } total && latest.MemoryUsedBytes is { } used ? total - Math.Min(used, total) : (ulong?)null;
         var largest = latest.TopApps.Count > 0 ? latest.TopApps.MaxBy(a => a.MemoryBytes) : null;
-        var state = Format($"{MetricFormatter.Bytes(latest.MemoryUsedBytes)} of {MetricFormatter.Bytes(latest.MemoryTotalBytes)} in use, {MetricFormatter.Bytes(available)} available");
-        var memoryEvidence = new AnalysisEvidence("Physical memory", state)
+        var state = Text.Format(Strings.Diag_Memory_State, MetricFormatter.Bytes(latest.MemoryUsedBytes), MetricFormatter.Bytes(latest.MemoryTotalBytes), MetricFormatter.Bytes(available));
+        var memoryEvidence = new AnalysisEvidence(Strings.Diag_Memory_Physical, state)
         {
             To = latest.Timestamp,
             Source = MetricSources.Memory,
@@ -37,13 +38,13 @@ public sealed class MemoryPressureRule : DiagnosisRule
             var critical = high.Average >= thresholds.MemoryCriticalPercent;
             var evidence = new List<AnalysisEvidence>
             {
-                SpanEvidence("Memory usage", high, thresholds.MemoryWarningPercent, MetricSources.Memory),
+                SpanEvidence(Strings.Diag_Metric_MemoryUsage, high, thresholds.MemoryWarningPercent, MetricSources.Memory),
                 memoryEvidence,
-                BaselineEvidence(context.Baseline, HistoryMetric.Memory, "memory usage"),
+                BaselineEvidence(context.Baseline, HistoryMetric.Memory, Strings.Diag_Metric_MemoryUsage),
             };
             if (largest is not null)
             {
-                evidence.Add(new AnalysisEvidence("Largest application", $"{largest.Name}: {MetricFormatter.Bytes(largest.MemoryBytes)}") { Source = MetricSources.Processes });
+                evidence.Add(new AnalysisEvidence(Strings.Diag_Memory_LargestApp, Text.Format(Strings.Common_NameValue, largest.Name, MetricFormatter.Bytes(largest.MemoryBytes))) { Source = MetricSources.Processes });
             }
 
             yield return new DiagnosisResult
@@ -51,17 +52,17 @@ public sealed class MemoryPressureRule : DiagnosisRule
                 RuleId = Id,
                 Category = DiagnosisCategory.Memory,
                 Severity = critical ? DiagnosisSeverity.Critical : DiagnosisSeverity.Warning,
-                Title = critical ? "Memory is nearly full" : "Available memory is low",
-                Description = $"Memory usage has stayed above {Percent(thresholds.MemoryWarningPercent)} for {Duration(high.Duration)} ({MetricFormatter.Bytes(available)} available).",
-                Metric = "Memory usage",
+                Title = critical ? Strings.Diag_Memory_FullTitle : Strings.Diag_Memory_LowTitle,
+                Description = Text.Format(Strings.Diag_Memory_HighDescription, Percent(thresholds.MemoryWarningPercent), Duration(high.Duration), MetricFormatter.Bytes(available)),
+                Metric = Strings.Diag_Metric_MemoryUsage,
                 ObservedValue = Percent(high.Average),
-                ReferenceValue = UsualText(usual) ?? $"Threshold {Percent(thresholds.MemoryWarningPercent)}",
+                ReferenceValue = UsualText(usual) ?? Threshold(Percent(thresholds.MemoryWarningPercent)),
                 Duration = high.Duration,
                 Timestamp = latest.Timestamp,
-                Explanation = "When memory runs short, Windows moves data to the disk (paging), which is much slower than memory: applications can pause or respond slowly.",
+                Explanation = Strings.Diag_Memory_HighExplanation,
                 Recommendation = largest is null
-                    ? "Close applications you are not using."
-                    : $"Close applications you are not using. The largest is {largest.Name} ({MetricFormatter.Bytes(largest.MemoryBytes)}).",
+                    ? Strings.Diag_Memory_CloseApps
+                    : Text.Format(Strings.Diag_Memory_CloseAppsLargest, largest.Name, MetricFormatter.Bytes(largest.MemoryBytes)),
                 Confidence = high.Duration >= TimeSpan.FromSeconds(thresholds.MemorySustainSeconds * 2) ? ConfidenceLevel.High : ConfidenceLevel.Medium,
                 Evidence = evidence,
                 AppKey = largest?.Key,
@@ -75,13 +76,13 @@ public sealed class MemoryPressureRule : DiagnosisRule
                 RuleId = Id,
                 Category = DiagnosisCategory.Memory,
                 Severity = DiagnosisSeverity.Info,
-                Title = "Memory usage is high",
-                Description = $"Memory usage just reached {Percent(current)} ({MetricFormatter.Bytes(available)} available).",
-                Metric = "Memory usage",
+                Title = Strings.Diag_Memory_HighTitle,
+                Description = Text.Format(Strings.Diag_Memory_JustReached, Percent(current), MetricFormatter.Bytes(available)),
+                Metric = Strings.Diag_Metric_MemoryUsage,
                 ObservedValue = Percent(current),
-                ReferenceValue = $"Reported when above {Percent(thresholds.MemoryWarningPercent)} for {Duration(TimeSpan.FromSeconds(thresholds.MemorySustainSeconds))}",
+                ReferenceValue = ReportedWhenAbove(Percent(thresholds.MemoryWarningPercent), TimeSpan.FromSeconds(thresholds.MemorySustainSeconds)),
                 Timestamp = latest.Timestamp,
-                Explanation = "If it stays this high, Windows will start moving data to the disk, which slows applications down.",
+                Explanation = Strings.Diag_Memory_JustReachedExplanation,
                 Confidence = ConfidenceLevel.Low,
                 Evidence = [memoryEvidence],
                 Action = DiagnosisAction.AppImpact,
@@ -94,15 +95,15 @@ public sealed class MemoryPressureRule : DiagnosisRule
                 RuleId = Id,
                 Category = DiagnosisCategory.Memory,
                 Severity = DiagnosisSeverity.Normal,
-                Title = "Enough memory available",
-                Description = $"{state} ({Percent(current)}).",
-                Metric = "Memory usage",
+                Title = Strings.Diag_Memory_EnoughTitle,
+                Description = Text.Format(Strings.Diag_Memory_EnoughDescription, state, Percent(current)),
+                Metric = Strings.Diag_Metric_MemoryUsage,
                 ObservedValue = Percent(current),
-                ReferenceValue = UsualText(usual) ?? $"Threshold {Percent(thresholds.MemoryWarningPercent)}",
+                ReferenceValue = UsualText(usual) ?? Threshold(Percent(thresholds.MemoryWarningPercent)),
                 Timestamp = latest.Timestamp,
-                Explanation = "Applications have room to work without Windows moving data to the disk.",
+                Explanation = Strings.Diag_Memory_EnoughExplanation,
                 Confidence = ConfidenceLevel.High,
-                Evidence = [memoryEvidence, BaselineEvidence(context.Baseline, HistoryMetric.Memory, "memory usage")],
+                Evidence = [memoryEvidence, BaselineEvidence(context.Baseline, HistoryMetric.Memory, Strings.Diag_Metric_MemoryUsage)],
             };
         }
 
@@ -113,16 +114,16 @@ public sealed class MemoryPressureRule : DiagnosisRule
                 RuleId = Id + ".commit",
                 Category = DiagnosisCategory.Memory,
                 Severity = DiagnosisSeverity.Warning,
-                Title = "Virtual memory is nearly exhausted",
-                Description = $"Windows has committed {Percent(commit)} of its virtual memory limit (physical memory + page file).",
-                Metric = "Commit charge",
+                Title = Strings.Diag_Commit_Title,
+                Description = Text.Format(Strings.Diag_Commit_Description, Percent(commit)),
+                Metric = Strings.Diag_Metric_Commit,
                 ObservedValue = Percent(commit),
-                ReferenceValue = Format($"Threshold {CommitWarningPercent:0}%"),
+                ReferenceValue = Threshold(Percent(CommitWarningPercent)),
                 Timestamp = latest.Timestamp,
-                Explanation = "When the commit charge reaches its limit, applications can fail to get memory and may crash or freeze.",
-                Recommendation = "Close memory-hungry applications. If this happens often, let Windows manage the page file size automatically.",
+                Explanation = Strings.Diag_Commit_Explanation,
+                Recommendation = Strings.Diag_Commit_Recommendation,
                 Confidence = ConfidenceLevel.High,
-                Evidence = [new AnalysisEvidence("Commit charge", Percent(commit)) { Source = MetricSources.Commit, To = latest.Timestamp }],
+                Evidence = [new AnalysisEvidence(Strings.Diag_Metric_Commit, Percent(commit)) { Source = MetricSources.Commit, To = latest.Timestamp }],
                 Action = DiagnosisAction.Performance,
             };
         }
@@ -164,9 +165,9 @@ public sealed class MemoryGrowthRule : DiagnosisRule
         var (app, growth) = LargestGrowth(window);
         var evidence = new List<AnalysisEvidence>
         {
-            new("Memory usage trend", Format($"+{rise:0.#} points in {Duration(summary.Duration)} ({trend.ChangePerMinute:0.##} points per minute)"))
+            new(Strings.Diag_Growth_Trend, Text.Format(Strings.Diag_Growth_TrendValue, rise, Duration(summary.Duration), trend.ChangePerMinute))
             {
-                Reference = "Robust trend (Theil–Sen), insensitive to isolated spikes",
+                Reference = Strings.Diag_Growth_TrendReference,
                 From = summary.From,
                 To = summary.To,
                 SampleCount = summary.Count,
@@ -175,7 +176,7 @@ public sealed class MemoryGrowthRule : DiagnosisRule
         };
         if (app is not null)
         {
-            evidence.Add(new AnalysisEvidence($"{app.Name} memory", $"+{MetricFormatter.Bytes(growth)} over the same period") { Source = MetricSources.Processes });
+            evidence.Add(new AnalysisEvidence(Text.Format(Strings.Diag_Growth_AppMemory, app.Name), Text.Format(Strings.Diag_Growth_AppGrowth, MetricFormatter.Bytes(growth))) { Source = MetricSources.Processes });
         }
 
         yield return new DiagnosisResult
@@ -183,16 +184,18 @@ public sealed class MemoryGrowthRule : DiagnosisRule
             RuleId = Id,
             Category = DiagnosisCategory.Memory,
             Severity = DiagnosisSeverity.Info,
-            Title = "Memory usage has been rising steadily",
-            Description = Format($"Memory usage rose by {rise:0} points in {Duration(summary.Duration)}.")
-                + (app is null ? string.Empty : $" {app.Name} grew by {MetricFormatter.Bytes(growth)} in the same period."),
-            Metric = "Memory usage",
-            ObservedValue = Format($"+{rise:0} points"),
-            ReferenceValue = Format($"Reported from +{MinimumRisePoints:0} points over {Duration(Window)}"),
+            Title = Strings.Diag_Growth_Title,
+            Description = Text.Format(Strings.Diag_Growth_Description, rise, Duration(summary.Duration))
+                + (app is null ? string.Empty : " " + Text.Format(Strings.Diag_Growth_DescriptionApp, app.Name, MetricFormatter.Bytes(growth))),
+            Metric = Strings.Diag_Metric_MemoryUsage,
+            ObservedValue = Text.Format(Strings.Diag_Growth_Points, rise),
+            ReferenceValue = Text.Format(Strings.Diag_Growth_Reference, MinimumRisePoints, Duration(Window)),
             Duration = summary.Duration,
             Timestamp = summary.To,
-            Explanation = "A steady rise can be normal (an application loading data) or a sign that an application does not release memory (a leak). Sysora cannot tell which from these measurements alone.",
-            Recommendation = app is null ? "Watch memory usage in Replay; if it keeps rising, restart the application responsible." : $"If {app.Name} keeps growing, restarting it will free the memory.",
+            Explanation = Strings.Diag_Growth_Explanation,
+            Recommendation = app is null
+                ? Strings.Diag_Growth_RecommendationReplay
+                : Text.Format(Strings.Diag_Growth_RecommendationApp, app.Name),
             Confidence = app is null ? ConfidenceLevel.Low : ConfidenceLevel.Medium,
             Evidence = evidence,
             AppKey = app?.Key,

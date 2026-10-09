@@ -1,6 +1,7 @@
 using System.Globalization;
 using Sysora.Core.Formatting;
 using Sysora.Core.Models;
+using Sysora.Localization;
 
 namespace Sysora.Core.Monitoring;
 
@@ -23,7 +24,7 @@ public sealed record SelfImpactItem(string Label, string Value, string? Note = n
 /// <summary>Sysora's own impact, measured, with a plain-language level and warnings when it is not negligible.</summary>
 public sealed record SelfImpactReport(SelfImpactLevel Level, string Headline, IReadOnlyList<SelfImpactItem> Items, IReadOnlyList<string> Warnings)
 {
-    public static SelfImpactReport Unknown { get; } = new(SelfImpactLevel.Unknown, "Sysora impact: measuring…", [], []);
+    public static SelfImpactReport Unknown { get; } = new(SelfImpactLevel.Unknown, Strings.Self_Measuring, [], []);
 }
 
 /// <summary>
@@ -57,18 +58,18 @@ public static class SelfImpactAssessor
         var cpuLevel = cpu < LowCpuPercent ? SelfImpactLevel.Low : budgetPercent > 0 && cpu >= budgetPercent ? SelfImpactLevel.High : SelfImpactLevel.Moderate;
         if (usage.OverBudgetSustained)
         {
-            warnings.Add(Text($"Sysora has used more than its CPU budget ({budgetPercent:0.#}% of total capacity) for a minute: it stretches its collection intervals ×{usage.ThrottleFactor:0.##} to stay light."));
+            warnings.Add(Text.Format(Strings.Self_OverBudget, MetricFormatter.Percent(budgetPercent, 1), usage.ThrottleFactor));
         }
 
         var memoryLevel = usage.WorkingSetBytes >= HighWorkingSetBytes ? SelfImpactLevel.High : SelfImpactLevel.Low;
         if (memoryLevel == SelfImpactLevel.High)
         {
-            warnings.Add($"Sysora uses {MetricFormatter.Bytes(usage.WorkingSetBytes)} of memory, more than expected. Restarting it frees the memory; please report it if it keeps growing.");
+            warnings.Add(Text.Format(Strings.Self_HighMemory, MetricFormatter.Bytes(usage.WorkingSetBytes)));
         }
 
         if (usage.AllocatedBytesPerSecond >= HighAllocationBytesPerSecond)
         {
-            warnings.Add($"Sysora allocates {MetricFormatter.BytesPerSecond(usage.AllocatedBytesPerSecond)} of memory: more garbage collection work than usual.");
+            warnings.Add(Text.Format(Strings.Self_HighAllocations, MetricFormatter.BytesPerSecond(usage.AllocatedBytesPerSecond)));
         }
 
         var writes = usage.WriteBytesPerSecond;
@@ -78,29 +79,31 @@ public static class SelfImpactAssessor
 
         var items = new List<SelfImpactItem>
         {
-            new("CPU", MetricFormatter.Percent(cpu, 2), Text($"Of total capacity over the last {SelfUsageGovernor.MeasurementPeriod.TotalSeconds:0} seconds")),
-            new("Memory", MetricFormatter.Bytes(usage.WorkingSetBytes), usage.ManagedHeapBytes > 0 ? $"Working set, of which {MetricFormatter.Bytes(usage.ManagedHeapBytes)} of .NET objects" : "Working set"),
-            new("Allocations", usage.AllocatedBytesPerSecond is { } allocated ? MetricFormatter.BytesPerSecond(allocated) : MetricFormatter.Pending, Text($"Garbage collections in the last period: {usage.Gen0Collections} / {usage.Gen1Collections} / {usage.Gen2Collections} (generation 0 / 1 / 2)")),
-            new("Disk writes", writes is { } w ? $"{LevelText(writeLevel)} · {MetricFormatter.BytesPerSecond(w)}" : MetricFormatter.NotAvailable, "Sysora's own writes (history database, settings, logs), from its entry in the process list"),
-            new("Background activity", rounds is { } r ? $"{LevelText(backgroundLevel)} · {Math.Round(r):0} collection rounds per minute" : MetricFormatter.Pending, IntervalsText(schedule)),
-            new("Processes analyzed", usage.ProcessesAnalyzed is { } processes ? processes.ToString("N0", CultureInfo.CurrentCulture) : MetricFormatter.Pending, schedule.Get(MetricKind.Processes) is { } every ? $"Every {Interval(every)}, in one system call" : null),
+            new(Strings.Self_Cpu, MetricFormatter.Percent(cpu, 2), Text.Format(Strings.Self_Cpu_Note, SelfUsageGovernor.MeasurementPeriod.TotalSeconds)),
+            new(Strings.Self_Memory, MetricFormatter.Bytes(usage.WorkingSetBytes), usage.ManagedHeapBytes > 0
+                ? Text.Format(Strings.Self_Memory_NoteManaged, MetricFormatter.Bytes(usage.ManagedHeapBytes))
+                : Strings.Self_Memory_Note),
+            new(Strings.Self_Allocations, usage.AllocatedBytesPerSecond is { } allocated ? MetricFormatter.BytesPerSecond(allocated) : MetricFormatter.Pending, Text.Format(Strings.Self_Allocations_Note, usage.Gen0Collections, usage.Gen1Collections, usage.Gen2Collections)),
+            new(Strings.Self_DiskWrites, writes is { } w ? $"{LevelText(writeLevel)} · {MetricFormatter.BytesPerSecond(w)}" : MetricFormatter.NotAvailable, Strings.Self_DiskWrites_Note),
+            new(Strings.Self_Background, rounds is { } r ? Text.Format(Strings.Self_Background_Value, LevelText(backgroundLevel), Math.Round(r)) : MetricFormatter.Pending, IntervalsText(schedule)),
+            new(Strings.Self_Processes, usage.ProcessesAnalyzed is { } processes ? processes.ToString("N0", CultureInfo.CurrentCulture) : MetricFormatter.Pending, schedule.Get(MetricKind.Processes) is { } every ? Text.Format(Strings.Self_Processes_Note, Interval(every)) : null),
         };
         if (usage.ThreadCount is { } threads)
         {
-            items.Add(new SelfImpactItem("Threads", threads.ToString(CultureInfo.CurrentCulture)));
+            items.Add(new SelfImpactItem(Strings.Self_Threads, threads.ToString(CultureInfo.CurrentCulture)));
         }
 
         var level = new[] { cpuLevel, memoryLevel, writeLevel, backgroundLevel }.Max();
-        return new SelfImpactReport(level, $"Sysora impact: {LevelText(level)}", items, warnings);
+        return new SelfImpactReport(level, Text.Format(Strings.Self_Headline, LevelText(level)), items, warnings);
     }
 
     /// <summary>"Low", "Moderate", "High".</summary>
     public static string LevelText(SelfImpactLevel level) => level switch
     {
-        SelfImpactLevel.Low => "Low",
-        SelfImpactLevel.Moderate => "Moderate",
-        SelfImpactLevel.High => "High",
-        _ => "Measuring…",
+        SelfImpactLevel.Low => Strings.Self_Level_Low,
+        SelfImpactLevel.Moderate => Strings.Self_Level_Moderate,
+        SelfImpactLevel.High => Strings.Self_Level_High,
+        _ => Strings.Self_Level_Measuring,
     };
 
     /// <summary>"Intensity Balanced: CPU 1 s · memory 1 s · processes 2 s…".</summary>
@@ -109,20 +112,22 @@ public static class SelfImpactAssessor
         ArgumentNullException.ThrowIfNull(schedule);
         var parts = new (MetricKind Kind, string Name)[]
         {
-            (MetricKind.Cpu, "CPU"), (MetricKind.Memory, "memory"), (MetricKind.Processes, "processes"), (MetricKind.Gpu, "GPU"),
-            (MetricKind.DiskActivity, "disks"), (MetricKind.Network, "network"), (MetricKind.Storage, "free space"),
+            (MetricKind.Cpu, Strings.Self_Interval_Cpu), (MetricKind.Memory, Strings.Self_Interval_Memory), (MetricKind.Processes, Strings.Self_Interval_Processes), (MetricKind.Gpu, Strings.Self_Interval_Gpu),
+            (MetricKind.DiskActivity, Strings.Self_Interval_Disks), (MetricKind.Network, Strings.Self_Interval_Network), (MetricKind.Storage, Strings.Self_Interval_Space),
         }
             .Where(p => schedule.Get(p.Kind) is not null)
             .Select(p => $"{p.Name} {Interval(schedule.Get(p.Kind)!.Value)}");
-        var mode = schedule.Investigating ? "Investigation in progress (detailed)" : $"Intensity {schedule.Intensity}";
-        var background = schedule.Background ? " · window hidden: on-screen metrics slowed down" : string.Empty;
-        return $"{mode}: {string.Join(" · ", parts)}{background}";
+        var mode = schedule.Investigating
+            ? Strings.Self_Investigating
+            : Text.Format(Strings.Self_Intensity, MonitoringProfile.Name(schedule.Intensity));
+        var background = schedule.Background ? " · " + Strings.Self_Hidden : string.Empty;
+        return Text.Format(Strings.Common_NameValue, mode, string.Join(" · ", parts) + background);
     }
 
     private static string Interval(TimeSpan interval) =>
         interval < TimeSpan.FromSeconds(1)
-            ? Text($"{interval.TotalMilliseconds:0} ms")
-            : interval < TimeSpan.FromMinutes(1) ? Text($"{interval.TotalSeconds:0.#} s") : Text($"{interval.TotalMinutes:0.#} min");
-
-    private static string Text(FormattableString text) => text.ToString(CultureInfo.CurrentCulture);
+            ? string.Create(CultureInfo.CurrentCulture, $"{interval.TotalMilliseconds:0} ms")
+            : interval < TimeSpan.FromMinutes(1)
+                ? string.Create(CultureInfo.CurrentCulture, $"{interval.TotalSeconds:0.#} s")
+                : string.Create(CultureInfo.CurrentCulture, $"{interval.TotalMinutes:0.#} min");
 }

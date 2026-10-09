@@ -9,6 +9,7 @@ using Sysora.Core.Analysis;
 using Sysora.Core.Formatting;
 using Sysora.Core.Metrics;
 using Sysora.Core.Models;
+using Sysora.Localization;
 
 namespace Sysora.App.ViewModels;
 
@@ -49,7 +50,12 @@ public sealed partial class AppImpactViewModel : PageViewModel
         SelectedIndex = -1;
     }
 
-    public IReadOnlyList<string> Periods { get; } = ["This session", "Last 24 hours", "Last 7 days"];
+    public IReadOnlyList<string> Periods { get; } =
+    [
+        AppImpactPeriodText.Label(AppImpactPeriod.Session),
+        AppImpactPeriodText.Label(AppImpactPeriod.Last24Hours),
+        AppImpactPeriodText.Label(AppImpactPeriod.Last7Days),
+    ];
 
     public ObservableCollection<AppImpactItemViewModel> Items { get; } = [];
 
@@ -161,7 +167,7 @@ public sealed partial class AppImpactViewModel : PageViewModel
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             _logger.LogWarning(ex, "App impact could not be computed.");
-            Note = "App impact could not be computed. See the log for details.";
+            Note = UiStrings.AppImpact_Failed;
         }
         finally
         {
@@ -208,8 +214,8 @@ public sealed partial class AppImpactViewModel : PageViewModel
 
         var measured = MetricFormatter.DurationCompact(TimeSpan.FromSeconds(report.MonitoredSeconds));
         Summary = report.Apps.Count == 0
-            ? $"{InsightDisplay.Period(report.From, report.To)} · {measured} measured"
-            : $"{InsightDisplay.Period(report.From, report.To)} · {measured} measured · {MetricFormatter.Plural(report.Apps.Count, "application")}";
+            ? Text.Format(UiStrings.AppImpact_Summary, InsightDisplay.Period(report.From, report.To), measured)
+            : Text.Format(UiStrings.AppImpact_SummaryApps, InsightDisplay.Period(report.From, report.To), measured, Text.Plural(report.Apps.Count, UiStrings.Count_Application_One, UiStrings.Count_Application_Other));
         Note = report.Note ?? string.Empty;
         IsEmpty = top.Count == 0;
 
@@ -258,7 +264,7 @@ public sealed partial class AppImpactViewModel : PageViewModel
             var timeline = await _service.GetTimelineAsync(key, Period, load.Token);
             if (!load.IsCancellationRequested)
             {
-                Detail.ApplyTimeline(timeline, Period == AppImpactPeriod.Session ? "Last hour, per minute" : Periods[PeriodIndex]);
+                Detail.ApplyTimeline(timeline, Period == AppImpactPeriod.Session ? UiStrings.AppImpact_LastHourPerMinute : Periods[PeriodIndex]);
             }
         }
         catch (OperationCanceledException)
@@ -327,7 +333,7 @@ public sealed partial class AppImpactItemViewModel : ObservableObject
         var usage = result.Usage;
         Key = usage.Identity.Key;
         Name = usage.Identity.Name;
-        Location = usage.Identity.ExecutablePath ?? "Path not accessible: identified by name only";
+        Location = usage.Identity.ExecutablePath ?? UiStrings.AppImpact_PathNotAccessible;
         RankText = rank.ToString(CultureInfo.CurrentCulture);
         LevelText = InsightDisplay.Text(result.Score.Level);
         LevelBrushKey = InsightDisplay.BrushKey(result.Score.Level);
@@ -410,18 +416,20 @@ public sealed partial class AppImpactDetailViewModel : ObservableObject
     {
         var usage = result.Usage;
         Name = usage.Identity.Name;
-        Location = usage.Identity.ExecutablePath ?? "Executable path not accessible (protected process): identified by name only.";
+        Location = usage.Identity.ExecutablePath ?? UiStrings.AppImpact_PathProtected;
         LevelText = $"{InsightDisplay.Text(result.Score.Level)} impact";
         LevelBrushKey = InsightDisplay.BrushKey(result.Score.Level);
-        ScoreText = string.Create(CultureInfo.CurrentCulture, $"Relative score {result.Score.Value}/100");
+        ScoreText = Text.Format(UiStrings.AppImpact_RelativeScore, result.Score.Value);
         Explanation = result.Explanation;
         ConfidenceText = $"{InsightDisplay.Text(result.Confidence)} · {period}";
-        PeakText = $"Peak CPU {MetricFormatter.Percent(usage.CpuMaximum, 1)} · peak memory {MetricFormatter.Bytes(usage.MemoryMaximumBytes)} · peak I/O {MetricFormatter.BytesPerSecond(usage.IoMaximumBytesPerSecond)}";
+        PeakText = Text.Format(UiStrings.AppImpact_Peaks, MetricFormatter.Percent(usage.CpuMaximum, 1), MetricFormatter.Bytes(usage.MemoryMaximumBytes), MetricFormatter.BytesPerSecond(usage.IoMaximumBytesPerSecond));
         TrendText = InsightDisplay.Describe(result.Trend);
-        LaunchesText = usage.Launches > 0 ? MetricFormatter.Plural(usage.Launches, "start") + " observed" : "No start observed in this period";
+        LaunchesText = usage.Launches > 0
+            ? Text.Plural(usage.Launches, UiStrings.AppImpact_Starts_One, UiStrings.AppImpact_Starts_Other)
+            : UiStrings.AppImpact_NoStart;
         StatusText = usage.IsRunning
-            ? $"Running now · {MetricFormatter.Plural(usage.InstanceCount, "process", "processes")}"
-            : $"Last seen {InsightDisplay.Time(usage.LastSeen)}";
+            ? Text.Format(UiStrings.AppImpact_RunningNow, Text.Plural(usage.InstanceCount, Strings.Count_Process_One, Strings.Count_Process_Other))
+            : Text.Format(UiStrings.AppImpact_LastSeen, InsightDisplay.Time(usage.LastSeen));
 
         CollectionSync.Resize(Components, result.Score.Components.Count, _ => new ImpactComponentViewModel(), (item, i) => item.Set(result.Score.Components[i]));
         Evidence.Clear();
@@ -437,7 +445,7 @@ public sealed partial class AppImpactDetailViewModel : ObservableObject
         {
             CpuChart = MemoryChart = null;
             HasChart = false;
-            ChartCaption = "No history for this application in this period.";
+            ChartCaption = UiStrings.AppImpact_NoHistory;
             return;
         }
 
@@ -451,7 +459,9 @@ public sealed partial class AppImpactDetailViewModel : ObservableObject
         CpuChart = new TimeSeriesData(cpu, null, timeline.To, window, cpuMaximum, MetricFormatter.Percent(cpuMaximum), caption);
         MemoryChart = new TimeSeriesData(memory, null, timeline.To, window, memoryMaximum, MetricFormatter.Bytes(memoryMaximum), caption);
         HasChart = true;
-        ChartCaption = $"Average while running, per {(timeline.BucketLength.TotalMinutes >= 60 ? "hour" : MetricFormatter.Plural((int)timeline.BucketLength.TotalMinutes, "minute"))}. Gaps: not running or not measured.";
+        ChartCaption = timeline.BucketLength.TotalMinutes >= 60
+            ? UiStrings.AppImpact_ChartPerHour
+            : Text.Format(UiStrings.AppImpact_ChartPerMinutes, Text.Plural((int)timeline.BucketLength.TotalMinutes, Strings.Duration_Minute_One, Strings.Duration_Minute_Other));
     }
 }
 
@@ -481,9 +491,14 @@ public sealed partial class ImpactComponentViewModel : ObservableObject
 
     public void Set(ImpactComponent component)
     {
-        Resource = component.Resource;
+        Resource = component.Label;
         LevelText = component.Resource == "Running time"
-            ? component.Level switch { ImpactLevel.High => "Most of the time", ImpactLevel.Moderate => "Part of the time", _ => "Briefly" }
+            ? component.Level switch
+            {
+                ImpactLevel.High => UiStrings.AppImpact_MostOfTheTime,
+                ImpactLevel.Moderate => UiStrings.AppImpact_PartOfTheTime,
+                _ => UiStrings.AppImpact_Briefly,
+            }
             : InsightDisplay.Text(component.Level);
         LevelBrushKey = component.Resource == "Running time" ? "LevelModerateBrush" : InsightDisplay.BrushKey(component.Level);
         Description = component.Description;

@@ -1,5 +1,6 @@
 using Sysora.Core.Analysis;
 using Sysora.Core.Diagnosis;
+using Sysora.Localization;
 
 namespace Sysora.Core.Changes;
 
@@ -185,3 +186,43 @@ public enum BaselineReference
 /// <param name="Changes">Changes found.</param>
 /// <param name="Note">Limits of the comparison, shown to the user.</param>
 public sealed record ChangeComparison(BaselineReference Reference, SystemBaseline? ReferenceSnapshot, IReadOnlyList<DetectedChange> Changes, string Note);
+
+/// <summary>Device categories in words ("Graphics", "Network", "Volume" are identifiers stored in snapshots).</summary>
+public static class DeviceCategoryText
+{
+    /// <summary>"Graphics", "Network", "Volume" in the interface language, capitalized.</summary>
+    public static string Label(string category) => category switch
+    {
+        "Graphics" => Strings.Device_Graphics,
+        "Network" => Strings.Device_Network,
+        "Volume" => Strings.Device_Volume,
+        _ => category,
+    };
+
+    /// <summary>The same, in lowercase, to go inside a sentence.</summary>
+    public static string Lower(string category) => Label(category).ToLower(System.Globalization.CultureInfo.CurrentCulture);
+}
+
+/// <summary>Sources of installed applications in words ("Machine", "User", "Store" are identifiers stored in snapshots).</summary>
+public static class AppSourceText
+{
+    public static string Label(string source) => source switch
+    {
+        "Machine" => Strings.AppSource_Machine,
+        "Machine (32-bit)" => Strings.AppSource_Machine32,
+        "User" => Strings.AppSource_User,
+        "Store" => Strings.AppSource_Store,
+        _ => source,
+    };
+}
+
+/// <summary>Change importance in words.</summary>
+public static class ChangeImportanceText
+{
+    public static string Label(ChangeImportance importance) => importance switch
+    {
+        ChangeImportance.High => Strings.Importance_High,
+        ChangeImportance.Medium => Strings.Importance_Medium,
+        _ => Strings.Importance_Low,
+    };
+}

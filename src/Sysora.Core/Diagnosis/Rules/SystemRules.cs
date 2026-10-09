@@ -2,6 +2,10 @@ using Sysora.Core.Analysis;
 using Sysora.Core.Formatting;
 using Sysora.Core.History;
 using Sysora.Core.Models;
+using Sysora.Localization;
+
+using static Sysora.Core.Diagnosis.Rules.ConnectivityText;
+using static Sysora.Core.Diagnosis.Rules.VolumeText;
 
 namespace Sysora.Core.Diagnosis.Rules;
 
@@ -24,10 +28,10 @@ public sealed class DiskActivityRule : DiagnosisRule
             yield break;
         }
 
-        var drive = latest.DiskActiveDrive ?? "disk";
+        var drive = latest.DiskActiveDrive ?? Strings.Diag_Disk_Unnamed;
         var isSystem = context.Snapshot.SystemDrive is { } system && string.Equals(system.Letter, drive, StringComparison.OrdinalIgnoreCase);
         var span = SnapshotStatistics.Sustained(context.Recent, s => s.DiskActivePercent, BusyPercent);
-        var throughput = $"read {MetricFormatter.BytesPerSecond(latest.DiskReadBytesPerSecond)}, write {MetricFormatter.BytesPerSecond(latest.DiskWriteBytesPerSecond)}";
+        var throughput = Text.Format(Strings.Diag_Disk_Throughput, MetricFormatter.BytesPerSecond(latest.DiskReadBytesPerSecond), MetricFormatter.BytesPerSecond(latest.DiskWriteBytesPerSecond));
 
         if (span is { } busy && busy.Duration >= MinimumDuration)
         {
@@ -35,22 +39,22 @@ public sealed class DiskActivityRule : DiagnosisRule
             var memoryHigh = latest.MemoryPercent >= context.Thresholds.MemoryWarningPercent;
             var evidence = new List<AnalysisEvidence>
             {
-                SpanEvidence($"Disk {drive} active time", busy, BusyPercent, MetricSources.Disk),
-                new("Throughput (all volumes)", throughput) { Source = MetricSources.Disk, To = latest.Timestamp },
+                SpanEvidence(Text.Format(Strings.Diag_Disk_ActiveTimeOf, drive), busy, BusyPercent, MetricSources.Disk),
+                new(Strings.Diag_Disk_ThroughputAll, throughput) { Source = MetricSources.Disk, To = latest.Timestamp },
             };
             if (topIo is not null)
             {
-                evidence.Add(new AnalysisEvidence("Most I/O", $"{topIo.Name}: {MetricFormatter.BytesPerSecond(topIo.IoBytesPerSecond)}")
+                evidence.Add(new AnalysisEvidence(Strings.Diag_Disk_MostIo, Text.Format(Strings.Common_NameValue, topIo.Name, MetricFormatter.BytesPerSecond(topIo.IoBytesPerSecond)))
                 {
-                    Reference = "Per-process I/O includes files, devices and network; it cannot be split by disk.",
+                    Reference = Strings.Diag_Disk_IoReference,
                     Source = MetricSources.ProcessIo,
                 });
             }
 
-            var explanation = "When a disk is busy almost all the time, applications that need to read or write files must wait.";
+            var explanation = Strings.Diag_Disk_Explanation;
             if (memoryHigh)
             {
-                explanation += " Memory is also high: part of this activity may be Windows paging memory to disk (a possibility, not confirmed).";
+                explanation += " " + Strings.Diag_Disk_ExplanationPaging;
             }
 
             yield return new DiagnosisResult
@@ -58,17 +62,19 @@ public sealed class DiskActivityRule : DiagnosisRule
                 RuleId = Id,
                 Category = DiagnosisCategory.Disk,
                 Severity = busy.Average >= 98 && busy.Duration >= TimeSpan.FromMinutes(2) ? DiagnosisSeverity.Critical : DiagnosisSeverity.Warning,
-                Title = isSystem ? "The system disk shows heavy activity" : $"Disk {drive} shows heavy activity",
-                Description = $"Disk {drive} has been busy {Percent(busy.Average)} of the time for {Duration(busy.Duration)} ({throughput}).",
-                Metric = "Disk active time",
+                Title = isSystem
+                    ? Strings.Diag_Disk_SystemHeavyTitle
+                    : Text.Format(Strings.Diag_Disk_HeavyTitle, drive),
+                Description = Text.Format(Strings.Diag_Disk_HeavyDescription, drive, Percent(busy.Average), Duration(busy.Duration), throughput),
+                Metric = Strings.Diag_Metric_DiskActive,
                 ObservedValue = Percent(busy.Average),
-                ReferenceValue = $"Threshold {Percent(BusyPercent)}",
+                ReferenceValue = Threshold(Percent(BusyPercent)),
                 Duration = busy.Duration,
                 Timestamp = latest.Timestamp,
                 Explanation = explanation,
                 Recommendation = topIo is null
-                    ? "Updates, antivirus scans and file indexing often cause this temporarily. App Impact shows which applications read and write the most."
-                    : $"{topIo.Name} currently has the most I/O. Updates, antivirus scans and file indexing also cause this temporarily.",
+                    ? Strings.Diag_Disk_Recommendation
+                    : Text.Format(Strings.Diag_Disk_RecommendationApp, topIo.Name),
                 Confidence = busy.Duration >= MinimumDuration * 4 ? ConfidenceLevel.High : ConfidenceLevel.Medium,
                 Evidence = evidence,
                 AppKey = topIo?.Key,
@@ -82,15 +88,15 @@ public sealed class DiskActivityRule : DiagnosisRule
             RuleId = Id,
             Category = DiagnosisCategory.Disk,
             Severity = DiagnosisSeverity.Normal,
-            Title = "Disk activity normal",
-            Description = $"The busiest disk ({drive}) was active {Percent(minute.Average)} of the time over the last minute.",
-            Metric = "Disk active time",
+            Title = Strings.Diag_Disk_NormalTitle,
+            Description = Text.Format(Strings.Diag_Disk_NormalDescription, drive, Percent(minute.Average)),
+            Metric = Strings.Diag_Metric_DiskActive,
             ObservedValue = Percent(minute.Average),
-            ReferenceValue = UsualText(context.Baseline.Get(HistoryMetric.Disk)) ?? $"Threshold {Percent(BusyPercent)}",
+            ReferenceValue = UsualText(context.Baseline.Get(HistoryMetric.Disk)) ?? Threshold(Percent(BusyPercent)),
             Timestamp = latest.Timestamp,
-            Explanation = "Disks have spare capacity.",
+            Explanation = Strings.Diag_Disk_NormalExplanation,
             Confidence = ConfidenceLevel.High,
-            Evidence = [WindowEvidence("Busiest disk active time (last minute)", minute, MetricSources.Disk)],
+            Evidence = [WindowEvidence(Strings.Diag_Disk_BusiestLastMinute, minute, MetricSources.Disk)],
         };
     }
 }
@@ -115,9 +121,9 @@ public sealed class DiskSpaceRule : DiagnosisRule
         var severity = used >= thresholds.DiskCriticalPercent ? DiagnosisSeverity.Critical
             : used >= thresholds.DiskWarningPercent || drive.FreeBytes < MinimumFreeBytes ? DiagnosisSeverity.Warning
             : DiagnosisSeverity.Normal;
-        var evidence = new AnalysisEvidence($"Volume {drive.Letter}", $"{MetricFormatter.Bytes(drive.FreeBytes)} free of {MetricFormatter.Bytes(drive.TotalBytes)} ({Percent(drive.UsedPercent)} used)")
+        var evidence = new AnalysisEvidence(Volume(drive.Letter), Text.Format(Strings.Diag_Space_FreeOfUsed, MetricFormatter.Bytes(drive.FreeBytes), MetricFormatter.Bytes(drive.TotalBytes), Percent(drive.UsedPercent)))
         {
-            Reference = $"Warning {Percent(thresholds.DiskWarningPercent)}, critical {Percent(thresholds.DiskCriticalPercent)}, or less than {MetricFormatter.Bytes(MinimumFreeBytes)} free",
+            Reference = Text.Format(Strings.Diag_Space_Reference, Percent(thresholds.DiskWarningPercent), Percent(thresholds.DiskCriticalPercent), MetricFormatter.Bytes(MinimumFreeBytes)),
             Source = MetricSources.Storage,
             To = context.Snapshot.Timestamp,
         };
@@ -129,21 +135,21 @@ public sealed class DiskSpaceRule : DiagnosisRule
             Severity = severity,
             Title = severity switch
             {
-                DiagnosisSeverity.Critical => "The system disk is almost full",
-                DiagnosisSeverity.Warning => "Free space is low on the system disk",
-                _ => "Enough free space on the system disk",
+                DiagnosisSeverity.Critical => Strings.Diag_Space_FullTitle,
+                DiagnosisSeverity.Warning => Strings.Diag_Space_LowTitle,
+                _ => Strings.Diag_Space_EnoughTitle,
             },
-            Description = $"{MetricFormatter.Bytes(drive.FreeBytes)} free on {drive.Letter} ({Percent(drive.UsedPercent)} used).",
-            Metric = "System disk space",
+            Description = Text.Format(Strings.Diag_Space_FreeOn, MetricFormatter.Bytes(drive.FreeBytes), drive.Letter, Percent(drive.UsedPercent)),
+            Metric = Strings.Diag_Metric_SystemDiskSpace,
             ObservedValue = Percent(drive.UsedPercent),
-            ReferenceValue = $"Warning {Percent(thresholds.DiskWarningPercent)}",
+            ReferenceValue = Warning(Percent(thresholds.DiskWarningPercent)),
             Timestamp = context.Snapshot.Timestamp,
             Explanation = severity == DiagnosisSeverity.Normal
-                ? "Windows has room for updates, temporary files and the page file."
-                : "Windows needs free space for updates, temporary files and the page file. A nearly full system disk can slow the PC down and make updates fail.",
+                ? Strings.Diag_Space_EnoughExplanation
+                : Strings.Diag_Space_LowExplanation,
             Recommendation = severity == DiagnosisSeverity.Normal
                 ? null
-                : "Remove files you no longer need, or use Windows Settings › System › Storage › Cleanup recommendations.",
+                : Strings.Diag_Space_Recommendation,
             Confidence = ConfidenceLevel.High,
             Evidence = [evidence],
             Action = severity == DiagnosisSeverity.Normal ? DiagnosisAction.None : DiagnosisAction.Storage,
@@ -159,15 +165,15 @@ public sealed class DiskSpaceRule : DiagnosisRule
                 RuleId = $"{Id}.{other.Letter}",
                 Category = DiagnosisCategory.Storage,
                 Severity = DiagnosisSeverity.Info,
-                Title = $"Volume {other.Letter} is {Percent(other.UsedPercent)} full",
-                Description = $"{MetricFormatter.Bytes(other.FreeBytes)} free on {other.Letter} ({Percent(other.UsedPercent)} used).",
-                Metric = "Volume space",
+                Title = Text.Format(Strings.Diag_Space_VolumeFullTitle, other.Letter, Percent(other.UsedPercent)),
+                Description = Text.Format(Strings.Diag_Space_FreeOn, MetricFormatter.Bytes(other.FreeBytes), other.Letter, Percent(other.UsedPercent)),
+                Metric = Strings.Diag_Metric_VolumeSpace,
                 ObservedValue = Percent(other.UsedPercent),
-                ReferenceValue = $"Warning {Percent(thresholds.DiskWarningPercent)}",
+                ReferenceValue = Warning(Percent(thresholds.DiskWarningPercent)),
                 Timestamp = context.Snapshot.Timestamp,
-                Explanation = "This is not the system disk, so it does not slow Windows down, but applications saving data there may run out of space.",
+                Explanation = Strings.Diag_Space_VolumeExplanation,
                 Confidence = ConfidenceLevel.High,
-                Evidence = [new AnalysisEvidence($"Volume {other.Letter}", $"{MetricFormatter.Bytes(other.FreeBytes)} free of {MetricFormatter.Bytes(other.TotalBytes)}") { Source = MetricSources.Storage, To = context.Snapshot.Timestamp }],
+                Evidence = [new AnalysisEvidence(Volume(other.Letter), Text.Format(Strings.Diag_Space_FreeOf, MetricFormatter.Bytes(other.FreeBytes), MetricFormatter.Bytes(other.TotalBytes))) { Source = MetricSources.Storage, To = context.Snapshot.Timestamp }],
                 Action = DiagnosisAction.Storage,
             };
         }
@@ -175,6 +181,13 @@ public sealed class DiskSpaceRule : DiagnosisRule
 }
 
 /// <summary>Is the current activity outside what this PC usually shows?</summary>
+internal static class VolumeText
+{
+    public static string Volume(string letter) => Text.Format(Strings.Diag_Volume, letter);
+
+    public static string Warning(string value) => Text.Format(Strings.Diag_Warning, value);
+}
+
 public sealed class UnusualActivityRule : DiagnosisRule
 {
     /// <summary>Period compared with the baseline.</summary>
@@ -183,11 +196,11 @@ public sealed class UnusualActivityRule : DiagnosisRule
     /// <summary>Minimum recent data for a comparison.</summary>
     public static readonly TimeSpan MinimumData = TimeSpan.FromMinutes(5);
 
-    private static readonly (HistoryMetric Metric, string Name, double Margin)[] Metrics =
+    private static readonly (HistoryMetric Metric, Func<string> Name, double Margin)[] Metrics =
     [
-        (HistoryMetric.Cpu, "CPU", 20),
-        (HistoryMetric.Memory, "Memory", 15),
-        (HistoryMetric.Disk, "Disk activity", 20),
+        (HistoryMetric.Cpu, () => Strings.Diag_Unusual_Cpu, 20),
+        (HistoryMetric.Memory, () => Strings.Diag_Unusual_Memory, 15),
+        (HistoryMetric.Disk, () => Strings.Diag_Unusual_Disk, 20),
     ];
 
     public override string Id => "activity.unusual";
@@ -203,8 +216,9 @@ public sealed class UnusualActivityRule : DiagnosisRule
         var window = context.Last(Window);
         var unusual = new List<(string Name, WindowSummary Summary, MetricBaseline Usual)>();
         var evidence = new List<AnalysisEvidence>();
-        foreach (var (metric, name, margin) in Metrics)
+        foreach (var (metric, nameOf, margin) in Metrics)
         {
+            var name = nameOf();
             if (context.Baseline.Get(metric) is not { } usual
                 || SnapshotStatistics.Summarize(window, s => s.Get(metric)) is not { } summary
                 || summary.Duration < MinimumData)
@@ -212,9 +226,9 @@ public sealed class UnusualActivityRule : DiagnosisRule
                 continue;
             }
 
-            evidence.Add(new AnalysisEvidence(name, $"{Percent(summary.Average)} over the last {Duration(summary.Duration)}")
+            evidence.Add(new AnalysisEvidence(name, Text.Format(Strings.Diag_Unusual_OverLast, Percent(summary.Average), Duration(summary.Duration)))
             {
-                Reference = Format($"Usual {usual.UsualRange}, 95% of minutes below {usual.P95:0}%"),
+                Reference = Text.Format(Strings.Diag_Unusual_Reference, usual.UsualRange, Percent(usual.P95)),
                 From = summary.From,
                 To = summary.To,
                 SampleCount = summary.Count,
@@ -239,34 +253,34 @@ public sealed class UnusualActivityRule : DiagnosisRule
                 RuleId = Id,
                 Category = DiagnosisCategory.System,
                 Severity = DiagnosisSeverity.Normal,
-                Title = "Activity within your usual range",
-                Description = $"The last {MetricFormatter.DurationCompact(Window)} look like this PC's usual activity.",
-                Metric = "Activity compared with usual",
-                ObservedValue = "Usual",
+                Title = Strings.Diag_Unusual_NormalTitle,
+                Description = Text.Format(Strings.Diag_Unusual_NormalDescription, MetricFormatter.DurationCompact(Window)),
+                Metric = Strings.Diag_Metric_ActivityVsUsual,
+                ObservedValue = Strings.Diag_Unusual_Usual,
                 ReferenceValue = context.Baseline.Description,
                 Timestamp = latest.Timestamp,
-                Explanation = "Compared with per-minute averages of the last 7 days.",
+                Explanation = Strings.Diag_Unusual_NormalExplanation,
                 Confidence = ConfidenceLevel.Medium,
                 Evidence = evidence,
             };
             yield break;
         }
 
-        var parts = unusual.Select(u => $"{u.Name} {Percent(u.Summary.Average)} (usually {u.Usual.UsualRange})");
+        var parts = unusual.Select(u => Text.Format(Strings.Diag_Unusual_Part, u.Name, Percent(u.Summary.Average), u.Usual.UsualRange));
         yield return new DiagnosisResult
         {
             RuleId = Id,
             Category = DiagnosisCategory.System,
             Severity = unusual.Count >= 2 ? DiagnosisSeverity.Warning : DiagnosisSeverity.Info,
-            Title = "Activity is unusual compared with your recent usage",
-            Description = $"Over the last {MetricFormatter.DurationCompact(Window)}: {string.Join(", ", parts)}.",
-            Metric = "Activity compared with usual",
-            ObservedValue = string.Join(", ", unusual.Select(u => $"{u.Name} {Percent(u.Summary.Average)}")),
-            ReferenceValue = string.Join(", ", unusual.Select(u => $"usually {u.Usual.UsualRange}")),
+            Title = Strings.Diag_Unusual_Title,
+            Description = Text.Format(Strings.Diag_Unusual_Description, MetricFormatter.DurationCompact(Window), string.Join(Strings.List_Separator, parts)),
+            Metric = Strings.Diag_Metric_ActivityVsUsual,
+            ObservedValue = string.Join(Strings.List_Separator, unusual.Select(u => $"{u.Name} {Percent(u.Summary.Average)}")),
+            ReferenceValue = string.Join(Strings.List_Separator, unusual.Select(u => Text.Format(Strings.Diag_Unusual_Usually, u.Usual.UsualRange))),
             Duration = unusual.Max(u => u.Summary.Duration),
             Timestamp = latest.Timestamp,
-            Explanation = "These values are above what this PC shows in 95% of the minutes of the last 7 days: something different from usual is running.",
-            Recommendation = "Use Replay to see when it started, and App Impact to see which applications are involved.",
+            Explanation = Strings.Diag_Unusual_Explanation,
+            Recommendation = Strings.Diag_Unusual_Recommendation,
             Confidence = ConfidenceLevel.Medium,
             Evidence = evidence,
             Action = DiagnosisAction.Replay,
@@ -299,16 +313,16 @@ public sealed class GpuLoadRule : DiagnosisRule
                 RuleId = Id,
                 Category = DiagnosisCategory.Gpu,
                 Severity = DiagnosisSeverity.Info,
-                Title = "The GPU is fully used",
-                Description = $"The busiest graphics engine has been above {Percent(BusyPercent)} for {Duration(busy.Duration)}.",
-                Metric = "GPU usage",
+                Title = Strings.Diag_Gpu_FullTitle,
+                Description = Text.Format(Strings.Diag_Gpu_FullDescription, Percent(BusyPercent), Duration(busy.Duration)),
+                Metric = Strings.Diag_Metric_GpuUsage,
                 ObservedValue = Percent(busy.Average),
-                ReferenceValue = $"Threshold {Percent(BusyPercent)}",
+                ReferenceValue = Threshold(Percent(BusyPercent)),
                 Duration = busy.Duration,
                 Timestamp = latest.Timestamp,
-                Explanation = "Expected while gaming, rendering or playing high-resolution video. Otherwise an application is using the GPU heavily, which can make the display feel sluggish.",
+                Explanation = Strings.Diag_Gpu_FullExplanation,
                 Confidence = ConfidenceLevel.Medium,
-                Evidence = [SpanEvidence("GPU usage", busy, BusyPercent, MetricSources.Gpu)],
+                Evidence = [SpanEvidence(Strings.Diag_Metric_GpuUsage, busy, BusyPercent, MetricSources.Gpu)],
                 Action = DiagnosisAction.Performance,
             };
             yield break;
@@ -319,15 +333,15 @@ public sealed class GpuLoadRule : DiagnosisRule
             RuleId = Id,
             Category = DiagnosisCategory.Gpu,
             Severity = DiagnosisSeverity.Normal,
-            Title = "GPU usage normal",
-            Description = $"The GPU averaged {Percent(minute.Average)} over the last minute.",
-            Metric = "GPU usage",
+            Title = Strings.Diag_Gpu_NormalTitle,
+            Description = Text.Format(Strings.Diag_Gpu_NormalDescription, Percent(minute.Average)),
+            Metric = Strings.Diag_Metric_GpuUsage,
             ObservedValue = Percent(minute.Average),
-            ReferenceValue = $"Threshold {Percent(BusyPercent)}",
+            ReferenceValue = Threshold(Percent(BusyPercent)),
             Timestamp = latest.Timestamp,
-            Explanation = "The graphics processor has spare capacity.",
+            Explanation = Strings.Diag_Gpu_NormalExplanation,
             Confidence = ConfidenceLevel.High,
-            Evidence = [WindowEvidence("GPU usage (last minute)", minute, MetricSources.Gpu)],
+            Evidence = [WindowEvidence(Strings.Diag_Gpu_LastMinute, minute, MetricSources.Gpu)],
         };
     }
 }
@@ -346,10 +360,10 @@ public sealed class ConnectivityRule : DiagnosisRule
 
         var (severity, title, description) = network.Connectivity switch
         {
-            NetworkConnectivity.InternetAccess => (DiagnosisSeverity.Normal, "Internet access available", "Windows reports a working Internet connection."),
-            NetworkConnectivity.ConstrainedInternetAccess => (DiagnosisSeverity.Info, "Limited Internet access", "Windows reports restricted Internet access (for example a sign-in page)."),
-            NetworkConnectivity.LocalAccess => (DiagnosisSeverity.Warning, "No Internet access", "Windows reports a local network connection without Internet access."),
-            _ => (DiagnosisSeverity.Warning, "No network connection", "Windows reports no network connection."),
+            NetworkConnectivity.InternetAccess => (DiagnosisSeverity.Normal, Strings.Diag_Net_InternetTitle, Strings.Diag_Net_InternetDescription),
+            NetworkConnectivity.ConstrainedInternetAccess => (DiagnosisSeverity.Info, Strings.Diag_Net_LimitedTitle, Strings.Diag_Net_LimitedDescription),
+            NetworkConnectivity.LocalAccess => (DiagnosisSeverity.Warning, Strings.Diag_Net_LocalTitle, Strings.Diag_Net_LocalDescription),
+            _ => (DiagnosisSeverity.Warning, Strings.Diag_Net_NoneTitle, Strings.Diag_Net_NoneDescription),
         };
 
         yield return new DiagnosisResult
@@ -359,21 +373,34 @@ public sealed class ConnectivityRule : DiagnosisRule
             Severity = severity,
             Title = title,
             Description = description,
-            Metric = "Connectivity",
-            ObservedValue = network.Connectivity.ToString(),
+            Metric = Strings.Diag_Metric_Connectivity,
+            ObservedValue = Connectivity(network.Connectivity),
             Timestamp = context.Snapshot.Timestamp,
             Explanation = severity == DiagnosisSeverity.Normal
-                ? "Web pages and online applications can reach the Internet."
-                : "Web pages and online applications will be slow or fail. This is a connection problem, not a performance problem of the PC.",
-            Recommendation = severity == DiagnosisSeverity.Normal ? null : "Check the Wi-Fi or cable connection, or the router.",
+                ? Strings.Diag_Net_OkExplanation
+                : Strings.Diag_Net_ProblemExplanation,
+            Recommendation = severity == DiagnosisSeverity.Normal ? null : Strings.Diag_Net_Recommendation,
             Confidence = ConfidenceLevel.High,
-            Evidence = [new AnalysisEvidence("Connectivity", network.Connectivity.ToString()) { Source = MetricSources.Connectivity, To = context.Snapshot.Timestamp }],
+            Evidence = [new AnalysisEvidence(Strings.Diag_Metric_Connectivity, Connectivity(network.Connectivity)) { Source = MetricSources.Connectivity, To = context.Snapshot.Timestamp }],
             Action = severity == DiagnosisSeverity.Normal ? DiagnosisAction.None : DiagnosisAction.Network,
         };
     }
 }
 
 /// <summary>Has Windows been running for a long time without a restart?</summary>
+/// <summary>Connectivity levels in words.</summary>
+internal static class ConnectivityText
+{
+    public static string Connectivity(NetworkConnectivity connectivity) => connectivity switch
+    {
+        NetworkConnectivity.InternetAccess => Strings.Connectivity_Internet,
+        NetworkConnectivity.ConstrainedInternetAccess => Strings.Connectivity_Constrained,
+        NetworkConnectivity.LocalAccess => Strings.Connectivity_Local,
+        NetworkConnectivity.None => Strings.Connectivity_None,
+        _ => Strings.Connectivity_Unknown,
+    };
+}
+
 public sealed class UptimeRule : DiagnosisRule
 {
     /// <summary>Uptime from which a restart is suggested.</summary>
@@ -388,9 +415,9 @@ public sealed class UptimeRule : DiagnosisRule
             yield break;
         }
 
-        var evidence = new AnalysisEvidence("Time since Windows started", MetricFormatter.DurationLong(system.Uptime))
+        var evidence = new AnalysisEvidence(Strings.Diag_Uptime_Since, MetricFormatter.DurationLong(system.Uptime))
         {
-            Reference = "Includes time asleep. With Fast Startup, \"Shut down\" does not reset it; \"Restart\" does.",
+            Reference = Strings.Diag_Uptime_Reference,
             Source = MetricSources.Uptime,
         };
         var isLong = system.Uptime >= LongUptime;
@@ -399,16 +426,18 @@ public sealed class UptimeRule : DiagnosisRule
             RuleId = Id,
             Category = DiagnosisCategory.System,
             Severity = isLong ? DiagnosisSeverity.Info : DiagnosisSeverity.Normal,
-            Title = isLong ? $"Windows has not restarted for {(int)system.Uptime.TotalDays} days" : "Recent restart",
-            Description = $"Windows started {MetricFormatter.DurationCompact(system.Uptime)} ago.",
-            Metric = "Uptime",
+            Title = isLong
+                ? Text.Format(Strings.Diag_Uptime_LongTitle, (int)system.Uptime.TotalDays)
+                : Strings.Diag_Uptime_RecentTitle,
+            Description = Text.Format(Strings.Diag_Uptime_Description, MetricFormatter.DurationCompact(system.Uptime)),
+            Metric = Strings.Diag_Metric_Uptime,
             ObservedValue = MetricFormatter.DurationCompact(system.Uptime),
-            ReferenceValue = Format($"Suggested from {LongUptime.TotalDays:0} days"),
+            ReferenceValue = Text.Format(Strings.Diag_Uptime_Reference2, LongUptime.TotalDays),
             Timestamp = context.Snapshot.Timestamp,
             Explanation = isLong
-                ? "Some problems build up over time (drivers, applications slowly using more memory). A restart clears them and applies pending updates. This is a general suggestion, not a measured cause."
-                : "No long-running session to worry about.",
-            Recommendation = isLong ? "Restart Windows (use Restart, not Shut down) when convenient." : null,
+                ? Strings.Diag_Uptime_LongExplanation
+                : Strings.Diag_Uptime_RecentExplanation,
+            Recommendation = isLong ? Strings.Diag_Uptime_Recommendation : null,
             Confidence = ConfidenceLevel.Low,
             Evidence = [evidence],
         };

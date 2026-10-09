@@ -6,6 +6,7 @@ using Sysora.Core.Formatting;
 using Sysora.Core.History;
 using Sysora.Core.Models;
 using Sysora.Core.Settings;
+using Sysora.Localization;
 
 namespace Sysora.Core.Health;
 
@@ -89,7 +90,11 @@ public sealed record PcHealthComponent
     public bool IsScored => Status != PcHealthStatus.NotAvailable;
 
     /// <summary>"−8 points", "No impact" or "Not counted".</summary>
-    public string ImpactText => !IsScored ? "Not counted" : Penalty == 0 ? "No impact" : $"−{Penalty} {(Penalty == 1 ? "point" : "points")}";
+    public string ImpactText => !IsScored
+        ? Strings.Health_NotCounted
+        : Penalty == 0
+            ? Strings.Health_NoImpact
+            : "−" + Text.Plural(Penalty, Strings.Count_Point_One, Strings.Count_Point_Other);
 }
 
 /// <summary>The overall state of the PC as a score out of 100, explained area by area.</summary>
@@ -127,19 +132,19 @@ public sealed record PcHealthReport
     {
         Timestamp = DateTimeOffset.MinValue,
         Grade = PcHealthGrade.Unknown,
-        Headline = "PC Health: collecting data…",
-        Summary = "Sysora needs a couple of minutes of measurements before it gives a score.",
+        Headline = Strings.Health_Collecting_Headline,
+        Summary = Strings.Health_Collecting_Summary,
         Components = [],
     };
 
     /// <summary>Text of a grade.</summary>
     public static string GradeText(PcHealthGrade grade) => grade switch
     {
-        PcHealthGrade.Good => "Good",
-        PcHealthGrade.Fair => "Fair",
-        PcHealthGrade.NeedsAttention => "Needs attention",
-        PcHealthGrade.Poor => "Poor",
-        _ => "Collecting data",
+        PcHealthGrade.Good => Strings.Health_Grade_Good,
+        PcHealthGrade.Fair => Strings.Health_Grade_Fair,
+        PcHealthGrade.NeedsAttention => Strings.Health_Grade_NeedsAttention,
+        PcHealthGrade.Poor => Strings.Health_Grade_Poor,
+        _ => Strings.Health_Grade_Collecting,
     };
 }
 
@@ -183,10 +188,7 @@ public static class PcHealthScorer
     /// <summary>Alerts counted as recent anomalies.</summary>
     public static readonly TimeSpan AnomalyWindow = TimeSpan.FromHours(24);
 
-    public const string MethodText =
-        "The score starts at 100. Each area takes off points according to what was measured, with fixed thresholds shown next to it. " +
-        "CPU, memory, disk activity and GPU use averages over the last 15 minutes, so a short spike barely counts. " +
-        "Areas that cannot be measured on this PC are not counted and are listed as not available: nothing is estimated.";
+    public static string MethodText => Strings.Health_Method;
 
     public static PcHealthReport Compute(PcHealthInput input)
     {
@@ -207,16 +209,16 @@ public static class PcHealthScorer
 
         var notAvailable = components
             .Where(c => !c.IsScored)
-            .Select(c => $"{c.Name}: {c.Summary}")
+            .Select(c => Text.Format(Strings.Common_NameValue, c.Name, c.Summary))
             .ToArray();
         var cpuData = SnapshotStatistics.Summarize(recent, s => s.CpuPercent);
         if (cpuData is not { } data || data.Duration < MinimumData)
         {
-            var have = cpuData is { } partial ? MetricFormatter.DurationCompact(partial.Duration) : "no measurement yet";
+            var have = cpuData is { } partial ? MetricFormatter.DurationCompact(partial.Duration) : Strings.Health_NoMeasurementYetLower;
             return PcHealthReport.Empty with
             {
                 Timestamp = input.Now,
-                Summary = $"Sysora needs {MetricFormatter.DurationCompact(MinimumData)} of measurements before it gives a score ({have} so far).",
+                Summary = Text.Format(Strings.Health_NeedsData, MetricFormatter.DurationCompact(MinimumData), have),
                 Components = components,
                 NotAvailable = notAvailable,
             };
@@ -226,15 +228,15 @@ public static class PcHealthScorer
         var grade = score >= 85 ? PcHealthGrade.Good : score >= 70 ? PcHealthGrade.Fair : score >= 50 ? PcHealthGrade.NeedsAttention : PcHealthGrade.Poor;
         var lowering = components.Where(c => c.IsScored && c.Penalty > 0).OrderByDescending(c => c.Penalty).ToArray();
         var summary = lowering.Length == 0
-            ? "Nothing lowers the score right now."
-            : $"Lowered by {Join(lowering.Select(c => $"{c.Name} (−{c.Penalty})"))}.";
+            ? Strings.Health_NothingLowers
+            : Text.Format(Strings.Health_LoweredBy, Text.List(lowering.Select(c => $"{c.Name} (−{c.Penalty})")));
 
         return new PcHealthReport
         {
             Timestamp = input.Now,
             Score = score,
             Grade = grade,
-            Headline = $"PC Health: {score}/100 · {PcHealthReport.GradeText(grade)}",
+            Headline = Text.Format(Strings.Health_Headline, score, PcHealthReport.GradeText(grade)),
             Summary = summary,
             Components = components,
             From = data.From,
@@ -253,26 +255,26 @@ public static class PcHealthScorer
         const int max = 15;
         if (SnapshotStatistics.Summarize(recent, s => s.CpuPercent) is not { } cpu)
         {
-            return Missing(PcHealthArea.Cpu, "CPU", max, input.Snapshot.IsUnavailable(MetricKind.Cpu) ? "CPU usage is not available on this PC" : "No measurement yet", DiagnosisAction.Performance);
+            return Missing(PcHealthArea.Cpu, Strings.Health_Area_Cpu, max, input.Snapshot.IsUnavailable(MetricKind.Cpu) ? Strings.Health_Cpu_NotAvailable : Strings.Health_NoMeasurementYet, DiagnosisAction.Performance);
         }
 
         var status = cpu.Average >= 85 ? PcHealthStatus.Problem : cpu.Average >= 65 ? PcHealthStatus.Attention : PcHealthStatus.Good;
-        var evidence = new List<AnalysisEvidence> { WindowEvidence("CPU usage", cpu, MetricSources.Cpu), Thresholds("Points taken off", "None below 50% on average, up to 15 at 100%") };
-        AddBaseline(evidence, input.Baseline, HistoryMetric.Cpu, "CPU usage");
+        var evidence = new List<AnalysisEvidence> { WindowEvidence(Strings.Diag_Metric_CpuUsage, cpu, MetricSources.Cpu), Thresholds(Strings.Health_PointsTakenOff, Strings.Health_Cpu_Thresholds) };
+        AddBaseline(evidence, input.Baseline, HistoryMetric.Cpu, Strings.Diag_Metric_CpuUsage);
         return new PcHealthComponent
         {
             Area = PcHealthArea.Cpu,
-            Name = "CPU",
+            Name = Strings.Health_Area_Cpu,
             Status = status,
             StatusText = StatusText(status),
             Penalty = Scale(cpu.Average, 50, 100, max),
             MaxPenalty = max,
-            Summary = Text($"Average {MetricFormatter.Percent(cpu.Average)} over {MetricFormatter.DurationCompact(cpu.Duration)} (peak {MetricFormatter.Percent(cpu.Peak)})"),
+            Summary = Text.Format(Strings.Health_Cpu_Summary, MetricFormatter.Percent(cpu.Average), MetricFormatter.DurationCompact(cpu.Duration), MetricFormatter.Percent(cpu.Peak)),
             Explanation = status switch
             {
-                PcHealthStatus.Problem => "The processor was nearly saturated on average: applications may respond slowly.",
-                PcHealthStatus.Attention => "The processor was busy most of the time; it still had some spare capacity.",
-                _ => "The processor had spare capacity on average. Short peaks are normal and barely count.",
+                PcHealthStatus.Problem => Strings.Health_Cpu_Problem,
+                PcHealthStatus.Attention => Strings.Health_Cpu_Attention,
+                _ => Strings.Health_Cpu_Good,
             },
             Evidence = evidence,
             Action = DiagnosisAction.Diagnosis,
@@ -284,42 +286,42 @@ public static class PcHealthScorer
         const int max = 20;
         if (SnapshotStatistics.Summarize(recent, s => s.MemoryPercent) is not { } memory)
         {
-            return Missing(PcHealthArea.Memory, "Memory", max, input.Snapshot.IsUnavailable(MetricKind.Memory) ? "Memory usage is not available on this PC" : "No measurement yet", DiagnosisAction.AppImpact);
+            return Missing(PcHealthArea.Memory, Strings.Health_Area_Memory, max, input.Snapshot.IsUnavailable(MetricKind.Memory) ? Strings.Health_Memory_NotAvailable : Strings.Health_NoMeasurementYet, DiagnosisAction.AppImpact);
         }
 
         var penalty = Scale(memory.Average, 60, 95, max);
         var status = memory.Average >= 90 ? PcHealthStatus.Problem : memory.Average >= 80 ? PcHealthStatus.Attention : PcHealthStatus.Good;
-        var evidence = new List<AnalysisEvidence> { WindowEvidence("Memory in use", memory, MetricSources.Memory), Thresholds("Points taken off", "None below 60% on average, up to 20 at 95%; 3 more when the commit charge stays above 90% of its limit") };
+        var evidence = new List<AnalysisEvidence> { WindowEvidence(Strings.State_Metric_MemoryUsed, memory, MetricSources.Memory), Thresholds(Strings.Health_PointsTakenOff, Strings.Health_Memory_Thresholds) };
         var commitNote = string.Empty;
         if (SnapshotStatistics.Summarize(recent, s => s.CommitPercent) is { } commit)
         {
-            evidence.Add(WindowEvidence("Commit charge (share of the limit)", commit, MetricSources.Commit));
+            evidence.Add(WindowEvidence(Strings.Health_CommitShare, commit, MetricSources.Commit));
             if (commit.Average >= 90)
             {
                 penalty = Math.Min(max, penalty + 3);
                 status = status == PcHealthStatus.Good ? PcHealthStatus.Attention : status;
-                commitNote = " The commit charge is close to its limit: Windows may refuse new memory allocations.";
+                commitNote = " " + Strings.Health_CommitNote;
             }
         }
 
-        AddBaseline(evidence, input.Baseline, HistoryMetric.Memory, "memory usage");
+        AddBaseline(evidence, input.Baseline, HistoryMetric.Memory, Strings.Diag_Metric_MemoryUsage);
         var bytes = SnapshotStatistics.Summarize(recent, s => s.MemoryUsedBytes);
         var total = recent.LastOrDefault(s => s.MemoryTotalBytes is not null)?.MemoryTotalBytes;
-        var amount = bytes is { } b && total is { } t ? $" ({MetricFormatter.Bytes(b.Average)} of {MetricFormatter.Bytes(t)})" : string.Empty;
+        var amount = bytes is { } b && total is { } t ? " " + Text.Format(Strings.Health_Memory_Amount, MetricFormatter.Bytes(b.Average), MetricFormatter.Bytes(t)) : string.Empty;
         return new PcHealthComponent
         {
             Area = PcHealthArea.Memory,
-            Name = "Memory",
+            Name = Strings.Health_Area_Memory,
             Status = status,
             StatusText = StatusText(status),
             Penalty = penalty,
             MaxPenalty = max,
-            Summary = Text($"Average {MetricFormatter.Percent(memory.Average)} in use{amount} over {MetricFormatter.DurationCompact(memory.Duration)}, peak {MetricFormatter.Percent(memory.Peak)}"),
+            Summary = Text.Format(Strings.Health_Memory_Summary, MetricFormatter.Percent(memory.Average), amount, MetricFormatter.DurationCompact(memory.Duration), MetricFormatter.Percent(memory.Peak)),
             Explanation = (status switch
             {
-                PcHealthStatus.Problem => "Memory is nearly full: Windows has to move data to the disk, which slows everything down.",
-                PcHealthStatus.Attention => "Memory is well used; opening more applications may start to slow the PC.",
-                _ => "There is free memory for the applications in use.",
+                PcHealthStatus.Problem => Strings.Health_Memory_Problem,
+                PcHealthStatus.Attention => Strings.Health_Memory_Attention,
+                _ => Strings.Health_Memory_Good,
             }) + commitNote,
             Evidence = evidence,
             Action = DiagnosisAction.AppImpact,
@@ -333,7 +335,7 @@ public static class PcHealthScorer
         var volumes = snapshot.Storage?.Where(v => v.Kind == DriveKind.Fixed || v.IsSystemDrive).ToArray();
         if (volumes is not { Length: > 0 })
         {
-            return Missing(PcHealthArea.Storage, "Storage", max, snapshot.IsUnavailable(MetricKind.Storage) ? "Free space is not available on this PC" : "No measurement yet", DiagnosisAction.Storage);
+            return Missing(PcHealthArea.Storage, Strings.Health_Area_Storage, max, snapshot.IsUnavailable(MetricKind.Storage) ? Strings.Health_Storage_NotAvailable : Strings.Health_NoMeasurementYet, DiagnosisAction.Storage);
         }
 
         var warning = input.Thresholds.DiskWarningPercent;
@@ -360,30 +362,31 @@ public static class PcHealthScorer
                 status = Worst(status, PcHealthStatus.Attention);
             }
 
-            evidence.Add(new AnalysisEvidence($"{volume.Letter}{(volume.IsSystemDrive ? " (Windows)" : string.Empty)}", Text($"{MetricFormatter.Bytes(volume.FreeBytes)} free of {MetricFormatter.Bytes(volume.TotalBytes)} ({MetricFormatter.Percent(used)} used)"))
+            evidence.Add(new AnalysisEvidence($"{volume.Letter}{(volume.IsSystemDrive ? " (Windows)" : string.Empty)}", Text.Format(Strings.Diag_Space_FreeOfUsed, MetricFormatter.Bytes(volume.FreeBytes), MetricFormatter.Bytes(volume.TotalBytes), MetricFormatter.Percent(used)))
             {
-                Reference = Text($"Warning at {warning:0}% used, critical at {critical:0}% (Settings › Health thresholds)"),
+                Reference = Text.Format(Strings.Health_Storage_Reference, MetricFormatter.Percent(warning), MetricFormatter.Percent(critical)),
                 Source = MetricSources.Storage,
             });
         }
 
-        evidence.Add(Thresholds("Points taken off", "16 when the Windows volume is above the critical level, 8 above the warning level; 4 for each other volume above the critical level"));
+        evidence.Add(Thresholds(Strings.Health_PointsTakenOff, Strings.Health_Storage_Thresholds));
         var system = volumes.FirstOrDefault(v => v.IsSystemDrive) ?? volumes[0];
         var others = volumes.Length - 1;
         return new PcHealthComponent
         {
             Area = PcHealthArea.Storage,
-            Name = "Storage",
+            Name = Strings.Health_Area_Storage,
             Status = status,
             StatusText = StatusText(status),
             Penalty = Math.Min(max, penalty),
             MaxPenalty = max,
-            Summary = $"{system.Letter} {MetricFormatter.Bytes(system.FreeBytes)} free of {MetricFormatter.Bytes(system.TotalBytes)}" + (others > 0 ? $" · {MetricFormatter.Plural(others, "other volume")}" : string.Empty),
+            Summary = Text.Format(Strings.Health_Storage_Summary, system.Letter, MetricFormatter.Bytes(system.FreeBytes), MetricFormatter.Bytes(system.TotalBytes))
+                + (others > 0 ? " · " + Text.Plural(others, Strings.Count_OtherVolume_One, Strings.Count_OtherVolume_Other) : string.Empty),
             Explanation = status switch
             {
-                PcHealthStatus.Problem => "The Windows volume is almost full: updates can fail and Windows has little room for its page file and temporary files.",
-                PcHealthStatus.Attention => "A volume is getting full. Large Files can show what takes the most space (nothing is ever deleted by Sysora).",
-                _ => "Every volume has room left.",
+                PcHealthStatus.Problem => Strings.Health_Storage_Problem,
+                PcHealthStatus.Attention => Strings.Health_Storage_Attention,
+                _ => Strings.Health_Storage_Good,
             },
             Evidence = evidence,
             Action = DiagnosisAction.LargeFiles,
@@ -395,26 +398,26 @@ public static class PcHealthScorer
         const int max = 10;
         if (SnapshotStatistics.Summarize(recent, s => s.DiskActivePercent) is not { } disk)
         {
-            return Missing(PcHealthArea.DiskActivity, "Disk activity", max, input.Snapshot.IsUnavailable(MetricKind.DiskActivity) ? "Disk activity is not available on this PC" : "No measurement yet", DiagnosisAction.Replay);
+            return Missing(PcHealthArea.DiskActivity, Strings.Health_Area_Disk, max, input.Snapshot.IsUnavailable(MetricKind.DiskActivity) ? Strings.Health_Disk_NotAvailable : Strings.Health_NoMeasurementYet, DiagnosisAction.Replay);
         }
 
         var status = disk.Average >= 75 ? PcHealthStatus.Problem : disk.Average >= 50 ? PcHealthStatus.Attention : PcHealthStatus.Good;
-        var evidence = new List<AnalysisEvidence> { WindowEvidence("Active time of the busiest disk", disk, MetricSources.Disk), Thresholds("Points taken off", "None below 40% on average, up to 10 at 90%") };
-        AddBaseline(evidence, input.Baseline, HistoryMetric.Disk, "disk activity");
+        var evidence = new List<AnalysisEvidence> { WindowEvidence(Strings.Health_Disk_Busiest, disk, MetricSources.Disk), Thresholds(Strings.Health_PointsTakenOff, Strings.Health_Disk_Thresholds) };
+        AddBaseline(evidence, input.Baseline, HistoryMetric.Disk, Strings.Health_Area_Disk);
         return new PcHealthComponent
         {
             Area = PcHealthArea.DiskActivity,
-            Name = "Disk activity",
+            Name = Strings.Health_Area_Disk,
             Status = status,
             StatusText = StatusText(status),
             Penalty = Scale(disk.Average, 40, 90, max),
             MaxPenalty = max,
-            Summary = Text($"Busiest disk active {MetricFormatter.Percent(disk.Average)} of the time on average (peak {MetricFormatter.Percent(disk.Peak)})"),
+            Summary = Text.Format(Strings.Health_Disk_Summary, MetricFormatter.Percent(disk.Average), MetricFormatter.Percent(disk.Peak)),
             Explanation = status switch
             {
-                PcHealthStatus.Problem => "A disk was busy most of the time: opening files and applications waits for it.",
-                PcHealthStatus.Attention => "A disk was often busy (updates, indexing, copies or an application reading a lot).",
-                _ => "Disks were mostly idle.",
+                PcHealthStatus.Problem => Strings.Health_Disk_Problem,
+                PcHealthStatus.Attention => Strings.Health_Disk_Attention,
+                _ => Strings.Health_Disk_Good,
             },
             Evidence = evidence,
             Action = DiagnosisAction.Replay,
@@ -427,7 +430,7 @@ public static class PcHealthScorer
         var snapshot = input.Snapshot;
         if (!input.GpuMonitoringEnabled)
         {
-            return Missing(PcHealthArea.Gpu, "GPU", max, "GPU monitoring is turned off in Settings", DiagnosisAction.Performance);
+            return Missing(PcHealthArea.Gpu, "GPU", max, Strings.Health_Gpu_Off, DiagnosisAction.Performance);
         }
 
         var usage = SnapshotStatistics.Summarize(recent, s => s.GpuPercent);
@@ -436,13 +439,13 @@ public static class PcHealthScorer
             .MaxBy(g => g.DedicatedMemoryUsedBytes!.Value * 1.0 / g.DedicatedMemoryTotalBytes!.Value);
         if (usage is null && fullest is null)
         {
-            return Missing(PcHealthArea.Gpu, "GPU", max, snapshot.IsUnavailable(MetricKind.Gpu) || snapshot.Gpus is { Count: 0 } ? "GPU usage is not available on this PC" : "No measurement yet", DiagnosisAction.Performance);
+            return Missing(PcHealthArea.Gpu, "GPU", max, snapshot.IsUnavailable(MetricKind.Gpu) || snapshot.Gpus is { Count: 0 } ? Strings.Health_Gpu_NotAvailable : Strings.Health_NoMeasurementYet, DiagnosisAction.Performance);
         }
 
         var evidence = new List<AnalysisEvidence>();
         if (usage is { } u)
         {
-            evidence.Add(WindowEvidence("GPU usage (busiest adapter)", u, MetricSources.Gpu));
+            evidence.Add(WindowEvidence(Strings.Game_Ev_GpuBusiest, u, MetricSources.Gpu));
         }
 
         var status = PcHealthStatus.Good;
@@ -451,11 +454,11 @@ public static class PcHealthScorer
         if (fullest is { } gpu)
         {
             var share = gpu.DedicatedMemoryUsedBytes!.Value * 100.0 / gpu.DedicatedMemoryTotalBytes!.Value;
-            memoryText = $"video memory {MetricFormatter.Bytes(gpu.DedicatedMemoryUsedBytes)} of {MetricFormatter.Bytes(gpu.DedicatedMemoryTotalBytes)}";
-            evidence.Add(new AnalysisEvidence($"Dedicated video memory ({gpu.Name})", Text($"{MetricFormatter.Bytes(gpu.DedicatedMemoryUsedBytes)} of {MetricFormatter.Bytes(gpu.DedicatedMemoryTotalBytes)} ({share:0}%)"))
+            memoryText = Text.Format(Strings.Health_Gpu_VideoMemory, MetricFormatter.Bytes(gpu.DedicatedMemoryUsedBytes), MetricFormatter.Bytes(gpu.DedicatedMemoryTotalBytes));
+            evidence.Add(new AnalysisEvidence(Text.Format(Strings.Health_Gpu_Dedicated, gpu.Name), Text.Format(Strings.Health_Gpu_DedicatedValue, MetricFormatter.Bytes(gpu.DedicatedMemoryUsedBytes), MetricFormatter.Bytes(gpu.DedicatedMemoryTotalBytes), MetricFormatter.Percent(share)))
             {
-                Reference = "5 points taken off at 95% or more",
-                Source = "Windows performance counter \\GPU Adapter Memory(*)\\Dedicated Usage",
+                Reference = Strings.Health_Gpu_Reference,
+                Source = Strings.Source_VideoMemory,
             });
             if (share >= 95)
             {
@@ -464,7 +467,7 @@ public static class PcHealthScorer
             }
         }
 
-        var parts = new[] { usage is { } average ? $"Usage {MetricFormatter.Percent(average.Average)} on average" : null, memoryText.Length > 0 ? memoryText : null }.Where(p => p is not null);
+        var parts = new[] { usage is { } average ? Text.Format(Strings.Health_Gpu_Usage, MetricFormatter.Percent(average.Average)) : null, memoryText.Length > 0 ? memoryText : null }.Where(p => p is not null);
         return new PcHealthComponent
         {
             Area = PcHealthArea.Gpu,
@@ -475,8 +478,8 @@ public static class PcHealthScorer
             MaxPenalty = max,
             Summary = string.Join(" · ", parts),
             Explanation = status == PcHealthStatus.Attention
-                ? "Video memory is nearly full: games and graphics applications may stutter while Windows moves data to system memory."
-                : "A busy GPU is normal while gaming or playing video, so usage alone does not lower the score; only nearly full video memory does.",
+                ? Strings.Health_Gpu_Attention
+                : Strings.Health_Gpu_Good,
             Evidence = evidence,
             Action = DiagnosisAction.Performance,
         };
@@ -489,7 +492,7 @@ public static class PcHealthScorer
         var readings = new List<(string Name, double Celsius)>();
         if (snapshot.Cpu?.TemperatureCelsius is { } cpu && double.IsFinite(cpu))
         {
-            readings.Add(("CPU", cpu));
+            readings.Add((Strings.Health_Area_Cpu, cpu));
         }
 
         foreach (var gpu in snapshot.Gpus ?? [])
@@ -502,8 +505,8 @@ public static class PcHealthScorer
 
         if (readings.Count == 0)
         {
-            return Missing(PcHealthArea.Temperatures, "Temperatures", max,
-                "Not available: Windows has no documented way to read them without a kernel driver, which Sysora does not install",
+            return Missing(PcHealthArea.Temperatures, Strings.Health_Area_Temperatures, max,
+                Strings.Health_Temperatures_NotAvailable,
                 DiagnosisAction.None);
         }
 
@@ -512,14 +515,16 @@ public static class PcHealthScorer
         return new PcHealthComponent
         {
             Area = PcHealthArea.Temperatures,
-            Name = "Temperatures",
+            Name = Strings.Health_Area_Temperatures,
             Status = status,
             StatusText = StatusText(status),
             Penalty = status == PcHealthStatus.Problem ? max : status == PcHealthStatus.Attention ? 5 : 0,
             MaxPenalty = max,
             Summary = string.Join(" · ", readings.Select(r => $"{r.Name} {MetricFormatter.Temperature(r.Celsius)}")),
-            Explanation = status == PcHealthStatus.Good ? "Temperatures reported by the drivers are in a normal range." : "A component is running hot; it may slow itself down to cool off.",
-            Evidence = readings.Select(r => new AnalysisEvidence($"{r.Name} temperature", MetricFormatter.Temperature(r.Celsius)) { Reference = "5 points at 85 °C, 10 at 95 °C", Source = "Graphics driver" }).ToArray(),
+            Explanation = status == PcHealthStatus.Good
+                ? Strings.Health_Temperatures_Good
+                : Strings.Health_Temperatures_Hot,
+            Evidence = readings.Select(r => new AnalysisEvidence(Text.Format(Strings.Health_Temperature_Of, r.Name), MetricFormatter.Temperature(r.Celsius)) { Reference = Strings.Health_Temperature_Reference, Source = Strings.Health_Temperature_Source }).ToArray(),
         };
     }
 
@@ -529,8 +534,8 @@ public static class PcHealthScorer
         var recurring = input.Recurring;
         if (!recurring.HasEnoughHistory)
         {
-            return Missing(PcHealthArea.Stability, "Stability", max,
-                recurring.Time == DateTimeOffset.MinValue ? "Not analyzed yet" : recurring.Summary,
+            return Missing(PcHealthArea.Stability, Strings.Health_Area_Stability, max,
+                recurring.Time == DateTimeOffset.MinValue ? Strings.Health_NotAnalyzedYet : recurring.Summary,
                 DiagnosisAction.PcHealth);
         }
 
@@ -539,23 +544,26 @@ public static class PcHealthScorer
         return new PcHealthComponent
         {
             Area = PcHealthArea.Stability,
-            Name = "Stability",
+            Name = Strings.Health_Area_Stability,
             Status = status,
-            StatusText = count == 0 ? "Good" : StatusText(status),
+            StatusText = count == 0 ? Strings.Health_Grade_Good : StatusText(status),
             Penalty = Math.Min(max, count * 4),
             MaxPenalty = max,
             Summary = count == 0
-                ? $"No recurring problem in the last {MetricFormatter.Plural((int)RecurringProblemDetector.Window.TotalDays, "day")}"
-                : $"{MetricFormatter.Plural(count, "recurring problem")}: {Join(recurring.Problems.Take(3).Select(p => $"{p.Title} ({p.Occurrences}×)"))}",
+                ? Text.Format(Strings.Health_Stability_None, (int)RecurringProblemDetector.Window.TotalDays)
+                : Text.Format(
+                    Strings.Common_NameValue,
+                    Text.Plural(count, Strings.Count_RecurringProblem_One, Strings.Count_RecurringProblem_Other),
+                    Text.List(recurring.Problems.Take(3).Select(p => $"{p.Title} ({p.Occurrences}×)"))),
             Explanation = count == 0
-                ? "No problem came back repeatedly over the last days."
-                : "These problems came back on several days. A problem that repeats usually has a cause worth looking for.",
+                ? Strings.Health_Stability_Good
+                : Strings.Health_Stability_Problems,
             Evidence =
             [
-                new AnalysisEvidence("Recurring problems", count.ToString(CultureInfo.CurrentCulture))
+                new AnalysisEvidence(Strings.Health_RecurringProblems, count.ToString(CultureInfo.CurrentCulture))
                 {
-                    Reference = $"4 points each (at most {max}). A problem is recurring after {RecurringProblemDetector.MinimumOccurrences} episodes on {RecurringProblemDetector.MinimumDays} different days.",
-                    Source = "Alerts and events of the local history",
+                    Reference = Text.Format(Strings.Health_Stability_Reference, max, RecurringProblemDetector.MinimumOccurrences, RecurringProblemDetector.MinimumDays),
+                    Source = Strings.Health_Stability_Source,
                     From = input.Now - RecurringProblemDetector.Window,
                     To = input.Now,
                 },
@@ -581,21 +589,22 @@ public static class PcHealthScorer
         return new PcHealthComponent
         {
             Area = PcHealthArea.RecentAnomalies,
-            Name = "Recent anomalies",
+            Name = Strings.Health_Area_Anomalies,
             Status = status,
-            StatusText = recent.Length == 0 ? "None" : recent.Length.ToString(CultureInfo.CurrentCulture),
+            StatusText = recent.Length == 0 ? Strings.Health_None : recent.Length.ToString(CultureInfo.CurrentCulture),
             Penalty = penalty,
             MaxPenalty = max,
             Summary = recent.Length == 0
-                ? "No alert in the last 24 hours"
-                : $"{MetricFormatter.Plural(recent.Length, "alert")} in the last 24 hours" + (active > 0 ? $" ({active} still active)" : string.Empty),
+                ? Strings.Health_Anomalies_None
+                : Text.Format(Strings.Health_Anomalies_Count, Text.Plural(recent.Length, Strings.Count_Alert_One, Strings.Count_Alert_Other))
+                    + (active > 0 ? " " + Text.Format(Strings.Health_Anomalies_Active, active) : string.Empty),
             Explanation = recent.Length == 0
-                ? "No lasting or unusual problem was detected recently."
-                : "Alerts are raised only for problems that lasted or were unusual for this PC. Alerts marked as usual for this PC take nothing off.",
+                ? Strings.Health_Anomalies_Good
+                : Strings.Health_Anomalies_Explanation,
             Evidence = recent
                 .OrderByDescending(a => a.RaisedAt)
                 .Take(5)
-                .Select(a => new AnalysisEvidence(a.Title, a.Value) { From = a.RaisedAt, To = a.ResolvedAt ?? a.UpdatedAt, Reference = $"{a.Severity}: {(a.Severity == AlertSeverity.Critical ? 4 : a.Severity == AlertSeverity.Warning ? 2 : 0)} points" })
+                .Select(a => new AnalysisEvidence(a.Title, a.Value) { From = a.RaisedAt, To = a.ResolvedAt ?? a.UpdatedAt, Reference = Text.Format(Strings.Common_NameValue, AlertSeverityText.Label(a.Severity), Text.Plural(a.Severity == AlertSeverity.Critical ? 4 : a.Severity == AlertSeverity.Warning ? 2 : 0, Strings.Count_Point_One, Strings.Count_Point_Other)) })
                 .ToArray(),
             Action = DiagnosisAction.Alerts,
         };
@@ -607,12 +616,12 @@ public static class PcHealthScorer
         var baseline = input.Baseline;
         if (!baseline.IsReady)
         {
-            return Missing(PcHealthArea.UsualBehavior, "Usual behavior", max, baseline.Description, DiagnosisAction.Diagnosis);
+            return Missing(PcHealthArea.UsualBehavior, Strings.Health_Area_Usual, max, baseline.Description, DiagnosisAction.Diagnosis);
         }
 
         var unusual = new List<string>();
         var evidence = new List<AnalysisEvidence>();
-        foreach (var (metric, name, margin) in new[] { (HistoryMetric.Cpu, "CPU", 20.0), (HistoryMetric.Memory, "Memory", 10.0), (HistoryMetric.Disk, "Disk activity", 20.0) })
+        foreach (var (metric, name, margin) in new[] { (HistoryMetric.Cpu, Strings.Health_Area_Cpu, 20.0), (HistoryMetric.Memory, Strings.Health_Area_Memory, 10.0), (HistoryMetric.Disk, Strings.Health_Area_Disk, 20.0) })
         {
             if (baseline.Get(metric) is not { } usual || SnapshotStatistics.Summarize(recent, s => s.Get(metric)) is not { } now)
             {
@@ -620,17 +629,17 @@ public static class PcHealthScorer
             }
 
             var limit = Math.Max(usual.P95, usual.Median + margin);
-            evidence.Add(new AnalysisEvidence(name, Text($"{MetricFormatter.Percent(now.Average)} now (15-minute average)"))
+            evidence.Add(new AnalysisEvidence(name, Text.Format(Strings.Health_Usual_Now, MetricFormatter.Percent(now.Average)))
             {
-                Reference = Text($"Usually {usual.UsualRange} (median {usual.Median:0}%); unusual above {limit:0}%"),
+                Reference = Text.Format(Strings.Health_Usual_Reference, usual.UsualRange, MetricFormatter.Percent(usual.Median), MetricFormatter.Percent(limit)),
                 From = baseline.From,
                 To = baseline.To,
                 SampleCount = usual.Minutes,
-                Source = "Per-minute averages of the local history (last 7 days)",
+                Source = Strings.Source_HistoryMinutes7Days,
             });
             if (now.Average > limit)
             {
-                unusual.Add(Text($"{name} ({MetricFormatter.Percent(now.Average)} vs usually {usual.UsualRange})"));
+                unusual.Add(Text.Format(Strings.Health_Usual_Item, name, MetricFormatter.Percent(now.Average), usual.UsualRange));
             }
         }
 
@@ -638,15 +647,17 @@ public static class PcHealthScorer
         return new PcHealthComponent
         {
             Area = PcHealthArea.UsualBehavior,
-            Name = "Usual behavior",
+            Name = Strings.Health_Area_Usual,
             Status = status,
-            StatusText = unusual.Count > 0 ? "Unusual" : "Usual",
+            StatusText = unusual.Count > 0 ? Strings.Health_Unusual : Strings.Health_Usual,
             Penalty = Math.Min(max, unusual.Count * 3),
             MaxPenalty = max,
-            Summary = unusual.Count > 0 ? $"Above your usual range: {Join(unusual)}" : "Within your usual range",
+            Summary = unusual.Count > 0
+                ? Text.Format(Strings.Health_Usual_Above, Text.List(unusual))
+                : Strings.Health_Usual_Within,
             Explanation = unusual.Count > 0
-                ? "This PC is busier than it usually is. It may be expected (a game, a build) or a sign that something runs in the background."
-                : "Activity matches what this PC usually does.",
+                ? Strings.Health_Usual_Busier
+                : Strings.Health_Usual_Matches,
             Evidence = evidence,
             Action = DiagnosisAction.Diagnosis,
         };
@@ -660,22 +671,22 @@ public static class PcHealthScorer
         StatusText = MetricFormatter.NotAvailable,
         MaxPenalty = max,
         Summary = reason,
-        Explanation = "Not counted in the score: Sysora never replaces a missing measurement with an estimate.",
+        Explanation = Strings.Health_Missing_Explanation,
         Action = action,
     };
 
     private static string StatusText(PcHealthStatus status) => status switch
     {
-        PcHealthStatus.Good => "Normal",
-        PcHealthStatus.Attention => "Attention",
-        PcHealthStatus.Problem => "Problem",
+        PcHealthStatus.Good => Strings.Health_Status_Normal,
+        PcHealthStatus.Attention => Strings.Health_Status_Attention,
+        PcHealthStatus.Problem => Strings.Health_Status_Problem,
         _ => MetricFormatter.NotAvailable,
     };
 
     private static PcHealthStatus Worst(PcHealthStatus a, PcHealthStatus b) => a >= b ? a : b;
 
     private static AnalysisEvidence WindowEvidence(string metric, WindowSummary summary, string source) =>
-        new(metric, Text($"Average {MetricFormatter.Percent(summary.Average)}, peak {MetricFormatter.Percent(summary.Peak)}"))
+        new(metric, Text.Format(Strings.Diag_AveragePeak, MetricFormatter.Percent(summary.Average), MetricFormatter.Percent(summary.Peak)))
         {
             From = summary.From,
             To = summary.To,
@@ -683,18 +694,18 @@ public static class PcHealthScorer
             Source = source,
         };
 
-    private static AnalysisEvidence Thresholds(string metric, string text) => new(metric, text) { Source = "Sysora's fixed scoring thresholds" };
+    private static AnalysisEvidence Thresholds(string metric, string text) => new(metric, text) { Source = Strings.Health_ThresholdsSource };
 
     private static void AddBaseline(List<AnalysisEvidence> evidence, UsageBaseline baseline, HistoryMetric metric, string name)
     {
         if (baseline.Get(metric) is { } usual)
         {
-            evidence.Add(new AnalysisEvidence($"Usual {name}", Text($"{usual.UsualRange} (median {usual.Median:0}%)"))
+            evidence.Add(new AnalysisEvidence(Text.Format(Strings.Diag_UsualOf, name), Text.Format(Strings.Health_UsualMedian, usual.UsualRange, MetricFormatter.Percent(usual.Median)))
             {
                 From = baseline.From,
                 To = baseline.To,
                 SampleCount = usual.Minutes,
-                Source = "Per-minute averages of the local history (last 7 days)",
+                Source = Strings.Source_HistoryMinutes7Days,
             });
         }
     }
@@ -710,5 +721,5 @@ public static class PcHealthScorer
         };
     }
 
-    private static string Text(FormattableString text) => text.ToString(CultureInfo.CurrentCulture);
+
 }

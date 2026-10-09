@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml;
 using Sysora.App.ViewModels;
 using Sysora.Core.Interfaces;
 using Sysora.Core.Reports;
+using Sysora.Localization;
 using Windows.Storage.Pickers;
 
 namespace Sysora.App.Services;
@@ -116,11 +117,11 @@ public sealed class ReportExportService(PickerService pickers, ISystemInfoProvid
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             logger.LogError(ex, "The report could not be prepared.");
-            shell.ShowMessage("The report could not be prepared. See the log for details.", null, isError: true);
+            shell.ShowMessage(UiStrings.Export_PrepareFailed, null, isError: true);
             return;
         }
 
-        var path = await pickers.PickSaveFileAsync(ReportWriter.FileName(report, ReportFormat.Html), [("Report (HTML page)", ".html"), ("Structured data (JSON)", ".json")]);
+        var path = await pickers.PickSaveFileAsync(ReportWriter.FileName(report, ReportFormat.Html), [(UiStrings.Export_Html, ".html"), (UiStrings.Export_Json, ".json")]);
         if (path is null)
         {
             return;
@@ -131,12 +132,12 @@ public sealed class ReportExportService(PickerService pickers, ISystemInfoProvid
             var format = path.EndsWith(".json", StringComparison.OrdinalIgnoreCase) ? ReportFormat.Json : ReportFormat.Html;
             var content = await Task.Run(() => ReportWriter.Write(report, format));
             await File.WriteAllTextAsync(path, content, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-            shell.ShowMessage($"Report saved: {Path.GetFileName(path)}", Path.GetDirectoryName(path));
+            shell.ShowMessage(Text.Format(UiStrings.Export_Saved, Path.GetFileName(path)), Path.GetDirectoryName(path));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             logger.LogWarning(ex, "The report could not be saved to {Path}.", path);
-            shell.ShowMessage($"The report could not be saved: {ex.Message}", null, isError: true);
+            shell.ShowMessage(Text.Format(UiStrings.Export_SaveFailed, ex.Message), null, isError: true);
         }
     }
 }

@@ -1,6 +1,7 @@
 using Sysora.App.ViewModels;
 using Sysora.Core.Analysis;
 using Sysora.Core.Diagnosis;
+using Sysora.Localization;
 
 namespace Sysora.App.Services;
 
@@ -69,21 +70,21 @@ public sealed class InsightNavigator(NavigationService navigation, AppImpactView
     /// <summary>Label of the button that opens <paramref name="action"/>, or empty when there is none.</summary>
     public static string Label(DiagnosisAction action) => action switch
     {
-        DiagnosisAction.AppImpact => "Open App Impact",
-        DiagnosisAction.Replay => "Open Replay",
-        DiagnosisAction.Processes => "Open Processes",
-        DiagnosisAction.Performance => "Open Performance",
-        DiagnosisAction.Storage => "Open Storage",
-        DiagnosisAction.Network => "Open Network",
-        DiagnosisAction.Diagnosis => "Open Diagnosis",
-        DiagnosisAction.Alerts => "Open Alerts",
-        DiagnosisAction.Changes => "Open Changes",
-        DiagnosisAction.Gaming => "Open Gaming",
-        DiagnosisAction.PcHealth => "Open PC Health",
-        DiagnosisAction.Timeline => "Open Timeline",
-        DiagnosisAction.Compare => "Compare before / after",
-        DiagnosisAction.Troubleshooting => "Open Troubleshooting",
-        DiagnosisAction.LargeFiles => "Find large files",
+        DiagnosisAction.AppImpact => Open(UiStrings.Common_AppImpact),
+        DiagnosisAction.Replay => Open(UiStrings.Common_Replay),
+        DiagnosisAction.Processes => Open(UiStrings.Common_Processes),
+        DiagnosisAction.Performance => Open(UiStrings.Common_Performance),
+        DiagnosisAction.Storage => Open(UiStrings.Common_Storage),
+        DiagnosisAction.Network => Open(UiStrings.Common_Network),
+        DiagnosisAction.Diagnosis => Open(UiStrings.Common_Diagnosis),
+        DiagnosisAction.Alerts => Open(UiStrings.Common_Alerts),
+        DiagnosisAction.Changes => Open(UiStrings.Common_Changes),
+        DiagnosisAction.Gaming => Open(UiStrings.Common_Gaming),
+        DiagnosisAction.PcHealth => Open(UiStrings.Common_PCHealth),
+        DiagnosisAction.Timeline => Open(UiStrings.Common_Timeline),
+        DiagnosisAction.Compare => UiStrings.Action_Compare,
+        DiagnosisAction.Troubleshooting => Open(UiStrings.Common_Troubleshooting),
+        DiagnosisAction.LargeFiles => UiStrings.Storage_FindLargeFiles,
         _ => string.Empty,
     };
 
@@ -116,4 +117,7 @@ public sealed class InsightNavigator(NavigationService navigation, AppImpactView
         DiagnosisAction.LargeFiles => AppPage.LargeFiles,
         _ => null,
     };
+
+    /// <summary>"Open App Impact" ("Ouvrir Impact des applis").</summary>
+    private static string Open(string page) => Text.Format(UiStrings.Action_Open, page);
 }

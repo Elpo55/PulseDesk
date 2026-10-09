@@ -7,6 +7,7 @@ using Sysora.Core.Interfaces;
 using Sysora.Core.Metrics;
 using Sysora.Core.Models;
 using Sysora.Core.Settings;
+using Sysora.Localization;
 
 namespace Sysora.App.ViewModels;
 
@@ -22,8 +23,7 @@ public enum PerformanceSection
 /// <summary>Detailed, real-time view of CPU, memory, GPU and disk activity with history charts.</summary>
 public sealed partial class PerformanceViewModel : PageViewModel
 {
-    private const string TemperatureHint =
-        "Windows does not expose CPU temperature through a documented API. Reading it requires a kernel driver, which Sysora deliberately does not install.";
+    private static string TemperatureHint => UiStrings.Performance_TemperatureHint;
 
     private readonly SettingsService _settings;
     private readonly ISystemInfoProvider _systemInfo;
@@ -104,7 +104,7 @@ public sealed partial class PerformanceViewModel : PageViewModel
     {
         SelectedWindow = ChartWindowOption.FromSeconds(_settings.Current.Monitoring.ChartWindowSeconds);
         _information ??= await _systemInfo.GetAsync(CancellationToken.None);
-        CpuName = _information.Processor.Name ?? "Processor";
+        CpuName = _information.Processor.Name ?? UiStrings.System_Processor;
         Cpu.ApplyStaticInformation(_information);
         Memory.ApplyStaticInformation(_information);
     }
@@ -133,7 +133,7 @@ public sealed partial class PerformanceViewModel : PageViewModel
     private void UpdateCores(SystemSnapshot snapshot)
     {
         var usage = snapshot.Cpu?.LogicalProcessorUsage ?? [];
-        CollectionSync.Resize(Cores, usage.Count, i => new CoreUsageViewModel($"CPU {i}"), (item, i) =>
+        CollectionSync.Resize(Cores, usage.Count, i => new CoreUsageViewModel(Text.Format(UiStrings.Performance_CoreN, i)), (item, i) =>
         {
             item.Percent = usage[i];
             item.Text = MetricFormatter.Percent(usage[i]);
@@ -395,7 +395,7 @@ public sealed partial class DiskActivityItemViewModel : ObservableObject
     public void Update(DiskActivityMetrics disk, SystemSnapshot snapshot, MetricHistory history, ChartWindowOption window)
     {
         var key = SeriesKeys.DiskActive(disk.Drive);
-        Drive = $"Disk {disk.Drive}";
+        Drive = Text.Format(UiStrings.Performance_DiskN, disk.Drive);
         Chart = ChartFactory.Percent(history, key, window, snapshot);
         Stats = ChartFactory.Summary(history, key, window, snapshot);
         Active = MetricFormatter.Percent(disk.ActiveTimePercent);

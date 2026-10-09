@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Sysora.App.Services;
 using Sysora.App.ViewModels;
+using Sysora.Localization;
 
 namespace Sysora.App;
 
@@ -25,12 +26,12 @@ public sealed partial class MainWindow : Window
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "Sysora.ico"));
         AppWindow.Title = "Sysora";
 
-        // NavigationView localizes its built-in Settings item; keep the UI language consistent.
+        // NavigationView localizes its built-in Settings item from the Windows language: use Sysora's language instead.
         NavView.Loaded += (_, _) =>
         {
             if (NavView.SettingsItem is NavigationViewItem settingsItem)
             {
-                settingsItem.Content = "Settings";
+                settingsItem.Content = UiStrings.Settings_Settings;
             }
 
             // The first navigation happens before the menu exists: reflect it now.

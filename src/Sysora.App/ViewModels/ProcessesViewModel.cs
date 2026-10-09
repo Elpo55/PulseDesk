@@ -8,6 +8,7 @@ using Sysora.Core.Interfaces;
 using Sysora.Core.Metrics;
 using Sysora.Core.Models;
 using Sysora.Core.Monitoring;
+using Sysora.Localization;
 
 namespace Sysora.App.ViewModels;
 
@@ -171,9 +172,9 @@ public sealed partial class ProcessesViewModel : PageViewModel
         }
 
         var confirmed = await _dialogs.ConfirmAsync(
-            $"End {target.Name}?",
-            $"Sysora will end {target.Name} (PID {target.ProcessId}). Any unsaved work in this application will be lost.",
-            "End process");
+            Text.Format(UiStrings.Processes_EndTitle, target.Name),
+            Text.Format(UiStrings.Processes_EndMessage, target.Name, target.ProcessId),
+            UiStrings.Processes_EndButton);
         if (!confirmed)
         {
             return;
@@ -182,12 +183,12 @@ public sealed partial class ProcessesViewModel : PageViewModel
         var result = await _processManager.TerminateAsync(target.Identity, CancellationToken.None);
         if (result.Succeeded)
         {
-            ShowStatus(isError: false, "Process ended", $"{target.Name} (PID {target.ProcessId}) was ended.");
+            ShowStatus(isError: false, UiStrings.Processes_Ended, Text.Format(UiStrings.Processes_EndedMessage, target.Name, target.ProcessId));
             Hub.Monitor.RequestRefresh(MetricKind.Processes);
         }
         else
         {
-            ShowStatus(isError: true, $"{target.Name} was not ended", result.Message ?? "Unknown error.");
+            ShowStatus(isError: true, Text.Format(UiStrings.Processes_NotEnded, target.Name), result.Message ?? UiStrings.Processes_UnknownError);
         }
     }
 
@@ -244,8 +245,8 @@ public sealed partial class ProcessesViewModel : PageViewModel
         var filter = SearchText.Trim();
         var desired = Order(_all.Values.Where(p => p.Matches(filter))).ToList();
         CountText = filter.Length == 0
-            ? MetricFormatter.Plural(_all.Count, "process", "processes")
-            : $"{desired.Count.ToString(CultureInfo.CurrentCulture)} of {MetricFormatter.Plural(_all.Count, "process", "processes")}";
+            ? Text.Plural(_all.Count, Strings.Count_Process_One, Strings.Count_Process_Other)
+            : Text.Format(UiStrings.Processes_Filtered, desired.Count, Text.Plural(_all.Count, Strings.Count_Process_One, Strings.Count_Process_Other));
 
         _updatingRows = true;
         try
@@ -418,7 +419,7 @@ public sealed partial class ProcessDetailsViewModel : ObservableObject
             ? start.ToLocalTime().ToString(start.Date == DateTimeOffset.Now.Date ? "T" : "g", culture)
             : MetricFormatter.NotAvailable;
         Session = process.SessionId.ToString(culture);
-        Path = Description = Company = Version = "Loading…";
+        Path = Description = Company = Version = UiStrings.Common_Loading;
         IsCritical = false;
         HasExited = false;
         UpdateLive(process);

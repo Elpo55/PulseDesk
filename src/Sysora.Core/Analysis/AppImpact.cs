@@ -1,4 +1,5 @@
 using Sysora.Core.Metrics;
+using Sysora.Localization;
 
 namespace Sysora.Core.Analysis;
 
@@ -17,7 +18,30 @@ public enum ImpactLevel
 /// <param name="Load">Average load over the period (unit depends on the resource).</param>
 /// <param name="Normalized">Load relative to the level considered "very high", 0–1 (its weight in the score).</param>
 /// <param name="Description">What the level is based on, e.g. "7.2% of total CPU on average over the period".</param>
-public sealed record ImpactComponent(string Resource, ImpactLevel Level, double Load, double Normalized, string Description);
+public sealed record ImpactComponent(string Resource, ImpactLevel Level, double Load, double Normalized, string Description)
+{
+    /// <summary>The resource in the interface language (<see cref="Resource"/> is a stable identifier).</summary>
+    public string Label => Resource switch
+    {
+        "CPU" => Strings.Impact_Resource_Cpu,
+        "Memory" => Strings.Impact_Resource_Memory,
+        "Disk I/O" => Strings.Impact_Resource_Io,
+        _ => Strings.Impact_Resource_Running,
+    };
+}
+
+/// <summary>Impact levels in words.</summary>
+public static class ImpactLevelText
+{
+    /// <summary>"Low", "Moderate", "High", "Very high".</summary>
+    public static string Label(ImpactLevel level) => level switch
+    {
+        ImpactLevel.VeryHigh => Strings.Impact_Level_VeryHigh,
+        ImpactLevel.High => Strings.Impact_Level_High,
+        ImpactLevel.Moderate => Strings.Impact_Level_Moderate,
+        _ => Strings.Impact_Level_Low,
+    };
+}
 
 /// <summary>
 /// Explainable impact score: a 0–100 relative indicator built from measured CPU, memory and I/O, weighted by
@@ -30,10 +54,7 @@ public sealed record ImpactComponent(string Resource, ImpactLevel Level, double 
 public sealed record AppImpactScore(int Value, ImpactLevel Level, IReadOnlyList<ImpactComponent> Components)
 {
     /// <summary>How the score is computed, in plain words.</summary>
-    public const string Formula =
-        "Score = 45% CPU + 40% memory + 15% disk I/O. Each part is the application's average load over the analyzed period " +
-        "(usage while running × share of time running), relative to a reference level: 15% of total CPU, 25% of physical " +
-        "memory, 5 MB/s of I/O. Levels: low below 10, moderate below 25, high below 50, very high from 50.";
+    public static string Formula => Strings.Impact_Formula;
 }
 
 /// <summary>Direction of an application's usage between the first and second half of the period.</summary>
@@ -99,3 +120,14 @@ public sealed record AppImpactReport(AppImpactPeriod Period, DateTimeOffset From
 /// <param name="From">Start of the period.</param>
 /// <param name="To">End of the period.</param>
 public sealed record AppUsageTimeline(IReadOnlyList<AppMinutePoint> Points, TimeSpan BucketLength, DateTimeOffset From, DateTimeOffset To);
+
+/// <summary>App Impact periods in words.</summary>
+public static class AppImpactPeriodText
+{
+    public static string Label(AppImpactPeriod period) => period switch
+    {
+        AppImpactPeriod.Session => Strings.ImpactPeriod_Session,
+        AppImpactPeriod.Last24Hours => Strings.ImpactPeriod_24Hours,
+        _ => Strings.ImpactPeriod_7Days,
+    };
+}

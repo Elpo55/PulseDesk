@@ -2,6 +2,7 @@
     x:Class="Sysora.App.Views.TroubleshootingPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:l="using:Sysora.Localization"
     xmlns:controls="using:Sysora.App.Controls"
     xmlns:troubleshooting="using:Sysora.Core.Troubleshooting"
     xmlns:vm="using:Sysora.App.ViewModels"
@@ -31,8 +32,8 @@
             Padding="{StaticResource PagePadding}"
             Spacing="12">
             <StackPanel>
-                <TextBlock Style="{StaticResource PageTitleTextStyle}" Text="Troubleshooting" />
-                <TextBlock Style="{StaticResource PageSubtitleTextStyle}" Text="Investigate a problem for a limited time: Sysora collects more context, then explains what it measured." TextWrapping="Wrap" />
+                <TextBlock Style="{StaticResource PageTitleTextStyle}" Text="{x:Bind l:UiStrings.Common_Troubleshooting}" />
+                <TextBlock Style="{StaticResource PageSubtitleTextStyle}" Text="{x:Bind l:UiStrings.Troubleshooting_InvestigateAProblemForALimitedTimeSysoraCollects}" TextWrapping="Wrap" />
             </StackPanel>
 
             <!-- Start / progress -->
@@ -55,24 +56,24 @@
                         <ComboBox
                             MinWidth="140"
                             VerticalAlignment="Bottom"
-                            Header="Duration"
+                            Header="{x:Bind l:UiStrings.Common_Duration}"
                             IsEnabled="{x:Bind ViewModel.IsIdle, Mode=OneWay}"
                             ItemsSource="{x:Bind ViewModel.Durations}"
                             SelectedItem="{x:Bind ViewModel.Duration, Mode=TwoWay}" />
-                        <Button AutomationProperties.Name="Start investigation" VerticalAlignment="Bottom" Command="{x:Bind ViewModel.StartCommand}" Style="{StaticResource AccentButtonStyle}">
+                        <Button AutomationProperties.Name="{x:Bind l:UiStrings.Troubleshooting_StartInvestigation}" VerticalAlignment="Bottom" Command="{x:Bind ViewModel.StartCommand}" Style="{StaticResource AccentButtonStyle}">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <FontIcon FontSize="14" Glyph="&#xE768;" />
-                                <TextBlock Text="Start investigation" />
+                                <TextBlock Text="{x:Bind l:UiStrings.Troubleshooting_StartInvestigation}" />
                             </StackPanel>
                         </Button>
-                        <Button AutomationProperties.Name="Stop now" VerticalAlignment="Bottom" Command="{x:Bind ViewModel.StopCommand}">
+                        <Button AutomationProperties.Name="{x:Bind l:UiStrings.Troubleshooting_StopNow}" VerticalAlignment="Bottom" Command="{x:Bind ViewModel.StopCommand}">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <FontIcon FontSize="14" Glyph="&#xE71A;" />
-                                <TextBlock Text="Stop now" />
+                                <TextBlock Text="{x:Bind l:UiStrings.Troubleshooting_StopNow}" />
                             </StackPanel>
                         </Button>
                     </StackPanel>
-                    <TextBlock Style="{StaticResource LabelTextStyle}" Text="During the investigation Sysora samples with the Detailed intensity (CPU and memory every 0.5 s, processes, GPU and disks every second), even while its window is hidden, and keeps every event. It still stays within its CPU budget, and returns to your usual intensity by itself at the end. Nothing leaves this PC." TextWrapping="Wrap" />
+                    <TextBlock Style="{StaticResource LabelTextStyle}" Text="{x:Bind l:UiStrings.Troubleshooting_DuringTheInvestigationSysoraSamplesWithThe}" TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
 
@@ -87,19 +88,19 @@
                     <ComboBox
                         MinWidth="320"
                         HorizontalAlignment="Left"
-                        AutomationProperties.Name="Investigation"
+                        AutomationProperties.Name="{x:Bind l:UiStrings.Troubleshooting_Investigation}"
                         ItemsSource="{x:Bind ViewModel.Investigations}"
                         SelectedItem="{x:Bind ViewModel.SelectedInvestigation, Mode=TwoWay}" />
-                    <Button AutomationProperties.Name="Open in Replay" Grid.Column="1" Command="{x:Bind ViewModel.OpenInReplayCommand}" ToolTipService.ToolTip="Show the investigated period in Replay">
+                    <Button AutomationProperties.Name="{x:Bind l:UiStrings.Troubleshooting_OpenInReplay}" Grid.Column="1" Command="{x:Bind ViewModel.OpenInReplayCommand}" ToolTipService.ToolTip="{x:Bind l:UiStrings.Troubleshooting_ShowTheInvestigatedPeriodInReplay}">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <FontIcon FontSize="14" Glyph="&#xE81C;" />
-                            <TextBlock Text="Open in Replay" />
+                            <TextBlock Text="{x:Bind l:UiStrings.Troubleshooting_OpenInReplay}" />
                         </StackPanel>
                     </Button>
-                    <Button AutomationProperties.Name="Export" Grid.Column="2" Command="{x:Bind ViewModel.ExportCommand}" ToolTipService.ToolTip="Save the report as an HTML page or JSON data">
+                    <Button AutomationProperties.Name="{x:Bind l:UiStrings.Common_Export}" Grid.Column="2" Command="{x:Bind ViewModel.ExportCommand}" ToolTipService.ToolTip="{x:Bind l:UiStrings.Troubleshooting_SaveTheReportAsAnHTMLPageOrJSONData}">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <FontIcon FontSize="14" Glyph="&#xEDE1;" />
-                            <TextBlock Text="Export" />
+                            <TextBlock Text="{x:Bind l:UiStrings.Common_Export}" />
                         </StackPanel>
                     </Button>
                 </Grid>
@@ -115,21 +116,21 @@
                 <controls:AdaptiveGridPanel MinItemWidth="420">
                     <Border Style="{StaticResource CardStyle}">
                         <StackPanel Spacing="6">
-                            <TextBlock Style="{StaticResource CardHeaderTextStyle}" Text="CPU usage" />
-                            <controls:TimeSeriesChart Height="120" AutomationProperties.Name="CPU usage during the investigation" Data="{x:Bind ViewModel.CpuChart, Mode=OneWay}" Stroke="{ThemeResource CpuAccentBrush}" />
+                            <TextBlock Style="{StaticResource CardHeaderTextStyle}" Text="{x:Bind l:UiStrings.Common_CPUUsage}" />
+                            <controls:TimeSeriesChart Height="120" AutomationProperties.Name="{x:Bind l:UiStrings.Troubleshooting_CPUUsageDuringTheInvestigation}" Data="{x:Bind ViewModel.CpuChart, Mode=OneWay}" Stroke="{ThemeResource CpuAccentBrush}" />
                         </StackPanel>
                     </Border>
                     <Border Style="{StaticResource CardStyle}">
                         <StackPanel Spacing="6">
-                            <TextBlock Style="{StaticResource CardHeaderTextStyle}" Text="Memory in use" />
-                            <controls:TimeSeriesChart Height="120" AutomationProperties.Name="Memory usage during the investigation" Data="{x:Bind ViewModel.MemoryChart, Mode=OneWay}" Stroke="{ThemeResource MemoryAccentBrush}" />
+                            <TextBlock Style="{StaticResource CardHeaderTextStyle}" Text="{x:Bind l:UiStrings.Common_MemoryInUse}" />
+                            <controls:TimeSeriesChart Height="120" AutomationProperties.Name="{x:Bind l:UiStrings.Troubleshooting_MemoryUsageDuringTheInvestigation}" Data="{x:Bind ViewModel.MemoryChart, Mode=OneWay}" Stroke="{ThemeResource MemoryAccentBrush}" />
                         </StackPanel>
                     </Border>
                 </controls:AdaptiveGridPanel>
 
                 <Border Style="{StaticResource CardStyle}">
                     <StackPanel Spacing="6">
-                        <TextBlock Style="{StaticResource CardHeaderTextStyle}" Text="Measurements" />
+                        <TextBlock Style="{StaticResource CardHeaderTextStyle}" Text="{x:Bind l:UiStrings.Common_Measurements}" />
                         <ItemsControl ItemsSource="{x:Bind ViewModel.Metrics}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="troubleshooting:TroubleshootingMetric">
@@ -140,30 +141,30 @@
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Text="{x:Bind Name}" />
-                                        <TextBlock Grid.Column="1" Text="{x:Bind Average}" ToolTipService.ToolTip="Average" />
-                                        <TextBlock Grid.Column="2" Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind Peak}" ToolTipService.ToolTip="Peak" />
+                                        <TextBlock Grid.Column="1" Text="{x:Bind Average}" ToolTipService.ToolTip="{x:Bind l:UiStrings.Common_Average}" />
+                                        <TextBlock Grid.Column="2" Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind Peak}" ToolTipService.ToolTip="{x:Bind l:UiStrings.Troubleshooting_Peak}" />
                                     </Grid>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        <TextBlock Style="{StaticResource LabelTextStyle}" Text="Columns: average, then peak." />
+                        <TextBlock Style="{StaticResource LabelTextStyle}" Text="{x:Bind l:UiStrings.Troubleshooting_ColumnsAverageThenPeak}" />
                     </StackPanel>
                 </Border>
 
                 <Border Style="{StaticResource CardStyle}">
                     <StackPanel Spacing="6">
-                        <TextBlock Style="{StaticResource CardHeaderTextStyle}" Text="Anomalies" />
+                        <TextBlock Style="{StaticResource CardHeaderTextStyle}" Text="{x:Bind l:UiStrings.Troubleshooting_Anomalies}" />
                         <ItemsControl ItemTemplate="{StaticResource FindingTemplate}" ItemsSource="{x:Bind ViewModel.Anomalies}" />
-                        <TextBlock Style="{StaticResource CardHeaderTextStyle}" Margin="0,8,0,0" Text="Correlations and likely explanations" />
+                        <TextBlock Style="{StaticResource CardHeaderTextStyle}" Margin="0,8,0,0" Text="{x:Bind l:UiStrings.Troubleshooting_CorrelationsAndLikelyExplanations}" />
                         <ItemsControl ItemTemplate="{StaticResource FindingTemplate}" ItemsSource="{x:Bind ViewModel.Correlations}" />
-                        <TextBlock Style="{StaticResource LabelTextStyle}" Text="Observed = measured. Inferred = a coincidence in the measurements: evidence suggests it, it is not proven." TextWrapping="Wrap" />
+                        <TextBlock Style="{StaticResource LabelTextStyle}" Text="{x:Bind l:UiStrings.Troubleshooting_ObservedMeasuredInferredACoincidenceInThe}" TextWrapping="Wrap" />
                     </StackPanel>
                 </Border>
 
                 <controls:AdaptiveGridPanel MinItemWidth="420">
                     <Border Style="{StaticResource CardStyle}">
                         <StackPanel Spacing="6">
-                            <TextBlock Style="{StaticResource CardHeaderTextStyle}" Text="Applications involved" />
+                            <TextBlock Style="{StaticResource CardHeaderTextStyle}" Text="{x:Bind l:UiStrings.Troubleshooting_ApplicationsInvolved}" />
                             <ItemsControl ItemsSource="{x:Bind ViewModel.Applications}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:InvestigationAppViewModel">
@@ -180,7 +181,7 @@
                     </Border>
                     <Border Style="{StaticResource CardStyle}">
                         <StackPanel Spacing="6">
-                            <TextBlock Style="{StaticResource CardHeaderTextStyle}" Text="Events" />
+                            <TextBlock Style="{StaticResource CardHeaderTextStyle}" Text="{x:Bind l:UiStrings.Troubleshooting_Events}" />
                             <ScrollViewer MaxHeight="320">
                                 <ItemsControl ItemTemplate="{StaticResource LineTemplate}" ItemsSource="{x:Bind ViewModel.Events}" />
                             </ScrollViewer>
@@ -190,9 +191,9 @@
 
                 <Border Style="{StaticResource CardStyle}">
                     <StackPanel Spacing="6">
-                        <TextBlock Style="{StaticResource CardHeaderTextStyle}" Text="What could not be known" />
+                        <TextBlock Style="{StaticResource CardHeaderTextStyle}" Text="{x:Bind l:UiStrings.Troubleshooting_WhatCouldNotBeKnown}" />
                         <ItemsControl ItemTemplate="{StaticResource FindingTemplate}" ItemsSource="{x:Bind ViewModel.Unknowns}" />
-                        <TextBlock Style="{StaticResource CardHeaderTextStyle}" Margin="0,8,0,0" Text="Recommendations" />
+                        <TextBlock Style="{StaticResource CardHeaderTextStyle}" Margin="0,8,0,0" Text="{x:Bind l:UiStrings.Common_Recommendations}" />
                         <ItemsControl ItemTemplate="{StaticResource LineTemplate}" ItemsSource="{x:Bind ViewModel.Recommendations}" />
                     </StackPanel>
                 </Border>

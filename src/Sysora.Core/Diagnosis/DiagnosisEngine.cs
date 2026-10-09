@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Sysora.Core.Diagnosis.Rules;
 using Sysora.Core.Interfaces;
+using Sysora.Localization;
 
 namespace Sysora.Core.Diagnosis;
 
@@ -86,29 +87,28 @@ public static class DiagnosisReportBuilder
 
         var headline = problems switch
         {
-            0 when infos > 0 => infos == 1 ? "No problem detected · 1 point to watch" : $"No problem detected · {infos} points to watch",
-            0 => "No problem detected",
-            1 => "1 problem detected",
-            _ => $"{problems} problems detected",
+            0 when infos > 0 => Text.Plural(infos, Strings.Diag_Headline_NoProblemPoints_One, Strings.Diag_Headline_NoProblemPoints_Other),
+            0 => Strings.Diag_Headline_NoProblem,
+            _ => Text.Plural(problems, Strings.Diag_Headline_Problems_One, Strings.Diag_Headline_Problems_Other),
         };
 
         string summary;
         if (problems > 0)
         {
             var first = ordered[0];
-            summary = $"Most likely cause: {first.Description}";
+            summary = Text.Format(Strings.Diag_Summary_MostLikely, first.Description);
             if (problems > 1)
             {
-                summary += $" Also: {ordered[1].Title.ToLowerInvariant()}.";
+                summary += " " + Text.Format(Strings.Diag_Summary_Also, ordered[1].Title);
             }
         }
         else if (infos > 0)
         {
-            summary = $"Nothing is saturated right now. Worth knowing: {ordered.First(r => r.Severity == DiagnosisSeverity.Info).Description}";
+            summary = Text.Format(Strings.Diag_Summary_WorthKnowing, ordered.First(r => r.Severity == DiagnosisSeverity.Info).Description);
         }
         else
         {
-            summary = "Nothing is saturated right now: processor, memory and disks have spare capacity. If the PC still felt slow a moment ago, Replay shows what happened in the last minutes.";
+            summary = Strings.Diag_Summary_Nothing;
         }
 
         return new DiagnosisReport
@@ -135,28 +135,28 @@ public static class DiagnosisReportBuilder
         if (latest.GpuPercent is null)
         {
             missing.Add(snapshot.IsUnavailable(Models.MetricKind.Gpu) || snapshot.Gpus is not null
-                ? "GPU usage: not available on this PC"
-                : "GPU usage: monitoring turned off in Settings");
+                ? Strings.Diag_Missing_Gpu
+                : Strings.Diag_Missing_GpuOff);
         }
 
         if (latest.DiskActivePercent is null)
         {
-            missing.Add("Disk activity: not available on this PC");
+            missing.Add(Strings.Diag_Missing_Disk);
         }
 
         if (snapshot.Network is null)
         {
             missing.Add(snapshot.IsUnavailable(Models.MetricKind.Network)
-                ? "Network: not available on this PC"
-                : "Network: monitoring turned off in Settings");
+                ? Strings.Diag_Missing_Network
+                : Strings.Diag_Missing_NetworkOff);
         }
 
         if (snapshot.Cpu is { TemperatureCelsius: null })
         {
-            missing.Add("CPU temperature: not available (Windows has no documented way to read it without a kernel driver)");
+            missing.Add(Strings.Diag_Missing_Temperature);
         }
 
-        missing.Add("Per-application network usage: not available (requires administrator-level event tracing)");
+        missing.Add(Strings.Diag_Missing_AppNetwork);
         return missing;
     }
 }

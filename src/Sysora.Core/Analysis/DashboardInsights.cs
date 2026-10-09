@@ -5,6 +5,7 @@ using Sysora.Core.Formatting;
 using Sysora.Core.Gaming;
 using Sysora.Core.Health;
 using Sysora.Core.History;
+using Sysora.Localization;
 
 namespace Sysora.Core.Analysis;
 
@@ -78,15 +79,17 @@ public static class DashboardInsights
         if (games is { Count: > 0 })
         {
             var game = games[0];
-            var since = game.Duration < TimeSpan.FromMinutes(1) ? "just started" : $"for {MetricFormatter.DurationPrecise(game.Duration)}";
-            insights.Add(new Insight($"Game running: {game.Name} ({since}). A recap appears when it closes.", DiagnosisSeverity.Normal, DiagnosisAction.Gaming)
+            var since = game.Duration < TimeSpan.FromMinutes(1)
+                ? Strings.Insight_Game_JustStarted
+                : Text.Format(Strings.Insight_Game_For, MetricFormatter.DurationPrecise(game.Duration));
+            insights.Add(new Insight(Text.Format(Strings.Insight_Game_Running, game.Name, since), DiagnosisSeverity.Normal, DiagnosisAction.Gaming)
             {
                 IsNote = true,
             });
         }
         else if (lastGame is { } recap && report.Timestamp - recap.Session.End <= RecentGameRecap)
         {
-            insights.Add(new Insight($"Last game: {recap.Session.Name} ({MetricFormatter.DurationPrecise(recap.Session.Duration)}) · {recap.Headline}", recap.Severity >= DiagnosisSeverity.Warning ? DiagnosisSeverity.Info : DiagnosisSeverity.Normal, DiagnosisAction.Gaming)
+            insights.Add(new Insight(Text.Format(Strings.Insight_LastGame, recap.Session.Name, MetricFormatter.DurationPrecise(recap.Session.Duration), recap.Headline), recap.Severity >= DiagnosisSeverity.Warning ? DiagnosisSeverity.Info : DiagnosisSeverity.Normal, DiagnosisAction.Gaming)
             {
                 IsNote = recap.Severity < DiagnosisSeverity.Warning,
             });
@@ -104,8 +107,10 @@ public static class DashboardInsights
         if (active.Count > 0)
         {
             var newest = active.OrderByDescending(a => a.Severity).ThenByDescending(a => a.UpdatedAt).First();
-            var more = active.Count > 1 ? $" (+{active.Count - 1} more)" : string.Empty;
-            insights.Add(new Insight($"Active alert: {newest.Title}{more}", newest.Severity switch
+            var text = active.Count > 1
+                ? Text.Format(Strings.Insight_ActiveAlertMore, newest.Title, active.Count - 1)
+                : Text.Format(Strings.Insight_ActiveAlert, newest.Title);
+            insights.Add(new Insight(text, newest.Severity switch
             {
                 AlertSeverity.Critical => DiagnosisSeverity.Critical,
                 AlertSeverity.Warning => DiagnosisSeverity.Warning,
@@ -123,7 +128,7 @@ public static class DashboardInsights
 
         if (recurring is { Problems: [var problem, ..] })
         {
-            insights.Add(new Insight($"Recurring: {problem.Description}" + (problem.TimePattern is { } pattern ? $" {pattern}." : string.Empty), DiagnosisSeverity.Info, DiagnosisAction.PcHealth)
+            insights.Add(new Insight(Text.Format(Strings.Insight_Recurring, problem.Description) + (problem.TimePattern is { } pattern ? $" {pattern}." : string.Empty), DiagnosisSeverity.Info, DiagnosisAction.PcHealth)
             {
                 AppKey = problem.AssociatedAppKey,
             });
@@ -132,7 +137,7 @@ public static class DashboardInsights
         if (health is { Score: { } score, Grade: PcHealthGrade.NeedsAttention or PcHealthGrade.Poor }
             && health.Components.Where(c => c.Penalty > 0).MaxBy(c => c.Penalty) is { } lowest)
         {
-            insights.Add(new Insight($"PC Health is {score}/100, lowered mostly by {lowest.Name.ToLowerInvariant()}: {lowest.Summary}", DiagnosisSeverity.Info, DiagnosisAction.PcHealth));
+            insights.Add(new Insight(Text.Format(Strings.Insight_Health, score, LowerFirst(lowest.Name), lowest.Summary), DiagnosisSeverity.Info, DiagnosisAction.PcHealth));
         }
 
         if (Compared(recent, baseline) is { } comparison)
@@ -157,7 +162,7 @@ public static class DashboardInsights
 
         if (!insights.Any(i => i.Severity >= DiagnosisSeverity.Info))
         {
-            insights.Insert(0, new Insight(report.Results.Count == 0 ? "Analyzing the first measurements…" : "No significant issue detected", DiagnosisSeverity.Normal, DiagnosisAction.None));
+            insights.Insert(0, new Insight(report.Results.Count == 0 ? Strings.Insight_AnalyzingFirst : Strings.Insight_NoIssue, DiagnosisSeverity.Normal, DiagnosisAction.None));
             if (WithinUsual(recent, baseline) is { } usual)
             {
                 insights.Insert(1, usual);
@@ -182,7 +187,7 @@ public static class DashboardInsights
         var window = recent.Where(s => s.Timestamp >= recent[^1].Timestamp - TimeSpan.FromMinutes(10)).ToArray();
         Insight? best = null;
         var bestGap = 0.0;
-        foreach (var (metric, name) in new[] { (HistoryMetric.Memory, "Memory usage"), (HistoryMetric.Cpu, "CPU usage") })
+        foreach (var metric in new[] { HistoryMetric.Memory, HistoryMetric.Cpu })
         {
             if (baseline.Get(metric) is not { } usual || SnapshotStatistics.Summarize(window, s => s.Get(metric)) is not { } summary)
             {
@@ -193,9 +198,15 @@ public static class DashboardInsights
             if (Math.Abs(gap) >= 10 && Math.Abs(gap) > bestGap)
             {
                 bestGap = Math.Abs(gap);
-                var direction = gap > 0 ? "above" : "below";
+                var template = (metric, gap > 0) switch
+                {
+                    (HistoryMetric.Memory, true) => Strings.Insight_MemoryAbove,
+                    (HistoryMetric.Memory, false) => Strings.Insight_MemoryBelow,
+                    (_, true) => Strings.Insight_CpuAbove,
+                    _ => Strings.Insight_CpuBelow,
+                };
                 best = new Insight(
-                    string.Create(CultureInfo.CurrentCulture, $"{name} is {Math.Abs(gap):0} points {direction} your usual level ({MetricFormatter.Percent(summary.Average)} vs usually {usual.UsualRange})"),
+                    Text.Format(template, Math.Abs(gap), MetricFormatter.Percent(summary.Average), usual.UsualRange),
                     gap > 0 ? DiagnosisSeverity.Info : DiagnosisSeverity.Normal,
                     DiagnosisAction.Replay);
             }
@@ -222,7 +233,7 @@ public static class DashboardInsights
         }
 
         var at = resolved.ResolvedAt!.Value.ToLocalTime().ToString("t", CultureInfo.CurrentCulture);
-        return new Insight($"Your PC recovered after the last problem ({resolved.Title}): it ended at {at} and has not come back.", DiagnosisSeverity.Normal, DiagnosisAction.Replay)
+        return new Insight(Text.Format(Strings.Insight_Recovered, resolved.Title, at), DiagnosisSeverity.Normal, DiagnosisAction.Replay)
         {
             AppKey = resolved.AppKey,
         };
@@ -246,15 +257,15 @@ public static class DashboardInsights
         var newest = group.MaxBy(a => a.RaisedAt)!;
         var kind = newest.RuleId switch
         {
-            "cpu.sustained" => "high CPU",
-            "memory.sustained" => "high memory",
-            "memory.growth" => "rising memory",
-            "disk.busy" => "busy disk",
-            "app.cpu" => $"{RecurringProblemDetector.AppName(newest)} CPU",
-            "storage.low" => "low disk space",
-            _ => "unusual activity",
+            "cpu.sustained" => Strings.Insight_Kind_HighCpu,
+            "memory.sustained" => Strings.Insight_Kind_HighMemory,
+            "memory.growth" => Strings.Insight_Kind_RisingMemory,
+            "disk.busy" => Strings.Insight_Kind_BusyDisk,
+            "app.cpu" => Diagnosis.Rules.CpuHungryAppRule.AppCpu(RecurringProblemDetector.AppName(newest) ?? string.Empty),
+            "storage.low" => Strings.Insight_Kind_LowSpace,
+            _ => Strings.Insight_Kind_Unusual,
         };
-        return new Insight($"This is the {Ordinal(group.Count())} {kind} alert in the last 24 hours (latest: {newest.Title}).", DiagnosisSeverity.Info, DiagnosisAction.Alerts)
+        return new Insight(Text.Format(Strings.Insight_Repeated, Ordinal(group.Count()), kind, newest.Title), DiagnosisSeverity.Info, DiagnosisAction.Alerts)
         {
             AppKey = newest.AppKey,
         };
@@ -277,17 +288,23 @@ public static class DashboardInsights
             }
         }
 
-        return new Insight("CPU and memory usage are within your usual range for this PC.", DiagnosisSeverity.Normal, DiagnosisAction.None) { IsNote = true };
+        return new Insight(Strings.Insight_WithinUsual, DiagnosisSeverity.Normal, DiagnosisAction.None) { IsNote = true };
     }
 
     private static string Ordinal(int value) => value switch
     {
-        2 => "second",
-        3 => "third",
-        4 => "fourth",
-        5 => "fifth",
-        _ => string.Create(CultureInfo.InvariantCulture, $"{value}th"),
+        2 => Strings.Ordinal_2,
+        3 => Strings.Ordinal_3,
+        4 => Strings.Ordinal_4,
+        5 => Strings.Ordinal_5,
+        _ => Text.Format(Strings.Ordinal_N, value),
     };
+
+    /// <summary>"Memory" → "memory" inside a sentence; acronyms ("GPU") are kept as they are.</summary>
+    private static string LowerFirst(string text) =>
+        text.Length > 1 && char.IsUpper(text[0]) && char.IsLower(text[1])
+            ? char.ToLower(text[0], CultureInfo.CurrentCulture) + text[1..]
+            : text;
 
     /// <summary>The application using the most resources now, when it is significant.</summary>
     private static Insight? LargestConsumer(IReadOnlyList<MetricSnapshot> recent)
@@ -307,7 +324,7 @@ public static class DashboardInsights
         }
 
         return new Insight(
-            $"{top.Name} is currently the largest resource consumer ({MetricFormatter.Percent(top.CpuPercent)} CPU, {MetricFormatter.Bytes(top.MemoryBytes)})",
+            Text.Format(Strings.Insight_LargestConsumer, top.Name, MetricFormatter.Percent(top.CpuPercent), MetricFormatter.Bytes(top.MemoryBytes)),
             DiagnosisSeverity.Normal,
             DiagnosisAction.AppImpact)
         {

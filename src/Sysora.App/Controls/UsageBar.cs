@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using Sysora.Localization;
 
 namespace Sysora.App.Controls;
 
@@ -59,7 +60,7 @@ public sealed partial class UsageBar : Control
         protected override string GetNameCore()
         {
             var name = base.GetNameCore();
-            return string.IsNullOrEmpty(name) ? $"{Math.Round(((UsageBar)Owner).Value)}%" : name;
+            return string.IsNullOrEmpty(name) ? Core.Formatting.MetricFormatter.Percent(Math.Round(((UsageBar)Owner).Value)) : name;
         }
     }
 }

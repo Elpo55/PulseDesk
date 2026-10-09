@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Sysora.Localization: every text Sysora shows, in each supported language, and the language choice.
+    Strings.resx holds the text produced by Core and the platform layers (analysis, diagnosis, alerts, units),
+    UiStrings.resx the interface text. The .resx without a language suffix is English, the fallback for any
+    missing translation; Strings.fr.resx and UiStrings.fr.resx are French.
+    A separate assembly so that the WinUI XAML compiler sees the generated classes ({x:Bind l:UiStrings.Key}).
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Sysora.Localization</RootNamespace>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="Strings.resx">
+      <StronglyTypedLanguage>CSharp</StronglyTypedLanguage>
+      <StronglyTypedNamespace>Sysora.Localization</StronglyTypedNamespace>
+      <StronglyTypedClassName>Strings</StronglyTypedClassName>
+      <StronglyTypedFileName>$(IntermediateOutputPath)Strings.Designer.cs</StronglyTypedFileName>
+      <PublicClass>true</PublicClass>
+    </EmbeddedResource>
+    <EmbeddedResource Update="UiStrings.resx">
+      <StronglyTypedLanguage>CSharp</StronglyTypedLanguage>
+      <StronglyTypedNamespace>Sysora.Localization</StronglyTypedNamespace>
+      <StronglyTypedClassName>UiStrings</StronglyTypedClassName>
+      <StronglyTypedFileName>$(IntermediateOutputPath)UiStrings.Designer.cs</StronglyTypedFileName>
+      <PublicClass>true</PublicClass>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sysora.Tests" />
+  </ItemGroup>
+
+</Project>

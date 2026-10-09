@@ -10,6 +10,7 @@ using Sysora.Core.Formatting;
 using Sysora.Core.History;
 using Sysora.Core.Metrics;
 using Sysora.Core.Models;
+using Sysora.Localization;
 
 namespace Sysora.App.ViewModels;
 
@@ -58,12 +59,12 @@ public sealed partial class ReplayViewModel : PageViewModel
         _logger = logger;
         Ranges =
         [
-            new(TimeSpan.FromMinutes(1), "1 minute"),
-            new(TimeSpan.FromMinutes(5), "5 minutes"),
-            new(TimeSpan.FromMinutes(15), "15 minutes"),
-            new(TimeSpan.FromHours(1), "1 hour"),
-            new(TimeSpan.FromHours(6), "6 hours"),
-            new(TimeSpan.FromHours(24), "24 hours"),
+            new(TimeSpan.FromMinutes(1), Text.Plural(1, Strings.Duration_Minute_One, Strings.Duration_Minute_Other)),
+            new(TimeSpan.FromMinutes(5), Text.Plural(5, Strings.Duration_Minute_One, Strings.Duration_Minute_Other)),
+            new(TimeSpan.FromMinutes(15), Text.Plural(15, Strings.Duration_Minute_One, Strings.Duration_Minute_Other)),
+            new(TimeSpan.FromHours(1), Text.Plural(1, Strings.Duration_Hour_One, Strings.Duration_Hour_Other)),
+            new(TimeSpan.FromHours(6), Text.Plural(6, Strings.Duration_Hour_One, Strings.Duration_Hour_Other)),
+            new(TimeSpan.FromHours(24), Text.Plural(24, Strings.Duration_Hour_One, Strings.Duration_Hour_Other)),
         ];
         Range = Ranges[2];
         IsLive = true;
@@ -329,7 +330,7 @@ public sealed partial class ReplayViewModel : PageViewModel
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             _logger.LogWarning(ex, "Replay data could not be loaded.");
-            Summary = "Replay data could not be loaded. See the log for details.";
+            Summary = UiStrings.Replay_LoadFailed;
         }
     }
 
@@ -386,8 +387,8 @@ public sealed partial class ReplayViewModel : PageViewModel
 
         CursorTime = IsLive ? null : _cursor;
         PositionText = IsLive
-            ? $"Live · {InsightDisplay.Period(data.From, data.To)}"
-            : $"Paused · {InsightDisplay.Period(data.From, data.To)}";
+            ? Text.Format(UiStrings.Replay_Live, InsightDisplay.Period(data.From, data.To))
+            : Text.Format(UiStrings.Replay_Paused, InsightDisplay.Period(data.From, data.To));
         _settingSlider = true;
         try
         {
@@ -402,14 +403,14 @@ public sealed partial class ReplayViewModel : PageViewModel
         var time = IsLive ? data.To : _cursor ?? data.To;
         var point = Nearest(data.Points, time);
         CursorTimeText = point is null
-            ? "No measurement at this time"
-            : IsLive ? $"Now ({point.Timestamp.ToLocalTime().ToString("T", CultureInfo.CurrentCulture)})" : point.Timestamp.ToLocalTime().ToString("G", CultureInfo.CurrentCulture);
+            ? UiStrings.Replay_NoMeasurementAtTime
+            : IsLive ? Text.Format(UiStrings.Replay_NowAt, point.Timestamp.ToLocalTime().ToString("T", CultureInfo.CurrentCulture)) : point.Timestamp.ToLocalTime().ToString("G", CultureInfo.CurrentCulture);
         CursorCpu = Value(point?.CpuPercent, v => MetricFormatter.Percent(v));
         CursorMemory = point?.MemoryPercent is { } memory
             ? point.MemoryUsedBytes is { } used ? $"{MetricFormatter.Percent(memory)} ({MetricFormatter.Bytes(used)})" : MetricFormatter.Percent(memory)
             : MetricFormatter.NotAvailable;
         CursorDisk = point?.DiskActivePercent is { } disk
-            ? $"{MetricFormatter.Percent(disk)} active{(point.DiskActiveDrive is { } drive ? $" ({drive})" : string.Empty)}"
+            ? Text.Format(UiStrings.Replay_DiskActive, MetricFormatter.Percent(disk), point.DiskActiveDrive is { } drive ? $" ({drive})" : string.Empty)
             : MetricFormatter.NotAvailable;
         CursorNetwork = point?.NetworkReceiveBitsPerSecond is { } receive
             ? $"↓ {MetricFormatter.BitsPerSecond(receive)} · ↑ {MetricFormatter.BitsPerSecond(point.NetworkSendBitsPerSecond)}"
@@ -433,7 +434,7 @@ public sealed partial class ReplayViewModel : PageViewModel
         }
         else
         {
-            Replace(CursorApps, [point is null ? string.Empty : "Application data not available for this moment."]);
+            Replace(CursorApps, [point is null ? string.Empty : UiStrings.Replay_AppsNotAvailable]);
         }
     }
 
@@ -454,9 +455,9 @@ public sealed partial class ReplayViewModel : PageViewModel
             var lines = apps
                 .OrderByDescending(a => a.CpuAverage * a.Presence)
                 .Take(6)
-                .Select(a => $"{a.Identity.Name} — {MetricFormatter.Percent(a.CpuAverage, 1)} CPU, {MetricFormatter.Bytes(a.MemoryAverageBytes)} (5-minute average)")
+                .Select(a => Text.Format(UiStrings.Replay_AppAverage, a.Identity.Name, MetricFormatter.Percent(a.CpuAverage, 1), MetricFormatter.Bytes(a.MemoryAverageBytes)))
                 .ToList();
-            Replace(CursorApps, lines.Count > 0 ? lines : ["No application recorded for this five-minute period."]);
+            Replace(CursorApps, lines.Count > 0 ? lines : [UiStrings.Replay_NoAppRecorded]);
         }
         catch (OperationCanceledException)
         {
@@ -472,7 +473,7 @@ public sealed partial class ReplayViewModel : PageViewModel
         apps.OrderByDescending(a => a.CpuPercent)
             .ThenByDescending(a => a.MemoryBytes)
             .Take(6)
-            .Select(a => $"{a.Name}{(a.InstanceCount > 1 ? $" ×{a.InstanceCount}" : string.Empty)} — {MetricFormatter.Percent(a.CpuPercent, 1)} CPU, {MetricFormatter.Bytes(a.MemoryBytes)}")
+            .Select(a => Text.Format(UiStrings.Replay_AppNow, a.Name, a.InstanceCount > 1 ? $" ×{a.InstanceCount}" : string.Empty, MetricFormatter.Percent(a.CpuPercent, 1), MetricFormatter.Bytes(a.MemoryBytes)))
             .ToArray();
 
     private static MetricSnapshot? Nearest(IReadOnlyList<MetricSnapshot> points, DateTimeOffset time)

@@ -3,6 +3,7 @@ using Sysora.Core.Alerts;
 using Sysora.Core.Formatting;
 using Sysora.Core.History;
 using Sysora.Core.Interfaces;
+using Sysora.Localization;
 
 namespace Sysora.Core.Analysis;
 
@@ -147,11 +148,11 @@ public static class WhyNowAnalyzer
     /// <summary>Display name of a metric.</summary>
     public static string Name(WhyNowMetric metric) => metric switch
     {
-        WhyNowMetric.Cpu => "CPU usage",
-        WhyNowMetric.Memory => "Memory usage",
-        WhyNowMetric.Disk => "Disk activity",
-        WhyNowMetric.Gpu => "GPU usage",
-        _ => "Network traffic",
+        WhyNowMetric.Cpu => Strings.Diag_Metric_CpuUsage,
+        WhyNowMetric.Memory => Strings.Diag_Metric_MemoryUsage,
+        WhyNowMetric.Disk => Strings.WhyNow_Metric_Disk,
+        WhyNowMetric.Gpu => Strings.Diag_Metric_GpuUsage,
+        _ => Strings.WhyNow_Metric_Network,
     };
 
     public static WhyNowExplanation Explain(WhyNowInput input)
@@ -171,11 +172,11 @@ public static class WhyNowAnalyzer
                 MetricName = name,
                 Time = time,
                 IsSignificant = false,
-                Headline = $"{name}: not enough measurements yet",
+                Headline = Text.Format(Strings.WhyNow_NotEnough_Headline, name),
                 Summary = buckets.Count == 0 && points.Count > 0
-                    ? $"{name} is not available in the measurements, so it cannot be explained."
-                    : "Sysora needs about two minutes of measurements to tell when a change started.",
-                ContributorText = "Not analyzed yet.",
+                    ? Text.Format(Strings.WhyNow_NotEnough_Missing, name)
+                    : Strings.WhyNow_NotEnough_Summary,
+                ContributorText = Strings.Recurring_NotAnalyzed,
                 SimilarText = similar.Text,
                 SimilarCount = similar.Count,
                 SampleCount = points.Count,
@@ -195,7 +196,7 @@ public static class WhyNowAnalyzer
 
         if (!increased && !high)
         {
-            var range = $"{format(buckets.Min(b => b.Value))} – {format(buckets.Max(b => b.Value))}";
+            var range = Text.Format(Strings.WhyNow_Range, format(buckets.Min(b => b.Value)), format(buckets.Max(b => b.Value)));
             var usualQuiet = Usual(metric, current, totalMemory, input.Baseline);
             return new WhyNowExplanation
             {
@@ -203,18 +204,18 @@ public static class WhyNowAnalyzer
                 MetricName = name,
                 Time = time,
                 IsSignificant = false,
-                Headline = $"{name} is not unusually high right now",
-                Summary = $"{name} stayed between {range} over the last {MetricFormatter.DurationCompact(time - from)}; it is {format(current)} now. There is no recent rise to explain.",
+                Headline = Text.Format(Strings.WhyNow_Quiet_Headline, name),
+                Summary = Text.Format(Strings.WhyNow_Quiet_Summary, name, range, MetricFormatter.DurationCompact(time - from), format(current)),
                 NowText = format(current),
                 Now = current,
-                ContributorText = "Nothing to attribute: no significant rise.",
+                ContributorText = Strings.WhyNow_Quiet_Contributor,
                 UsualText = usualQuiet,
                 SimilarText = similar.Text,
                 SimilarCount = similar.Count,
                 Findings =
                 [
-                    new Finding("Level", $"{name} stayed between {range} over the analyzed period.", FindingBasis.Observed),
-                    .. usualQuiet is null ? Array.Empty<Finding>() : [new Finding("Usual range", usualQuiet, FindingBasis.Observed)],
+                    new Finding(Strings.WhyNow_Label_Level, Text.Format(Strings.WhyNow_Quiet_Level, name, range), FindingBasis.Observed),
+                    .. usualQuiet is null ? Array.Empty<Finding>() : [new Finding(Strings.WhyNow_Label_UsualRange, usualQuiet, FindingBasis.Observed)],
                 ],
                 From = from,
                 SampleCount = points.Count,
@@ -266,38 +267,44 @@ public static class WhyNowAnalyzer
         var findings = new List<Finding>();
         if (before is { } b)
         {
-            findings.Add(new Finding("Change", $"{name} rose from {format(b)} to {format(current)}.", FindingBasis.Observed));
+            findings.Add(new Finding(Strings.WhyNow_Label_Change, Text.Format(Strings.WhyNow_Change, name, format(b), format(current)), FindingBasis.Observed));
         }
         else
         {
-            findings.Add(new Finding("Level", $"{name} is {format(current)} and was already high at the start of the analyzed data ({Clock(from)}).", FindingBasis.Observed));
+            findings.Add(new Finding(Strings.WhyNow_Label_Level, Text.Format(Strings.WhyNow_AlreadyHigh, name, format(current), Clock(from)), FindingBasis.Observed));
         }
 
         findings.Add(started is { } s
-            ? new Finding("Started", $"Around {Clock(s)} (within {BucketLength.TotalSeconds:0} seconds).", FindingBasis.Observed)
-            : new Finding("Started", $"Before {Clock(from)}: earlier data is not available.", FindingBasis.Unknown));
-        findings.Add(new Finding("Duration", started is null ? $"At least {MetricFormatter.DurationPrecise(duration)}" : MetricFormatter.DurationPrecise(duration), FindingBasis.Observed));
+            ? new Finding(Strings.WhyNow_Label_Started, Text.Format(Strings.WhyNow_Started, Clock(s), BucketLength.TotalSeconds), FindingBasis.Observed)
+            : new Finding(Strings.WhyNow_Label_Started, Text.Format(Strings.WhyNow_StartedBefore, Clock(from)), FindingBasis.Unknown));
+        findings.Add(new Finding(Strings.WhyNow_Label_Duration, started is null ? Text.Format(Strings.WhyNow_AtLeast, MetricFormatter.DurationPrecise(duration)) : MetricFormatter.DurationPrecise(duration), FindingBasis.Observed));
         findings.Add(contributor.Finding);
         foreach (var associatedEvent in associated.Take(3))
         {
-            findings.Add(new Finding("Associated with", $"{associatedEvent.Title} at {Clock(associatedEvent.Timestamp)} (same time; not proof of cause)", FindingBasis.Inferred) { Confidence = ConfidenceLevel.Low });
+            findings.Add(new Finding(Strings.WhyNow_Label_Associated, Text.Format(Strings.WhyNow_Associated, associatedEvent.Title, Clock(associatedEvent.Timestamp)), FindingBasis.Inferred) { Confidence = ConfidenceLevel.Low });
         }
 
-        findings.AddRange(simultaneous.Select(text => new Finding("At the same time", text, FindingBasis.Observed)));
+        findings.AddRange(simultaneous.Select(text => new Finding(Strings.WhyNow_Label_SameTime, text, FindingBasis.Observed)));
         if (usual is not null)
         {
-            findings.Add(new Finding("Usual range", usual, FindingBasis.Observed));
+            findings.Add(new Finding(Strings.WhyNow_Label_UsualRange, usual, FindingBasis.Observed));
         }
 
-        findings.Add(new Finding("Similar events", similar.Text, similar.Count is null ? FindingBasis.Unknown : FindingBasis.Observed));
+        findings.Add(new Finding(Strings.WhyNow_Label_Similar, similar.Text, similar.Count is null ? FindingBasis.Unknown : FindingBasis.Observed));
         if (contributor.Value is not null)
         {
-            findings.Add(new Finding("Why the application needs more", "What an application does internally is not observable from outside it.", FindingBasis.Unknown));
+            findings.Add(new Finding(Strings.WhyNow_Label_WhyMore, Strings.WhyNow_NotObservable, FindingBasis.Unknown));
         }
 
-        var headline = increased ? $"{name} increased significantly" : $"{name} has been high since before {Clock(from)}";
-        var summary = (before is { } start ? $"{name} went from {format(start)} to {format(current)}" : $"{name} is {format(current)}")
-            + (started is { } at ? $" starting around {Clock(at)} ({MetricFormatter.DurationPrecise(duration)} ago). " : ". ")
+        var headline = increased
+            ? Text.Format(Strings.WhyNow_Headline_Increased, name)
+            : Text.Format(Strings.WhyNow_Headline_High, name, Clock(from));
+        var summary = (before is { } start
+                ? Text.Format(Strings.WhyNow_Summary_WentFrom, name, format(start), format(current))
+                : Text.Format(Strings.WhyNow_Summary_Is, name, format(current)))
+            + (started is { } at
+                ? Text.Format(Strings.WhyNow_Summary_Starting, Clock(at), MetricFormatter.DurationPrecise(duration))
+                : ". ")
             + contributor.Summary;
 
         return new WhyNowExplanation
@@ -325,13 +332,15 @@ public static class WhyNowAnalyzer
             Findings = findings,
             Evidence =
             [
-                new AnalysisEvidence(name, before is { } v ? $"{format(v)} before, {format(current)} now" : $"{format(current)} now")
+                new AnalysisEvidence(name, before is { } v
+                    ? Text.Format(Strings.WhyNow_Ev_BeforeNow, format(v), format(current))
+                    : Text.Format(Strings.WhyNow_Ev_Now, format(current)))
                 {
                     From = from,
                     To = time,
                     SampleCount = points.Count,
                     Source = input.Source,
-                    Reference = $"Averaged over {BucketLength.TotalSeconds:0}-second steps; a change counts from {format(minDelta)}",
+                    Reference = Text.Format(Strings.WhyNow_Ev_Reference, BucketLength.TotalSeconds, format(minDelta)),
                 },
             ],
             From = from,
@@ -440,11 +449,11 @@ public static class WhyNowAnalyzer
             return null;
         }
 
-        var position = percent > usual.P95 ? "above 95% of your recorded minutes"
-            : percent > usual.P75 ? "above your usual range"
-            : percent < usual.P25 ? "below your usual range"
-            : "within your usual range";
-        return string.Create(CultureInfo.CurrentCulture, $"Usually {usual.UsualRange} (median {usual.Median:0}%); now {MetricFormatter.Percent(percent)}: {position}.");
+        var position = percent > usual.P95 ? Strings.WhyNow_Position_Above95
+            : percent > usual.P75 ? Strings.WhyNow_Position_Above
+            : percent < usual.P25 ? Strings.WhyNow_Position_Below
+            : Strings.WhyNow_Position_Within;
+        return Text.Format(Strings.WhyNow_Usual, usual.UsualRange, MetricFormatter.Percent(usual.Median), MetricFormatter.Percent(percent), position);
     }
 
     private static Func<double, string> Formatter(WhyNowMetric metric) => metric switch
@@ -459,14 +468,14 @@ public static class WhyNowAnalyzer
     {
         if (metric == WhyNowMetric.Network)
         {
-            const string text = "Not available: Windows does not report network usage per application without administrator-level event tracing.";
-            return (null, text, "The application responsible cannot be identified: " + text[15..], new Finding("Contributor", text, FindingBasis.Unknown));
+            var text = Strings.WhyNow_Network_NotAvailable;
+            return (null, text, Strings.WhyNow_Network_Summary, new Finding(Strings.WhyNow_Label_Contributor, text, FindingBasis.Unknown));
         }
 
         if (metric == WhyNowMetric.Gpu)
         {
-            const string text = "Cause unknown: GPU usage per application is not kept in the history. The events at the same time may help.";
-            return (null, text, text, new Finding("Contributor", text, FindingBasis.Unknown));
+            var text = Strings.WhyNow_Gpu_Unknown;
+            return (null, text, text, new Finding(Strings.WhyNow_Label_Contributor, text, FindingBasis.Unknown));
         }
 
         Func<AppSample, double> appValue = metric switch
@@ -486,8 +495,8 @@ public static class WhyNowAnalyzer
         var after = detailed.Where(p => p.Timestamp >= now - TimeSpan.FromMinutes(1)).ToArray();
         if (after.Length == 0)
         {
-            const string text = "Cause unknown: no per-application data for this period (applications are kept only in the recent in-memory history).";
-            return (null, text, text, new Finding("Contributor", text, FindingBasis.Unknown));
+            var text = Strings.WhyNow_NoAppData;
+            return (null, text, text, new Finding(Strings.WhyNow_Label_Contributor, text, FindingBasis.Unknown));
         }
 
         var afterAverages = Averages(after, appValue);
@@ -496,16 +505,16 @@ public static class WhyNowAnalyzer
             // No "before" to compare with: only the largest consumer now can be named, which is not a cause.
             var largest = afterAverages.MaxBy(a => a.Value.Value);
             var text = largest.Key is not null
-                ? $"Cause unknown: the rise started before the analyzed data. Largest consumer now: {largest.Value.Name} ({appFormat(largest.Value.Value)})."
-                : "Cause unknown: the rise started before the analyzed data.";
-            return (null, text, text, new Finding("Contributor", text, FindingBasis.Unknown));
+                ? Text.Format(Strings.WhyNow_StartedBeforeLargest, largest.Value.Name, appFormat(largest.Value.Value))
+                : Strings.WhyNow_StartedBeforeData;
+            return (null, text, text, new Finding(Strings.WhyNow_Label_Contributor, text, FindingBasis.Unknown));
         }
 
         var beforeSnapshots = detailed.Where(p => p.Timestamp >= onset - ContributorWindow && p.Timestamp < onset).ToArray();
         if (beforeSnapshots.Length == 0)
         {
-            const string text = "Cause unknown: no per-application data from before the rise.";
-            return (null, text, text, new Finding("Contributor", text, FindingBasis.Unknown));
+            var text = Strings.WhyNow_NoDataBefore;
+            return (null, text, text, new Finding(Strings.WhyNow_Label_Contributor, text, FindingBasis.Unknown));
         }
 
         var beforeAverages = Averages(beforeSnapshots, appValue);
@@ -515,8 +524,8 @@ public static class WhyNowAnalyzer
             .ToArray();
         if (changes.Length == 0 || changes[0].Delta <= 0)
         {
-            const string text = "Cause unknown: none of the applications measured increased its usage.";
-            return (null, text, text, new Finding("Contributor", text, FindingBasis.Unknown));
+            var text = Strings.WhyNow_NoIncrease;
+            return (null, text, text, new Finding(Strings.WhyNow_Label_Contributor, text, FindingBasis.Unknown));
         }
 
         var top = changes[0];
@@ -537,18 +546,18 @@ public static class WhyNowAnalyzer
         var change = $"+{appFormat(top.Delta)}";
         if (confidence is not { } level)
         {
-            var text = $"Cause unknown: no single application accounts for the increase (largest change: {top.Name} {change}).";
-            return (null, text, text, new Finding("Contributor", text, FindingBasis.Unknown));
+            var text = Text.Format(Strings.WhyNow_NoSingleApp, top.Name, change);
+            return (null, text, text, new Finding(Strings.WhyNow_Label_Contributor, text, FindingBasis.Unknown));
         }
 
-        var shareText = share is { } s ? $", about {MetricFormatter.Percent(s * 100)} of the increase" : string.Empty;
-        var io = metric == WhyNowMetric.Disk ? " of I/O (files, devices and network combined)" : string.Empty;
-        var newText = top.Absent ? " — not among the busiest applications before" : string.Empty;
-        var label = level >= ConfidenceLevel.Medium ? "Likely contributor" : "Possible contributor";
-        var contributorText = $"{label}: {top.Name} ({change}{io}{shareText}){newText}";
+        var shareText = share is { } s ? Text.Format(Strings.WhyNow_Share, MetricFormatter.Percent(s * 100)) : string.Empty;
+        var io = metric == WhyNowMetric.Disk ? Strings.WhyNow_IoNote : string.Empty;
+        var newText = top.Absent ? Strings.WhyNow_NewApp : string.Empty;
+        var label = level >= ConfidenceLevel.Medium ? Strings.WhyNow_Label_Likely : Strings.WhyNow_Label_Possible;
+        var contributorText = Text.Format(Strings.WhyNow_ContributorText, label, top.Name, change, io, shareText, newText);
         var summaryText = level >= ConfidenceLevel.Medium
-            ? $"Evidence suggests {top.Name} is the main contributor ({change}{shareText})."
-            : $"{top.Name} may have contributed ({change}{shareText}), but the evidence is weak.";
+            ? Text.Format(Strings.WhyNow_Summary_Likely, top.Name, change, shareText)
+            : Text.Format(Strings.WhyNow_Summary_Possible, top.Name, change, shareText);
         return (
             new WhyNowContributor(top.Name, top.Key, change, share, level, top.Absent),
             contributorText,
@@ -598,7 +607,7 @@ public static class WhyNowAnalyzer
             if (a - b >= MinimumChange(other, b, totalMemory))
             {
                 var format = Formatter(other);
-                result.Add($"{Name(other)} also rose: {format(b)} → {format(a)}");
+                result.Add(Text.Format(Strings.WhyNow_AlsoRose, Name(other), format(b), format(a)));
             }
         }
 
@@ -609,12 +618,12 @@ public static class WhyNowAnalyzer
     {
         if (metric is WhyNowMetric.Gpu or WhyNowMetric.Network)
         {
-            return ("Similar events: not tracked (no alert rule follows this metric).", null);
+            return (Strings.WhyNow_Similar_NotTracked, null);
         }
 
         if (alerts is null)
         {
-            return ("Similar events: not available (no alert history).", null);
+            return (Strings.WhyNow_Similar_NoHistory, null);
         }
 
         bool Matches(Alert alert) => metric switch
@@ -626,8 +635,8 @@ public static class WhyNowAnalyzer
 
         var count = alerts.Count(a => Matches(a) && a.RaisedAt <= now && now - a.RaisedAt <= SimilarWindow);
         return (count == 0
-            ? $"Similar events: none in the last {MetricFormatter.Plural((int)SimilarWindow.TotalDays, "day")}."
-            : $"Similar events: {MetricFormatter.Plural(count, "alert")} in the last {MetricFormatter.Plural((int)SimilarWindow.TotalDays, "day")}.", count);
+            ? Text.Format(Strings.WhyNow_Similar_None, (int)SimilarWindow.TotalDays)
+            : Text.Format(Strings.WhyNow_Similar_Count, Text.Plural(count, Strings.Count_Alert_One, Strings.Count_Alert_Other), (int)SimilarWindow.TotalDays), count);
     }
 
     private static string Clock(DateTimeOffset time) => time.ToLocalTime().ToString("t", CultureInfo.CurrentCulture);
@@ -676,8 +685,8 @@ public sealed class WhyNowService(
             Baseline = baseline.Current,
             Alerts = alerts.Alerts,
             Source = older.Count > 0
-                ? "Per-second measurements kept in memory, preceded by per-minute averages of the local history"
-                : "Per-second measurements kept in memory",
+                ? Strings.WhyNow_Source_Mixed
+                : Strings.State_Source_Seconds,
         };
         return await Task.Run(() => WhyNowAnalyzer.Explain(input), cancellationToken).ConfigureAwait(false);
     }

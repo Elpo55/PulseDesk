@@ -6,6 +6,7 @@ using Sysora.Core.Analysis;
 using Sysora.Core.Changes;
 using Sysora.Core.Diagnosis;
 using Sysora.Core.Health;
+using Sysora.Localization;
 
 namespace Sysora.App.ViewModels;
 
@@ -47,9 +48,9 @@ internal static class HealthDisplay
 
     public static (string Text, string BrushKey) Importance(ChangeImportance importance) => importance switch
     {
-        ChangeImportance.High => ("High importance", "LevelHighBrush"),
-        ChangeImportance.Medium => ("Medium", "LevelModerateBrush"),
-        _ => ("Low", "LevelLowBrush"),
+        ChangeImportance.High => (UiStrings.Importance_HighLong, "LevelHighBrush"),
+        ChangeImportance.Medium => (Strings.Importance_Medium, "LevelModerateBrush"),
+        _ => (Strings.Importance_Low, "LevelLowBrush"),
     };
 
     public static string Glyph(PcHealthArea area) => area switch
@@ -160,7 +161,7 @@ public sealed partial class RecurringItemViewModel(RecurringProblem problem, Act
 
     public string ConfidenceBrushKey { get; } = problem.Confidence == ConfidenceLevel.High ? "StatusWarningBrush" : "StatusInfoBrush";
 
-    public string OccurrencesText { get; } = $"{problem.Occurrences}× on {problem.Days} days";
+    public string OccurrencesText { get; } = Text.Format(UiStrings.Recurring_OccurrencesShort, problem.Occurrences, problem.Days);
 
     public IReadOnlyList<FindingItemViewModel> Findings { get; } = problem.Findings.Select(FindingItemViewModel.From).ToArray();
 
@@ -190,7 +191,7 @@ public sealed partial class SinceYesterdayItemViewModel
         {
             ({ } old, { } current) => $"{old} → {current}",
             (null, { } current) => current,
-            ({ } old, null) => $"Was: {old}",
+            ({ } old, null) => Text.Format(Strings.Timeline_Was, old),
             _ => string.Empty,
         };
         HasValues = Values.Length > 0;

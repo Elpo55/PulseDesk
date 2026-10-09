@@ -3,6 +3,7 @@ using Sysora.Core.Formatting;
 using Sysora.Core.History;
 using Sysora.Core.Models;
 using Sysora.Core.Settings;
+using Sysora.Localization;
 
 namespace Sysora.Core.Gaming;
 
@@ -577,7 +578,7 @@ public sealed class GameSessionTracker
                 {
                     _gaps++;
                     _gapSeconds += interval.TotalSeconds;
-                    AddEvent(new GameSessionEvent(last, $"No measurements for {MetricFormatter.DurationCompact(interval)} (PC asleep or monitoring paused)"));
+                    AddEvent(new GameSessionEvent(last, Text.Format(Strings.Game_Event_Gap, MetricFormatter.DurationCompact(interval))));
                 }
             }
 

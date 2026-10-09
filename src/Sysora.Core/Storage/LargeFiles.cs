@@ -1,5 +1,6 @@
 using System.Globalization;
 using Sysora.Core.Formatting;
+using Sysora.Localization;
 
 namespace Sysora.Core.Storage;
 
@@ -259,7 +260,7 @@ public sealed class LargeFileScanEngine(IDirectoryReader reader, TimeProvider? t
                         var extension = Path.GetExtension(entry.Name).ToLowerInvariant();
                         var (category, note) = LargeFileCategorizer.Categorize(entry.Name, entry.FullPath, extension);
                         Add(categories, category, entry.Length, int.MaxValue);
-                        Add(extensions, extension.Length == 0 ? "(no extension)" : extension, entry.Length, MaxExtensions);
+                        Add(extensions, extension.Length == 0 ? Strings.LargeFiles_NoExtension : extension, entry.Length, MaxExtensions);
                         Add(folders, directory, entry.Length, MaxFolders);
                         var file = new LargeFile(entry.Name, entry.FullPath, directory, entry.Length, entry.LastWrite, extension, volume, category, note);
                         if (top.Count < request.MaxResults)
@@ -345,24 +346,31 @@ public sealed class LargeFileScanEngine(IDirectoryReader reader, TimeProvider? t
 
     private static string Message(LargeFileScanOutcome outcome, int matching, long bytes, long minimum, int directories, int denied, int unavailable, TimeSpan duration)
     {
-        var found = $"{MetricFormatter.Plural(matching, "file")} of {MetricFormatter.Bytes(minimum)} or more ({MetricFormatter.Bytes(bytes)}) in {directories.ToString("N0", CultureInfo.CurrentCulture)} folders";
+        var found = Text.Format(
+            Strings.LargeFiles_Found,
+            Text.Plural(matching, Strings.Count_File_One, Strings.Count_File_Other),
+            MetricFormatter.Bytes(minimum),
+            MetricFormatter.Bytes(bytes),
+            Text.Plural(directories, Strings.Count_Folder_One, Strings.Count_Folder_Other));
         var problems = new List<string>();
         if (denied > 0)
         {
-            problems.Add($"{MetricFormatter.Plural(denied, "folder")} could not be read (access denied)");
+            problems.Add(Text.Plural(denied, Strings.LargeFiles_Denied_One, Strings.LargeFiles_Denied_Other));
         }
 
         if (unavailable > 0)
         {
-            problems.Add($"{MetricFormatter.Plural(unavailable, "folder")} unavailable");
+            problems.Add(Text.Plural(unavailable, Strings.LargeFiles_Unavailable_One, Strings.LargeFiles_Unavailable_Other));
         }
 
-        var suffix = problems.Count > 0 ? $". {string.Join(", ", problems)}: their content is unknown, not absent." : ".";
+        var suffix = problems.Count > 0
+            ? ". " + Text.Format(Strings.LargeFiles_ProblemsSuffix, string.Join(Strings.List_Separator, problems))
+            : ".";
         return outcome switch
         {
-            LargeFileScanOutcome.Cancelled => $"Scan cancelled after {MetricFormatter.DurationPrecise(duration)}: partial results, {found}{suffix}",
-            LargeFileScanOutcome.Failed => "Scan failed.",
-            _ => $"Scan completed in {MetricFormatter.DurationPrecise(duration)}: {found}{suffix}",
+            LargeFileScanOutcome.Cancelled => Text.Format(Strings.LargeFiles_Cancelled, MetricFormatter.DurationPrecise(duration), found, suffix),
+            LargeFileScanOutcome.Failed => Strings.LargeFiles_Failed,
+            _ => Text.Format(Strings.LargeFiles_Completed, MetricFormatter.DurationPrecise(duration), found, suffix),
         };
     }
 
@@ -391,7 +399,7 @@ public sealed class LargeFileScanEngine(IDirectoryReader reader, TimeProvider? t
 /// <summary>Categories and cautions from a file's name, location and extension (pure).</summary>
 public static class LargeFileCategorizer
 {
-    private const string WindowsNote = "Managed by Windows: do not delete it manually.";
+    private static string WindowsNote => Strings.LargeFiles_WindowsNote;
 
     private static readonly Dictionary<string, LargeFileCategory> Extensions = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -421,22 +429,22 @@ public static class LargeFileCategorizer
         ArgumentNullException.ThrowIfNull(fullPath);
         if (name.Equals("pagefile.sys", StringComparison.OrdinalIgnoreCase) || name.Equals("swapfile.sys", StringComparison.OrdinalIgnoreCase))
         {
-            return (LargeFileCategory.WindowsManaged, "Windows page file. Its size is set in System › Advanced system settings; do not delete it manually.");
+            return (LargeFileCategory.WindowsManaged, Strings.LargeFiles_PageFile);
         }
 
         if (name.Equals("hiberfil.sys", StringComparison.OrdinalIgnoreCase))
         {
-            return (LargeFileCategory.WindowsManaged, "Hibernation file (also used by Fast Startup). Managed by Windows: do not delete it manually.");
+            return (LargeFileCategory.WindowsManaged, Strings.LargeFiles_Hiberfil);
         }
 
         if (fullPath.Contains("\\$Recycle.Bin\\", StringComparison.OrdinalIgnoreCase))
         {
-            return (LargeFileCategory.RecycleBin, "In the Recycle Bin: emptying the Recycle Bin frees this space.");
+            return (LargeFileCategory.RecycleBin, Strings.LargeFiles_RecycleBinNote);
         }
 
         if (fullPath.Contains("\\Windows\\Installer\\", StringComparison.OrdinalIgnoreCase))
         {
-            return (LargeFileCategory.WindowsManaged, "Windows Installer cache: needed to repair or remove applications. Do not delete it manually.");
+            return (LargeFileCategory.WindowsManaged, Strings.LargeFiles_InstallerCache);
         }
 
         if (fullPath.Contains("\\Windows\\", StringComparison.OrdinalIgnoreCase) || name.Equals("MEMORY.DMP", StringComparison.OrdinalIgnoreCase))
@@ -447,30 +455,30 @@ public static class LargeFileCategorizer
         var category = Extensions.GetValueOrDefault(extension, LargeFileCategory.Other);
         return category switch
         {
-            LargeFileCategory.VirtualDisk => (category, "Virtual disk: it may belong to WSL, Hyper-V, Docker or a virtual machine and hold its data."),
-            LargeFileCategory.Database => (category, "Database file: an application keeps its data in it."),
-            LargeFileCategory.GameData => (category, "Game data: removing it breaks the game; uninstall the game instead."),
+            LargeFileCategory.VirtualDisk => (category, Strings.LargeFiles_VirtualDiskNote),
+            LargeFileCategory.Database => (category, Strings.LargeFiles_DatabaseNote),
+            LargeFileCategory.GameData => (category, Strings.LargeFiles_GameDataNote),
             _ => (category, null),
         };
     }
 
     public static string Name(LargeFileCategory category) => category switch
     {
-        LargeFileCategory.Video => "Videos",
-        LargeFileCategory.Audio => "Audio",
-        LargeFileCategory.Image => "Images",
-        LargeFileCategory.Archive => "Archives",
-        LargeFileCategory.DiskImage => "Disk images",
-        LargeFileCategory.VirtualDisk => "Virtual disks",
-        LargeFileCategory.Installer => "Installers",
-        LargeFileCategory.Backup => "Backups",
-        LargeFileCategory.Database => "Databases",
-        LargeFileCategory.Log => "Logs and dumps",
-        LargeFileCategory.Document => "Documents",
-        LargeFileCategory.GameData => "Game data",
-        LargeFileCategory.WindowsManaged => "Managed by Windows",
-        LargeFileCategory.RecycleBin => "Recycle Bin",
-        _ => "Other",
+        LargeFileCategory.Video => Strings.LargeFiles_Cat_Video,
+        LargeFileCategory.Audio => Strings.LargeFiles_Cat_Audio,
+        LargeFileCategory.Image => Strings.LargeFiles_Cat_Image,
+        LargeFileCategory.Archive => Strings.LargeFiles_Cat_Archive,
+        LargeFileCategory.DiskImage => Strings.LargeFiles_Cat_DiskImage,
+        LargeFileCategory.VirtualDisk => Strings.LargeFiles_Cat_VirtualDisk,
+        LargeFileCategory.Installer => Strings.LargeFiles_Cat_Installer,
+        LargeFileCategory.Backup => Strings.LargeFiles_Cat_Backup,
+        LargeFileCategory.Database => Strings.LargeFiles_Cat_Database,
+        LargeFileCategory.Log => Strings.LargeFiles_Cat_Log,
+        LargeFileCategory.Document => Strings.LargeFiles_Cat_Document,
+        LargeFileCategory.GameData => Strings.LargeFiles_Cat_GameData,
+        LargeFileCategory.WindowsManaged => Strings.LargeFiles_Cat_Windows,
+        LargeFileCategory.RecycleBin => Strings.LargeFiles_Cat_RecycleBin,
+        _ => Strings.LargeFiles_Cat_Other,
     };
 }
 

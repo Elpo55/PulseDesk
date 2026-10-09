@@ -4,6 +4,7 @@ using Sysora.Core.Formatting;
 using Sysora.Core.History;
 using Sysora.Core.Interfaces;
 using Sysora.Core.Models;
+using Sysora.Localization;
 
 namespace Sysora.Core.Monitoring;
 
@@ -59,7 +60,7 @@ public sealed class PowerTransitionService(
         logger.LogInformation("The PC is going to sleep.");
         try
         {
-            history.AddEvent(new SystemEvent(now, SystemEventKind.SystemSuspending, "PC going to sleep"));
+            history.AddEvent(new SystemEvent(now, SystemEventKind.SystemSuspending, Strings.Event_Sleep));
             if (processes.FlushBucket() is { } bucket)
             {
                 recorder.Record(bucket);
@@ -86,7 +87,9 @@ public sealed class PowerTransitionService(
         try
         {
             history.AddEvent(new SystemEvent(now, SystemEventKind.SystemResumed,
-                asleep is { } duration ? $"PC resumed from sleep (asleep {MetricFormatter.DurationCompact(duration)})" : "PC resumed from sleep"));
+                asleep is { } duration
+                    ? Text.Format(Strings.Event_ResumedAfter, MetricFormatter.DurationCompact(duration))
+                    : Strings.Event_Resumed));
             monitor.RequestRefresh(MetricKind.All);
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)

@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
@@ -10,7 +11,7 @@ using Sysora.Core.Interfaces;
 using Sysora.Core.Models;
 using Sysora.Core.Settings;
 using Sysora.Core.Troubleshooting;
-using System.Runtime.InteropServices;
+using Sysora.Localization;
 using Windows.Graphics;
 
 namespace Sysora.App.Services;
@@ -234,7 +235,7 @@ public sealed partial class ApplicationShell : IDisposable
 
         if (!_settings.Current.General.TrayHintShown)
         {
-            _tray?.ShowInfo("Sysora is still running", "Monitoring continues in the notification area. Right-click the icon to exit.");
+            _tray?.ShowInfo(UiStrings.Tray_StillRunning, UiStrings.Tray_StillRunningText);
             _settings.Update(s => s with { General = s.General with { TrayHintShown = true } });
         }
     }
@@ -298,7 +299,7 @@ public sealed partial class ApplicationShell : IDisposable
         {
             _balloonPage = AppPage.Gaming;
             _balloonSession = session.Id;
-            _tray?.ShowInfo($"Game recap: {session.Name}", $"{MetricFormatter.DurationPrecise(session.Duration)} · {recap.Headline}. Click to open the recap.");
+            _tray?.ShowInfo(Text.Format(UiStrings.Tray_GameRecap, session.Name), Text.Format(UiStrings.Tray_GameRecapText, MetricFormatter.DurationPrecise(session.Duration), recap.Headline));
         });
     }
 
@@ -320,7 +321,9 @@ public sealed partial class ApplicationShell : IDisposable
             _balloonPage = AppPage.Troubleshooting;
             _balloonSession = null;
             _balloonInvestigation = report.Id;
-            _tray?.ShowInfo("Investigation complete", $"{report.Headline.Replace("Investigation complete: ", string.Empty, StringComparison.Ordinal)}. Click to open the report.");
+            var headline = report.Headline;
+            var colon = headline.IndexOf(':', StringComparison.Ordinal);
+            _tray?.ShowInfo(UiStrings.Tray_InvestigationComplete, Text.Format(UiStrings.Tray_InvestigationText, colon > 0 ? headline[(colon + 1)..].Trim() : headline));
         });
     }
 
@@ -393,7 +396,7 @@ public sealed partial class ApplicationShell : IDisposable
         {
             _balloonPage = AppPage.Alerts;
             _balloonSession = null;
-            _tray?.ShowInfo(alert.Title, $"{alert.Value}. Click to open Alerts.");
+            _tray?.ShowInfo(alert.Title, Text.Format(UiStrings.Tray_AlertText, alert.Value));
         });
     }
 
@@ -406,8 +409,8 @@ public sealed partial class ApplicationShell : IDisposable
 
         var cpu = snapshot.Cpu is { } c ? MetricFormatter.Percent(c.UsagePercent) : MetricFormatter.Pending;
         var memory = snapshot.Memory is { } m ? MetricFormatter.Percent(m.UsedPercent) : MetricFormatter.Pending;
-        var state = _monitor.IsPaused ? " (paused)" : string.Empty;
-        _tray.SetTooltip($"Sysora{state}\nCPU {cpu} · Memory {memory}");
+        var state = _monitor.IsPaused ? " " + UiStrings.Tray_Paused : string.Empty;
+        _tray.SetTooltip($"Sysora{state}\n" + Text.Format(UiStrings.Tray_Tooltip, cpu, memory));
     }
 
     private void RestoreSize()

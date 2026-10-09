@@ -2,6 +2,7 @@ using System.Globalization;
 using Sysora.Core.Formatting;
 using Sysora.Core.History;
 using Sysora.Core.Interfaces;
+using Sysora.Localization;
 
 namespace Sysora.Core.Analysis;
 
@@ -45,7 +46,7 @@ public sealed record MetricComparison(HistoryMetric Metric, string Name, double?
 /// <param name="Summary">One sentence: the clearest difference, or what data is still missing.</param>
 public sealed record UsageComparison(DateTimeOffset Time, IReadOnlyList<MetricComparison> Metrics, string Summary)
 {
-    public static UsageComparison Empty { get; } = new(DateTimeOffset.MinValue, [], "Loading the history…");
+    public static UsageComparison Empty { get; } = new(DateTimeOffset.MinValue, [], Strings.Usual_Loading);
 }
 
 /// <summary>
@@ -62,12 +63,12 @@ public static class UsageComparer
 
     private static readonly TimeSpan MinimumCurrent = TimeSpan.FromMinutes(2);
 
-    private static readonly (HistoryMetric Metric, string Name)[] Compared =
+    private static readonly (HistoryMetric Metric, Func<string> Name)[] Compared =
     [
-        (HistoryMetric.Cpu, "CPU"),
-        (HistoryMetric.Memory, "Memory"),
-        (HistoryMetric.Disk, "Disk active time"),
-        (HistoryMetric.Gpu, "GPU"),
+        (HistoryMetric.Cpu, () => Strings.Usual_Metric_Cpu),
+        (HistoryMetric.Memory, () => Strings.Usual_Metric_Memory),
+        (HistoryMetric.Disk, () => Strings.Usual_Metric_Disk),
+        (HistoryMetric.Gpu, () => Strings.Usual_Metric_Gpu),
     ];
 
     /// <summary>Requirements per period: measured hours and distinct days.</summary>
@@ -96,7 +97,7 @@ public static class UsageComparer
         var yesterday = midnight.AddDays(-1);
 
         var metrics = new List<MetricComparison>();
-        foreach (var (metric, name) in Compared)
+        foreach (var (metric, nameOf) in Compared)
         {
             var current = Current(recent, metric);
             var periods = new List<PeriodAverage>
@@ -113,7 +114,7 @@ public static class UsageComparer
             // Another metric never measured (GPU monitoring off, no adapter) is left out rather than shown empty.
             if (metric is HistoryMetric.Cpu or HistoryMetric.Memory || current is not null || periods.Any(p => p.MonitoredHours > 0))
             {
-                metrics.Add(new MetricComparison(metric, name, current, periods));
+                metrics.Add(new MetricComparison(metric, nameOf(), current, periods));
             }
         }
 
@@ -123,12 +124,12 @@ public static class UsageComparer
     /// <summary>Label of a period, e.g. "Last 7 days".</summary>
     public static string Label(ComparisonPeriod period) => period switch
     {
-        ComparisonPeriod.LastHour => "Last hour",
-        ComparisonPeriod.Today => "Today",
-        ComparisonPeriod.Yesterday => "Yesterday",
-        ComparisonPeriod.Last7Days => "Last 7 days",
-        ComparisonPeriod.Last30Days => "Last 30 days",
-        _ => "Usual at this hour",
+        ComparisonPeriod.LastHour => Strings.Usual_Period_LastHour,
+        ComparisonPeriod.Today => Strings.Usual_Period_Today,
+        ComparisonPeriod.Yesterday => Strings.Usual_Period_Yesterday,
+        ComparisonPeriod.Last7Days => Strings.Usual_Period_7Days,
+        ComparisonPeriod.Last30Days => Strings.Usual_Period_30Days,
+        _ => Strings.Usual_Period_AtThisHour,
     };
 
     private static string Summary(IReadOnlyList<MetricComparison> metrics)
@@ -155,8 +156,15 @@ public static class UsageComparer
             if (Math.Abs(gap) >= NotablePoints && Math.Abs(gap) > bestGap)
             {
                 bestGap = Math.Abs(gap);
-                best = string.Create(CultureInfo.CurrentCulture,
-                    $"{metric.Name} is {Math.Abs(gap):0} points {(gap > 0 ? "above" : "below")} your usual level: {MetricFormatter.Percent(current)} now vs {MetricFormatter.Percent(reference.Average)} ({Label(reference.Period).ToLowerInvariant()}).");
+                best = Text.Format(
+                    gap > 0
+                        ? Strings.Usual_Summary_Above
+                        : Strings.Usual_Summary_Below,
+                    metric.Name,
+                    Math.Abs(gap),
+                    MetricFormatter.Percent(current),
+                    MetricFormatter.Percent(reference.Average),
+                    Label(reference.Period).ToLower(CultureInfo.CurrentCulture));
             }
         }
 
@@ -167,8 +175,8 @@ public static class UsageComparer
 
         var anyReference = metrics.Any(m => m.Periods.Any(p => p.Period is ComparisonPeriod.Last7Days or ComparisonPeriod.Last30Days or ComparisonPeriod.UsualAtThisHour && p.IsKnown));
         return anyReference
-            ? "Current activity is close to your usual level (within 10 points)."
-            : "Not enough history yet to say what is usual: the 7-day comparison needs 4 hours over 2 days, the 30-day one 24 hours over 8 days.";
+            ? Strings.Usual_Summary_Close
+            : Strings.Usual_Summary_NotEnough;
     }
 
     private static double? Current(IReadOnlyList<MetricSnapshot> recent, HistoryMetric metric)
@@ -218,10 +226,11 @@ public static class UsageComparer
         if (count == 0 || hours < requiredHours || days.Count < requiredDays)
         {
             var needed = requiredDays > 1
-                ? $"{FormatHours(requiredHours)} over {requiredDays.ToString(CultureInfo.CurrentCulture)} days"
+                ? Text.Format(Strings.Usual_NeededOverDays, FormatHours(requiredHours), requiredDays)
                 : FormatHours(requiredHours);
-            return new PeriodAverage(period, null, hours, days.Count,
-                $"Not enough data: {FormatHours(hours)} recorded{(requiredDays > 1 ? $" over {MetricFormatter.Plural(days.Count, "day")}" : string.Empty)}, {needed} needed");
+            return new PeriodAverage(period, null, hours, days.Count, requiredDays > 1
+                ? Text.Format(Strings.Usual_NotEnoughOverDays, FormatHours(hours), Text.Plural(days.Count, Strings.Duration_Day_One, Strings.Duration_Day_Other), needed)
+                : Text.Format(Strings.Usual_NotEnough, FormatHours(hours), needed));
         }
 
         return new PeriodAverage(period, sum / count, hours, days.Count, null);
@@ -244,7 +253,7 @@ public static class UsageComparer
     }
 
     private static string FormatHours(double hours) =>
-        hours < 1 ? $"{(int)Math.Round(hours * 60)} min" : string.Create(CultureInfo.CurrentCulture, $"{hours:0.#} h");
+        hours < 1 ? Text.Format(Strings.Duration_Minutes, (int)Math.Round(hours * 60)) : Text.Format(Strings.Usual_Hours, hours);
 
     private readonly record struct Chunk(DateTimeOffset Start, SystemUsageAggregate Bucket);
 }

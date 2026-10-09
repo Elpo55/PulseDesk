@@ -1,6 +1,7 @@
 using Sysora.Core.Analysis;
 using Sysora.Core.Formatting;
 using Sysora.Core.History;
+using Sysora.Localization;
 
 namespace Sysora.Core.Diagnosis.Rules;
 
@@ -21,34 +22,34 @@ public sealed class CpuLoadRule : DiagnosisRule
         var sustain = TimeSpan.FromSeconds(thresholds.CpuSustainSeconds);
         var usual = context.Baseline.Get(HistoryMetric.Cpu);
         var span = SnapshotStatistics.Sustained(context.Recent, s => s.CpuPercent, thresholds.CpuWarningPercent);
-        var minuteEvidence = WindowEvidence("CPU usage (last minute)", minute, MetricSources.Cpu);
+        var minuteEvidence = WindowEvidence(Strings.Diag_CpuLastMinute, minute, MetricSources.Cpu);
 
         if (span is { } busy && busy.Duration >= sustain)
         {
             var critical = busy.Average >= thresholds.CpuCriticalPercent;
             var unusual = usual is not null && busy.Average > usual.P95;
             var explanation = usual is null
-                ? "When the processor stays this busy, applications have to wait for processor time, so the PC can feel slow."
+                ? Strings.Diag_CpuLoad_Explanation
                 : unusual
-                    ? $"The processor is much busier than usual for this PC ({usual.UsualRange}). Applications have to wait for processor time, so the PC can feel slow."
-                    : $"This level is high, but not unusual for this PC ({usual.UsualRange} most of the time).";
+                    ? Text.Format(Strings.Diag_CpuLoad_ExplanationUnusual, usual.UsualRange)
+                    : Text.Format(Strings.Diag_CpuLoad_ExplanationUsual, usual.UsualRange);
 
             yield return new DiagnosisResult
             {
                 RuleId = Id,
                 Category = DiagnosisCategory.Cpu,
                 Severity = critical ? DiagnosisSeverity.Critical : DiagnosisSeverity.Warning,
-                Title = critical ? "The CPU is saturated" : "High CPU usage",
-                Description = $"CPU usage has stayed above {Percent(thresholds.CpuWarningPercent)} for {Duration(busy.Duration)} (average {Percent(busy.Average)}).",
-                Metric = "CPU usage",
+                Title = critical ? Strings.Diag_CpuLoad_SaturatedTitle : Strings.Diag_CpuLoad_HighTitle,
+                Description = Text.Format(Strings.Diag_CpuLoad_HighDescription, Percent(thresholds.CpuWarningPercent), Duration(busy.Duration), Percent(busy.Average)),
+                Metric = Strings.Diag_Metric_CpuUsage,
                 ObservedValue = Percent(busy.Average),
-                ReferenceValue = UsualText(usual) ?? $"Threshold {Percent(thresholds.CpuWarningPercent)}",
+                ReferenceValue = UsualText(usual) ?? Threshold(Percent(thresholds.CpuWarningPercent)),
                 Duration = busy.Duration,
                 Timestamp = latest.Timestamp,
                 Explanation = explanation,
-                Recommendation = "Open App Impact to see which applications use the processor, and close the ones you don't need right now.",
+                Recommendation = Strings.Diag_CpuLoad_Recommendation,
                 Confidence = busy.Duration >= sustain * 2 ? ConfidenceLevel.High : ConfidenceLevel.Medium,
-                Evidence = [SpanEvidence("CPU usage", busy, thresholds.CpuWarningPercent, MetricSources.Cpu), BaselineEvidence(context.Baseline, HistoryMetric.Cpu, "CPU usage")],
+                Evidence = [SpanEvidence(Strings.Diag_Metric_CpuUsage, busy, thresholds.CpuWarningPercent, MetricSources.Cpu), BaselineEvidence(context.Baseline, HistoryMetric.Cpu, Strings.Diag_Metric_CpuUsage)],
                 Action = DiagnosisAction.AppImpact,
             };
             yield break;
@@ -62,14 +63,14 @@ public sealed class CpuLoadRule : DiagnosisRule
                 RuleId = Id,
                 Category = DiagnosisCategory.Cpu,
                 Severity = DiagnosisSeverity.Info,
-                Title = "Short CPU spike",
-                Description = $"The CPU is at {Percent(current)} right now, but only for {Duration(since)} so far.",
-                Metric = "CPU usage",
+                Title = Strings.Diag_CpuSpike_Title,
+                Description = Text.Format(Strings.Diag_CpuSpike_Description, Percent(current), Duration(since)),
+                Metric = Strings.Diag_Metric_CpuUsage,
                 ObservedValue = Percent(current),
-                ReferenceValue = $"Reported when above {Percent(thresholds.CpuWarningPercent)} for {Duration(sustain)}",
+                ReferenceValue = ReportedWhenAbove(Percent(thresholds.CpuWarningPercent), sustain),
                 Duration = since,
                 Timestamp = latest.Timestamp,
-                Explanation = "Short spikes are normal (opening an application, a background task). It becomes a likely cause of slowness only if it lasts.",
+                Explanation = Strings.Diag_CpuSpike_Explanation,
                 Confidence = ConfidenceLevel.Low,
                 Evidence = [minuteEvidence],
                 Action = DiagnosisAction.Replay,
@@ -82,15 +83,15 @@ public sealed class CpuLoadRule : DiagnosisRule
             RuleId = Id,
             Category = DiagnosisCategory.Cpu,
             Severity = DiagnosisSeverity.Normal,
-            Title = "CPU usage normal",
-            Description = $"The processor averaged {Percent(minute.Average)} over the last minute (peak {Percent(minute.Peak)}).",
-            Metric = "CPU usage",
+            Title = Strings.Diag_CpuNormal_Title,
+            Description = Text.Format(Strings.Diag_CpuNormal_Description, Percent(minute.Average), Percent(minute.Peak)),
+            Metric = Strings.Diag_Metric_CpuUsage,
             ObservedValue = Percent(minute.Average),
-            ReferenceValue = UsualText(usual) ?? $"Threshold {Percent(thresholds.CpuWarningPercent)}",
+            ReferenceValue = UsualText(usual) ?? Threshold(Percent(thresholds.CpuWarningPercent)),
             Timestamp = latest.Timestamp,
-            Explanation = "The processor has spare capacity.",
+            Explanation = Strings.Diag_CpuNormal_Explanation,
             Confidence = ConfidenceLevel.High,
-            Evidence = [minuteEvidence, BaselineEvidence(context.Baseline, HistoryMetric.Cpu, "CPU usage")],
+            Evidence = [minuteEvidence, BaselineEvidence(context.Baseline, HistoryMetric.Cpu, Strings.Diag_Metric_CpuUsage)],
         };
     }
 }
@@ -114,9 +115,9 @@ public sealed class CpuHungryAppRule : DiagnosisRule
         var thresholds = context.Thresholds;
         var series = SnapshotStatistics.AppSeries(context.Recent, top.Key);
         var busy = SustainedApp(series, thresholds.ProcessCpuWarningPercent);
-        var appEvidence = new AnalysisEvidence($"{top.Name} CPU", Format($"{top.CpuPercent:0.#}% of total CPU now ({MetricFormatter.Plural(top.InstanceCount, "process", "processes")})"))
+        var appEvidence = new AnalysisEvidence(AppCpu(top.Name), Text.Format(Strings.Diag_AppCpu_Now, MetricFormatter.Percent(top.CpuPercent, 1), Text.Plural(top.InstanceCount, Strings.Count_Process_One, Strings.Count_Process_Other)))
         {
-            Reference = Format($"Total CPU usage now: {total:0}%"),
+            Reference = Text.Format(Strings.Diag_AppCpu_TotalNow, Percent(total)),
             Source = MetricSources.Processes,
             To = latest.Timestamp,
         };
@@ -129,17 +130,19 @@ public sealed class CpuHungryAppRule : DiagnosisRule
                 RuleId = Id,
                 Category = DiagnosisCategory.Applications,
                 Severity = DiagnosisSeverity.Warning,
-                Title = longRunning ? $"{top.Name} has been using a lot of CPU for several minutes" : $"{top.Name} uses a large share of the CPU",
-                Description = $"{top.Name} has used {Percent(span.Average)} of total CPU capacity on average for {Duration(span.Duration)}.",
-                Metric = "Application CPU usage",
+                Title = longRunning
+                    ? Text.Format(Strings.Diag_AppCpu_LongTitle, top.Name)
+                    : Text.Format(Strings.Diag_AppCpu_LargeShareTitle, top.Name),
+                Description = Text.Format(Strings.Diag_AppCpu_Description, top.Name, Percent(span.Average), Duration(span.Duration)),
+                Metric = Strings.Diag_Metric_AppCpu,
                 ObservedValue = Percent(span.Average),
-                ReferenceValue = $"Threshold {Percent(thresholds.ProcessCpuWarningPercent)} per application",
+                ReferenceValue = PerAppThreshold(Percent(thresholds.ProcessCpuWarningPercent)),
                 Duration = span.Duration,
                 Timestamp = latest.Timestamp,
-                Explanation = "A single application keeping the processor this busy leaves less capacity for everything else. It may be doing legitimate work (a build, an export, a game) or be stuck.",
-                Recommendation = $"If you don't need {top.Name} right now, close it or wait for its task to finish. App Impact shows its history.",
+                Explanation = Strings.Diag_AppCpu_Explanation,
+                Recommendation = Text.Format(Strings.Diag_AppCpu_Recommendation, top.Name),
                 Confidence = longRunning ? ConfidenceLevel.High : ConfidenceLevel.Medium,
-                Evidence = [SpanEvidence($"{top.Name} CPU", span, thresholds.ProcessCpuWarningPercent, MetricSources.Processes), appEvidence],
+                Evidence = [SpanEvidence(AppCpu(top.Name), span, thresholds.ProcessCpuWarningPercent, MetricSources.Processes), appEvidence],
                 AppKey = top.Key,
                 Action = DiagnosisAction.AppImpact,
             };
@@ -153,13 +156,13 @@ public sealed class CpuHungryAppRule : DiagnosisRule
                 RuleId = Id,
                 Category = DiagnosisCategory.Applications,
                 Severity = DiagnosisSeverity.Info,
-                Title = $"{top.Name} is the main CPU consumer",
-                Description = Format($"{top.Name} accounts for {top.CpuPercent / total * 100:0}% of the processor load right now ({Percent(top.CpuPercent)} of {Percent(total)})."),
-                Metric = "Application CPU usage",
+                Title = Text.Format(Strings.Diag_AppCpu_MainTitle, top.Name),
+                Description = Text.Format(Strings.Diag_AppCpu_MainDescription, top.Name, Percent(top.CpuPercent / total * 100), Percent(top.CpuPercent), Percent(total)),
+                Metric = Strings.Diag_Metric_AppCpu,
                 ObservedValue = Percent(top.CpuPercent),
-                ReferenceValue = $"Total CPU {Percent(total)}",
+                ReferenceValue = Text.Format(Strings.Diag_AppCpu_TotalCpu, Percent(total)),
                 Timestamp = latest.Timestamp,
-                Explanation = "If the processor stays busy, this application is the most likely reason.",
+                Explanation = Strings.Diag_AppCpu_MainExplanation,
                 Confidence = ConfidenceLevel.Medium,
                 Evidence = [appEvidence],
                 AppKey = top.Key,
@@ -173,18 +176,24 @@ public sealed class CpuHungryAppRule : DiagnosisRule
             RuleId = Id,
             Category = DiagnosisCategory.Applications,
             Severity = DiagnosisSeverity.Normal,
-            Title = "No application dominates the CPU",
-            Description = $"The largest CPU consumer is {top.Name} with {MetricFormatter.Percent(top.CpuPercent, 1)} of total capacity.",
-            Metric = "Application CPU usage",
+            Title = Strings.Diag_AppCpu_NoneTitle,
+            Description = Text.Format(Strings.Diag_AppCpu_NoneDescription, top.Name, MetricFormatter.Percent(top.CpuPercent, 1)),
+            Metric = Strings.Diag_Metric_AppCpu,
             ObservedValue = MetricFormatter.Percent(top.CpuPercent, 1),
-            ReferenceValue = $"Threshold {Percent(thresholds.ProcessCpuWarningPercent)} per application",
+            ReferenceValue = PerAppThreshold(Percent(thresholds.ProcessCpuWarningPercent)),
             Timestamp = latest.Timestamp,
-            Explanation = "No single application is keeping the processor busy.",
+            Explanation = Strings.Diag_AppCpu_NoneExplanation,
             Confidence = ConfidenceLevel.High,
             Evidence = [appEvidence],
             AppKey = top.Key,
         };
     }
+
+    /// <summary>"chrome.exe CPU": the name of an application's CPU evidence.</summary>
+    internal static string AppCpu(string name) => Text.Format(Strings.Diag_AppCpu_EvidenceName, name);
+
+    private static string PerAppThreshold(string value) =>
+        Text.Format(Strings.Diag_PerAppThreshold, value);
 
     /// <summary>How long the application has stayed at or above <paramref name="threshold"/> up to its latest sample.</summary>
     internal static SustainedSpan? SustainedApp(IReadOnlyList<(DateTimeOffset Time, AppSample? App)> series, double threshold)

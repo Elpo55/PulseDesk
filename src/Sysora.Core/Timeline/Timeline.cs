@@ -4,6 +4,7 @@ using Sysora.Core.Diagnosis;
 using Sysora.Core.Formatting;
 using Sysora.Core.History;
 using Sysora.Core.Interfaces;
+using Sysora.Localization;
 
 namespace Sysora.Core.Timeline;
 
@@ -125,10 +126,10 @@ public static class TimelineBuilder
         var items = new List<TimelineItem>();
         foreach (var (metric, name, high, normal) in new[]
         {
-            (HistoryMetric.Cpu, "CPU usage", SpikeLevel, NormalLevel),
-            (HistoryMetric.Memory, "Memory usage", MemorySpikeLevel, MemoryNormalLevel),
-            (HistoryMetric.Disk, "Disk activity", SpikeLevel, NormalLevel),
-            (HistoryMetric.Gpu, "GPU usage", SpikeLevel, NormalLevel),
+            (HistoryMetric.Cpu, Strings.Diag_Metric_CpuUsage, SpikeLevel, NormalLevel),
+            (HistoryMetric.Memory, Strings.Diag_Metric_MemoryUsage, MemorySpikeLevel, MemoryNormalLevel),
+            (HistoryMetric.Disk, Strings.WhyNow_Metric_Disk, SpikeLevel, NormalLevel),
+            (HistoryMetric.Gpu, Strings.Diag_Metric_GpuUsage, SpikeLevel, NormalLevel),
         })
         {
             DateTimeOffset? since = null;
@@ -156,10 +157,10 @@ public static class TimelineBuilder
                     {
                         Time = minute.Start,
                         Category = TimelineCategory.Anomaly,
-                        Title = $"{name} high",
-                        Detail = string.Create(CultureInfo.CurrentCulture, $"{MetricFormatter.Percent(value.Average)} on average over the minute (peak {MetricFormatter.Percent(value.Maximum)})"),
+                        Title = Text.Format(Strings.Timeline_High, name),
+                        Detail = Text.Format(Strings.Timeline_High_Detail, MetricFormatter.Percent(value.Average), MetricFormatter.Percent(value.Maximum)),
                         Severity = DiagnosisSeverity.Info,
-                        Source = "Per-minute history",
+                        Source = Strings.Timeline_Source_Minutes,
                         Action = DiagnosisAction.Replay,
                     });
                 }
@@ -172,10 +173,10 @@ public static class TimelineBuilder
                         {
                             Time = minute.Start,
                             Category = TimelineCategory.Anomaly,
-                            Title = $"{name} back to normal",
-                            Detail = $"After {MetricFormatter.DurationCompact(minute.Start - start)} of high activity (peak {MetricFormatter.Percent(peak)})",
+                            Title = Text.Format(Strings.Timeline_Normal, name),
+                            Detail = Text.Format(Strings.Timeline_Normal_Detail, MetricFormatter.DurationCompact(minute.Start - start), MetricFormatter.Percent(peak)),
                             Severity = DiagnosisSeverity.Normal,
-                            Source = "Per-minute history",
+                            Source = Strings.Timeline_Source_Minutes,
                             Action = DiagnosisAction.Replay,
                         });
                         since = null;
@@ -211,7 +212,7 @@ public static class TimelineBuilder
             Title = systemEvent.Title,
             Detail = systemEvent.Detail,
             Severity = severity,
-            Source = "Observed by Sysora",
+            Source = Strings.Timeline_Source_Observed,
             Action = action,
             AppKey = systemEvent.AppKey,
         };
@@ -223,11 +224,11 @@ public static class TimelineBuilder
         {
             ({ } old, { } current) => $"{old} → {current}",
             (null, { } current) => current,
-            ({ } old, null) => $"Was: {old}",
+            ({ } old, null) => Text.Format(Strings.Timeline_Was, old),
             _ => null,
         };
         var window = change.After is { } after
-            ? $"Happened between {after.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)} and {change.Before.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)}."
+            ? Text.Format(Strings.Timeline_HappenedBetween, after.ToLocalTime().ToString("g", CultureInfo.CurrentCulture), change.Before.ToLocalTime().ToString("g", CultureInfo.CurrentCulture))
             : null;
         return new TimelineItem
         {
@@ -238,7 +239,7 @@ public static class TimelineBuilder
             Title = change.Title,
             Detail = string.Join(" ", new[] { values, window }.Where(p => p is not null)),
             Severity = change.Importance == ChangeImportance.High ? DiagnosisSeverity.Info : DiagnosisSeverity.Normal,
-            Source = "Detected by comparing snapshots of the PC",
+            Source = Strings.Timeline_Source_Snapshots,
             Action = DiagnosisAction.Changes,
             AppKey = change.AppKey,
         };
@@ -269,4 +270,20 @@ public sealed class TimelineService(IPerformanceHistory history, IHistoryReposit
         var input = new TimelineInput { From = from, To = to, Events = events, Changes = changes, Minutes = minutes };
         return await Task.Run(() => TimelineBuilder.Build(input), cancellationToken).ConfigureAwait(false);
     }
+}
+
+/// <summary>Timeline categories in words.</summary>
+public static class TimelineCategoryText
+{
+    public static string Label(TimelineCategory category) => category switch
+    {
+        TimelineCategory.Application => Strings.TimelineCat_Application,
+        TimelineCategory.Game => Strings.TimelineCat_Game,
+        TimelineCategory.Alert => Strings.TimelineCat_Alert,
+        TimelineCategory.Anomaly => Strings.TimelineCat_Anomaly,
+        TimelineCategory.Change => Strings.TimelineCat_Change,
+        TimelineCategory.System => Strings.TimelineCat_System,
+        TimelineCategory.Investigation => Strings.TimelineCat_Investigation,
+        _ => Strings.TimelineCat_Monitoring,
+    };
 }

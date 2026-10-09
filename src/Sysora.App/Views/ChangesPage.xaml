@@ -2,6 +2,7 @@
     x:Class="Sysora.App.Views.ChangesPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:l="using:Sysora.Localization"
     xmlns:controls="using:Sysora.App.Controls"
     xmlns:vm="using:Sysora.App.ViewModels"
     NavigationCacheMode="Required">
@@ -19,23 +20,23 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <StackPanel>
-                    <TextBlock Style="{StaticResource PageTitleTextStyle}" Text="Changes" />
-                    <TextBlock Style="{StaticResource PageSubtitleTextStyle}" Text="What changed on this PC recently" />
+                    <TextBlock Style="{StaticResource PageTitleTextStyle}" Text="{x:Bind l:UiStrings.Common_Changes}" />
+                    <TextBlock Style="{StaticResource PageSubtitleTextStyle}" Text="{x:Bind l:UiStrings.Changes_WhatChangedOnThisPCRecently}" />
                 </StackPanel>
                 <ComboBox
                     Grid.Column="1"
                     MinWidth="200"
                     VerticalAlignment="Center"
-                    AutomationProperties.Name="View"
+                    AutomationProperties.Name="{x:Bind l:UiStrings.Common_View}"
                     ItemsSource="{x:Bind ViewModel.Views}"
                     SelectedIndex="{x:Bind ViewModel.ViewIndex, Mode=TwoWay}" />
-                <Button Grid.Column="2" VerticalAlignment="Center" Command="{x:Bind ViewModel.CheckNowCommand}" ToolTipService.ToolTip="Take a snapshot of the PC now and compare it">
+                <Button Grid.Column="2" VerticalAlignment="Center" Command="{x:Bind ViewModel.CheckNowCommand}" ToolTipService.ToolTip="{x:Bind l:UiStrings.Changes_TakeASnapshotOfThePCNowAndCompareIt}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <FontIcon FontSize="14" Glyph="&#xE72C;" />
-                        <TextBlock Text="Check now" />
+                        <TextBlock Text="{x:Bind l:UiStrings.Changes_CheckNow}" />
                     </StackPanel>
                 </Button>
-                <Button Grid.Column="3" VerticalAlignment="Center" AutomationProperties.Name="Export" Command="{x:Bind ViewModel.ExportCommand}" ToolTipService.ToolTip="Save the changes as an HTML report or JSON data">
+                <Button Grid.Column="3" VerticalAlignment="Center" AutomationProperties.Name="{x:Bind l:UiStrings.Common_Export}" Command="{x:Bind ViewModel.ExportCommand}" ToolTipService.ToolTip="{x:Bind l:UiStrings.Changes_SaveTheChangesAsAnHTMLReportOrJSONData}">
                     <FontIcon FontSize="14" Glyph="&#xEDE1;" />
                 </Button>
             </Grid>
@@ -43,19 +44,19 @@
             <!-- Since yesterday -->
             <Border Padding="18" Style="{StaticResource CardStyle}">
                 <StackPanel Spacing="8">
-                    <TextBlock Style="{StaticResource LabelTextStyle}" Text="SINCE YESTERDAY" />
+                    <TextBlock Style="{StaticResource LabelTextStyle}" Text="{x:Bind l:UiStrings.Common_SINCEYESTERDAY}" />
                     <StackPanel Orientation="Horizontal" Spacing="18">
                         <StackPanel Orientation="Horizontal" Spacing="6" Visibility="{x:Bind ViewModel.HasSignificant, Mode=OneWay}">
                             <controls:StatusIcon BrushKey="StatusCriticalBrush" Glyph="&#xEA39;" GlyphSize="14" />
-                            <TextBlock><Run Text="{x:Bind ViewModel.SignificantCount, Mode=OneWay}" /><Run Text=" significant" /></TextBlock>
+                            <TextBlock><Run Text="{x:Bind ViewModel.SignificantCount, Mode=OneWay}" /><Run Text="{x:Bind l:UiStrings.Common_Significant}" /></TextBlock>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Spacing="6" Visibility="{x:Bind ViewModel.HasMinor, Mode=OneWay}">
                             <controls:StatusIcon BrushKey="StatusWarningBrush" Glyph="&#xE7BA;" GlyphSize="14" />
-                            <TextBlock><Run Text="{x:Bind ViewModel.MinorCount, Mode=OneWay}" /><Run Text=" minor" /></TextBlock>
+                            <TextBlock><Run Text="{x:Bind ViewModel.MinorCount, Mode=OneWay}" /><Run Text="{x:Bind l:UiStrings.Common_Minor}" /></TextBlock>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Spacing="6" Visibility="{x:Bind ViewModel.IsMostlyUnchanged, Mode=OneWay}">
                             <controls:StatusIcon BrushKey="StatusNormalBrush" Glyph="&#xE73E;" GlyphSize="14" />
-                            <TextBlock Text="Most of your system is unchanged" />
+                            <TextBlock Text="{x:Bind l:UiStrings.Common_MostOfYourSystemIsUnchanged}" />
                         </StackPanel>
                     </StackPanel>
                     <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="{x:Bind ViewModel.SinceHeadline, Mode=OneWay}" />
@@ -125,14 +126,14 @@
                                             </Expander.Header>
                                             <StackPanel Spacing="10">
                                                 <StackPanel Spacing="2">
-                                                    <TextBlock Style="{StaticResource LabelTextStyle}" Text="What it means" />
+                                                    <TextBlock Style="{StaticResource LabelTextStyle}" Text="{x:Bind l:UiStrings.Changes_WhatItMeans}" />
                                                     <TextBlock Text="{x:Bind Explanation}" TextWrapping="Wrap" />
                                                 </StackPanel>
                                                 <StackPanel Spacing="2">
-                                                    <TextBlock Style="{StaticResource LabelTextStyle}" Text="Origin" />
+                                                    <TextBlock Style="{StaticResource LabelTextStyle}" Text="{x:Bind l:UiStrings.Changes_Origin}" />
                                                     <TextBlock Text="{x:Bind Origin}" TextWrapping="Wrap" />
                                                 </StackPanel>
-                                                <TextBlock Style="{StaticResource LabelTextStyle}" Text="Data used" />
+                                                <TextBlock Style="{StaticResource LabelTextStyle}" Text="{x:Bind l:UiStrings.Common_DataUsed}" />
                                                 <ItemsControl ItemsSource="{x:Bind Evidence}">
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate x:DataType="vm:EvidenceItemViewModel">
@@ -164,16 +165,16 @@
             <Border Padding="24" Style="{StaticResource CardStyle}" Visibility="{x:Bind ViewModel.IsEmpty, Mode=OneWay}">
                 <StackPanel HorizontalAlignment="Center" Spacing="8">
                     <FontIcon FontSize="32" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Glyph="&#xE8AB;" />
-                    <TextBlock HorizontalAlignment="Center" Style="{StaticResource BodyStrongTextBlockStyle}" Text="No change to show" />
-                    <TextBlock HorizontalAlignment="Center" Style="{StaticResource SecondaryTextStyle}" Text="Sysora never invents a change: only differences between real snapshots are listed." TextAlignment="Center" />
+                    <TextBlock HorizontalAlignment="Center" Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind l:UiStrings.Changes_NoChangeToShow}" />
+                    <TextBlock HorizontalAlignment="Center" Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind l:UiStrings.Changes_SysoraNeverInventsAChangeOnlyDifferencesBetween}" TextAlignment="Center" />
                 </StackPanel>
             </Border>
 
             <Border Style="{StaticResource CardStyle}">
                 <StackPanel Spacing="4">
-                    <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="What is compared" />
-                    <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="Installed applications (Apps &amp; features and Store apps), startup programs (Run keys and Startup folders), Windows build, BIOS version, installed memory, graphics and network adapters, fixed volumes and their used space, average CPU and memory usage, and programs that started running regularly. Snapshots are read-only and stay on this PC." />
-                    <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="Not covered: drivers, services, scheduled tasks and individual files." />
+                    <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind l:UiStrings.Common_WhatIsCompared}" />
+                    <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind l:UiStrings.Changes_InstalledApplicationsAppsAmpFeaturesAndStoreApps}" />
+                    <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind l:UiStrings.Changes_NotCoveredDriversServicesScheduledTasksAnd}" />
                 </StackPanel>
             </Border>
         </StackPanel>

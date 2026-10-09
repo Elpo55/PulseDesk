@@ -3,6 +3,7 @@ using Sysora.Core.Diagnosis;
 using Sysora.Core.History;
 using Sysora.Core.Models;
 using Sysora.Core.Settings;
+using Sysora.Localization;
 
 namespace Sysora.Core.Alerts;
 
@@ -89,6 +90,12 @@ public sealed record Alert
     /// <summary>Application concerned, when the alert is about one.</summary>
     public string? AppKey { get; init; }
 
+    /// <summary>
+    /// Name of the application the alert is about ("chrome.exe"), when it is about one. Alerts recorded before this
+    /// field existed have none: <see cref="Analysis.RecurringProblemDetector.AppName"/> falls back to their evidence.
+    /// </summary>
+    public string? AppName { get; init; }
+
     /// <summary>Where to look further.</summary>
     public DiagnosisAction Action { get; init; }
 
@@ -123,6 +130,9 @@ public sealed record AlertCondition
     public IReadOnlyList<AnalysisEvidence> Evidence { get; init; } = [];
 
     public string? AppKey { get; init; }
+
+    /// <summary>Name of the application the condition is about, when it is about one.</summary>
+    public string? AppName { get; init; }
 
     public DiagnosisAction Action { get; init; }
 }
@@ -161,4 +171,26 @@ public sealed record AlertEvaluation(IReadOnlyList<Alert> Raised, IReadOnlyList<
     public static AlertEvaluation None { get; } = new([], [], [], 0);
 
     public bool HasChanges => Raised.Count > 0 || Updated.Count > 0 || Resolved.Count > 0;
+}
+
+/// <summary>Alert severities in words.</summary>
+public static class AlertSeverityText
+{
+    public static string Label(AlertSeverity severity) => severity switch
+    {
+        AlertSeverity.Critical => Strings.AlertSeverity_Critical,
+        AlertSeverity.Warning => Strings.AlertSeverity_Warning,
+        _ => Strings.AlertSeverity_Info,
+    };
+}
+
+/// <summary>Alert statuses in words.</summary>
+public static class AlertStatusText
+{
+    public static string Label(AlertStatus status) => status switch
+    {
+        AlertStatus.New => Strings.AlertStatus_New,
+        AlertStatus.Seen => Strings.AlertStatus_Seen,
+        _ => Strings.AlertStatus_Resolved,
+    };
 }

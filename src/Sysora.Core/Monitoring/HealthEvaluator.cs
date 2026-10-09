@@ -1,6 +1,8 @@
 using System.Globalization;
+using Sysora.Core.Formatting;
 using Sysora.Core.Models;
 using Sysora.Core.Settings;
+using Sysora.Localization;
 
 namespace Sysora.Core.Monitoring;
 
@@ -77,13 +79,13 @@ public sealed class HealthEvaluator
     {
         if (snapshot.IsUnavailable(MetricKind.Cpu))
         {
-            indicators.Add(new(HealthCategory.Cpu, HealthStatus.Unknown, "CPU usage not available"));
+            indicators.Add(new(HealthCategory.Cpu, HealthStatus.Unknown, Strings.Indicator_CpuNotAvailable));
         }
         else if (snapshot.Cpu is not null)
         {
             indicators.Add(Sustained(
                 HealthCategory.Cpu, _cpuCritical, _cpuWarning, _settings.CpuSustainSeconds,
-                normal: "CPU normal", elevated: "High CPU usage"));
+                normal: Strings.Indicator_CpuNormal, elevated: Strings.Diag_CpuLoad_HighTitle));
         }
     }
 
@@ -91,13 +93,13 @@ public sealed class HealthEvaluator
     {
         if (snapshot.IsUnavailable(MetricKind.Memory))
         {
-            indicators.Add(new(HealthCategory.Memory, HealthStatus.Unknown, "Memory usage not available"));
+            indicators.Add(new(HealthCategory.Memory, HealthStatus.Unknown, Strings.Indicator_MemoryNotAvailable));
         }
         else if (snapshot.Memory is not null)
         {
             indicators.Add(Sustained(
                 HealthCategory.Memory, _memoryCritical, _memoryWarning, _settings.MemorySustainSeconds,
-                normal: "Memory normal", elevated: "High memory usage"));
+                normal: Strings.Indicator_MemoryNormal, elevated: Strings.Recurring_HighMemory));
         }
     }
 
@@ -107,7 +109,7 @@ public sealed class HealthEvaluator
         {
             if (snapshot.IsUnavailable(MetricKind.Storage))
             {
-                indicators.Add(new(HealthCategory.Storage, HealthStatus.Unknown, "Storage not available"));
+                indicators.Add(new(HealthCategory.Storage, HealthStatus.Unknown, Strings.Indicator_StorageNotAvailable));
             }
 
             return;
@@ -130,14 +132,18 @@ public sealed class HealthEvaluator
             indicators.Add(new(
                 HealthCategory.Storage,
                 status,
-                Invariant($"Storage {drive.Letter} {drive.UsedPercent:0}%"),
-                Invariant($"Above the {threshold:0}% {(status == HealthStatus.Critical ? "critical" : "warning")} threshold")));
+                Text.Format(Strings.Indicator_Storage, drive.Letter, MetricFormatter.Percent(drive.UsedPercent)),
+                Text.Format(
+                    status == HealthStatus.Critical
+                        ? Strings.Indicator_AboveCritical
+                        : Strings.Indicator_AboveWarning,
+                    MetricFormatter.Percent(threshold))));
             reported = true;
         }
 
         if (!reported)
         {
-            indicators.Add(new(HealthCategory.Storage, HealthStatus.Normal, "Storage normal"));
+            indicators.Add(new(HealthCategory.Storage, HealthStatus.Normal, Strings.Indicator_StorageNormal));
         }
     }
 
@@ -147,7 +153,7 @@ public sealed class HealthEvaluator
         {
             if (snapshot.IsUnavailable(MetricKind.Network))
             {
-                indicators.Add(new(HealthCategory.Network, HealthStatus.Unknown, "Network status not available"));
+                indicators.Add(new(HealthCategory.Network, HealthStatus.Unknown, Strings.Indicator_NetworkNotAvailable));
             }
 
             return;
@@ -155,11 +161,11 @@ public sealed class HealthEvaluator
 
         indicators.Add(network.Connectivity switch
         {
-            NetworkConnectivity.InternetAccess => new(HealthCategory.Network, HealthStatus.Normal, "Network connected"),
-            NetworkConnectivity.ConstrainedInternetAccess => new(HealthCategory.Network, HealthStatus.Warning, "Limited Internet access", "Windows reports restricted access (for example a sign-in page)"),
-            NetworkConnectivity.LocalAccess => new(HealthCategory.Network, HealthStatus.Warning, "Network available but Internet unavailable"),
-            NetworkConnectivity.None => new(HealthCategory.Network, HealthStatus.Warning, "No network connection"),
-            _ => new(HealthCategory.Network, HealthStatus.Unknown, "Network status unknown"),
+            NetworkConnectivity.InternetAccess => new(HealthCategory.Network, HealthStatus.Normal, Strings.Indicator_NetworkConnected),
+            NetworkConnectivity.ConstrainedInternetAccess => new(HealthCategory.Network, HealthStatus.Warning, Strings.Diag_Net_LimitedTitle, Strings.Indicator_NetworkRestricted),
+            NetworkConnectivity.LocalAccess => new(HealthCategory.Network, HealthStatus.Warning, Strings.Indicator_NetworkNoInternet),
+            NetworkConnectivity.None => new(HealthCategory.Network, HealthStatus.Warning, Strings.Diag_Net_NoneTitle),
+            _ => new(HealthCategory.Network, HealthStatus.Unknown, Strings.Indicator_NetworkUnknown),
         });
     }
 
@@ -169,7 +175,7 @@ public sealed class HealthEvaluator
         {
             if (snapshot.IsUnavailable(MetricKind.Processes))
             {
-                indicators.Add(new(HealthCategory.Processes, HealthStatus.Unknown, "Process information not available"));
+                indicators.Add(new(HealthCategory.Processes, HealthStatus.Unknown, Strings.Indicator_ProcessesNotAvailable));
             }
 
             return;
@@ -188,8 +194,8 @@ public sealed class HealthEvaluator
                 indicators.Add(new(
                     HealthCategory.Processes,
                     HealthStatus.Warning,
-                    Invariant($"{heaviest.Name} uses {share:0}% of memory"),
-                    Invariant($"Above the {_settings.ProcessMemoryWarningPercent:0}% per-application threshold")));
+                    Text.Format(Strings.Indicator_AppMemory, heaviest.Name, MetricFormatter.Percent(share)),
+                    Text.Format(Strings.Indicator_AppMemoryThreshold, MetricFormatter.Percent(_settings.ProcessMemoryWarningPercent))));
                 reported = true;
             }
         }
@@ -202,14 +208,14 @@ public sealed class HealthEvaluator
             indicators.Add(new(
                 HealthCategory.Processes,
                 HealthStatus.Warning,
-                Invariant($"{busiest.Name} uses a lot of CPU"),
-                Invariant($"Above {_settings.ProcessCpuWarningPercent:0}% for more than {_settings.CpuSustainSeconds} s")));
+                Text.Format(Strings.Indicator_AppCpu, busiest.Name),
+                AboveFor(_settings.ProcessCpuWarningPercent, _settings.CpuSustainSeconds)));
             reported = true;
         }
 
         if (!reported)
         {
-            indicators.Add(new(HealthCategory.Processes, HealthStatus.Normal, "No abnormal process detected"));
+            indicators.Add(new(HealthCategory.Processes, HealthStatus.Normal, Strings.Indicator_NoAbnormalProcess));
         }
     }
 
@@ -245,6 +251,10 @@ public sealed class HealthEvaluator
         }
     }
 
+    /// <summary>"Above 80% for more than 30 s".</summary>
+    private static string AboveFor(double threshold, int seconds) =>
+        Text.Format(Strings.Indicator_AboveFor, MetricFormatter.Percent(threshold), seconds);
+
     private static HealthIndicator Sustained(
         HealthCategory category,
         SustainedThresholdDetector critical,
@@ -255,11 +265,11 @@ public sealed class HealthEvaluator
     {
         if (critical.IsActive)
         {
-            return new(category, HealthStatus.Critical, elevated, Invariant($"Above {critical.Threshold:0}% for more than {seconds} s"));
+            return new(category, HealthStatus.Critical, elevated, AboveFor(critical.Threshold, seconds));
         }
 
         return warning.IsActive
-            ? new(category, HealthStatus.Warning, elevated, Invariant($"Above {warning.Threshold:0}% for more than {seconds} s"))
+            ? new(category, HealthStatus.Warning, elevated, AboveFor(warning.Threshold, seconds))
             : new(category, HealthStatus.Normal, normal);
     }
 

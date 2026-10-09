@@ -2,6 +2,7 @@
     x:Class="Sysora.App.Views.PcHealthPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:l="using:Sysora.Localization"
     xmlns:controls="using:Sysora.App.Controls"
     xmlns:vm="using:Sysora.App.ViewModels"
     NavigationCacheMode="Required">
@@ -33,19 +34,19 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <StackPanel>
-                    <TextBlock Style="{StaticResource PageTitleTextStyle}" Text="PC Health" />
-                    <TextBlock Style="{StaticResource PageSubtitleTextStyle}" Text="In what state is my PC? A score out of 100, explained area by area." TextWrapping="Wrap" />
+                    <TextBlock Style="{StaticResource PageTitleTextStyle}" Text="{x:Bind l:UiStrings.Common_PCHealth}" />
+                    <TextBlock Style="{StaticResource PageSubtitleTextStyle}" Text="{x:Bind l:UiStrings.PcHealth_InWhatStateIsMyPCAScoreOutOf100ExplainedAreaBy}" TextWrapping="Wrap" />
                 </StackPanel>
-                <Button AutomationProperties.Name="Refresh" Grid.Column="1" VerticalAlignment="Center" Command="{x:Bind ViewModel.RefreshCommand}">
+                <Button AutomationProperties.Name="{x:Bind l:UiStrings.Common_Refresh}" Grid.Column="1" VerticalAlignment="Center" Command="{x:Bind ViewModel.RefreshCommand}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <FontIcon FontSize="14" Glyph="&#xE72C;" />
-                        <TextBlock Text="Refresh" />
+                        <TextBlock Text="{x:Bind l:UiStrings.Common_Refresh}" />
                     </StackPanel>
                 </Button>
-                <Button AutomationProperties.Name="Export" Grid.Column="2" VerticalAlignment="Center" Command="{x:Bind ViewModel.ExportCommand}" ToolTipService.ToolTip="Save this analysis as an HTML report or JSON data">
+                <Button AutomationProperties.Name="{x:Bind l:UiStrings.Common_Export}" Grid.Column="2" VerticalAlignment="Center" Command="{x:Bind ViewModel.ExportCommand}" ToolTipService.ToolTip="{x:Bind l:UiStrings.PcHealth_SaveThisAnalysisAsAnHTMLReportOrJSONData}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <FontIcon FontSize="14" Glyph="&#xEDE1;" />
-                        <TextBlock Text="Export" />
+                        <TextBlock Text="{x:Bind l:UiStrings.Common_Export}" />
                     </StackPanel>
                 </Button>
             </Grid>
@@ -61,13 +62,13 @@
                         <ProgressRing
                             Width="120"
                             Height="120"
-                            AutomationProperties.Name="PC Health score"
+                            AutomationProperties.Name="{x:Bind l:UiStrings.PcHealth_PCHealthScore}"
                             IsIndeterminate="False"
                             Maximum="100"
                             Value="{x:Bind ViewModel.ScoreValue, Mode=OneWay}" />
                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                             <TextBlock HorizontalAlignment="Center" FontSize="36" FontWeight="SemiBold" Text="{x:Bind ViewModel.ScoreText, Mode=OneWay}" />
-                            <TextBlock HorizontalAlignment="Center" Style="{StaticResource LabelTextStyle}" Text="out of 100" />
+                            <TextBlock HorizontalAlignment="Center" Style="{StaticResource LabelTextStyle}" Text="{x:Bind l:UiStrings.PcHealth_OutOf100}" />
                         </StackPanel>
                     </Grid>
                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="6">
@@ -83,7 +84,7 @@
             </Border>
 
             <!-- Areas -->
-            <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Areas" />
+            <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="{x:Bind l:UiStrings.PcHealth_Areas}" />
             <ItemsControl ItemsSource="{x:Bind ViewModel.Components}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:HealthComponentItemViewModel">
@@ -112,10 +113,10 @@
                             </Expander.Header>
                             <StackPanel Spacing="10">
                                 <StackPanel Spacing="2">
-                                    <TextBlock Style="{StaticResource LabelTextStyle}" Text="Why this impact" />
+                                    <TextBlock Style="{StaticResource LabelTextStyle}" Text="{x:Bind l:UiStrings.PcHealth_WhyThisImpact}" />
                                     <TextBlock Text="{x:Bind Explanation, Mode=OneWay}" TextWrapping="Wrap" />
                                 </StackPanel>
-                                <TextBlock Style="{StaticResource LabelTextStyle}" Text="Data used" Visibility="{x:Bind HasEvidence, Mode=OneWay}" />
+                                <TextBlock Style="{StaticResource LabelTextStyle}" Text="{x:Bind l:UiStrings.Common_DataUsed}" Visibility="{x:Bind HasEvidence, Mode=OneWay}" />
                                 <ItemsControl ItemsSource="{x:Bind Evidence}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate x:DataType="vm:EvidenceItemViewModel">
@@ -141,7 +142,7 @@
             </ItemsControl>
 
             <!-- Recurring problems -->
-            <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Recurring problems" />
+            <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="{x:Bind l:UiStrings.Common_RecurringProblems}" />
             <Border Style="{StaticResource CardStyle}">
                 <StackPanel Spacing="10">
                     <TextBlock Text="{x:Bind ViewModel.RecurringSummary, Mode=OneWay}" TextWrapping="Wrap" />
@@ -166,7 +167,7 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                    <TextBlock Style="{StaticResource LabelTextStyle}" Text="A problem is called recurring after 3 episodes on 2 different days in the last 7 days, from the alerts and events Sysora recorded. With less history, Sysora says so instead of guessing." TextWrapping="Wrap" />
+                    <TextBlock Style="{StaticResource LabelTextStyle}" Text="{x:Bind l:UiStrings.PcHealth_AProblemIsCalledRecurringAfter3EpisodesOn2}" TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
 
@@ -183,16 +184,16 @@
                         <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind ViewModel.SelfImpactHeadline, Mode=OneWay}" />
                         <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind ViewModel.SelfImpactText, Mode=OneWay}" />
                     </StackPanel>
-                    <HyperlinkButton Grid.Column="2" VerticalAlignment="Center" Command="{x:Bind ViewModel.OpenSettingsCommand}" Content="Details and intensity" />
+                    <HyperlinkButton Grid.Column="2" VerticalAlignment="Center" Command="{x:Bind ViewModel.OpenSettingsCommand}" Content="{x:Bind l:UiStrings.PcHealth_DetailsAndIntensity}" />
                 </Grid>
             </Border>
 
             <!-- Method -->
             <Border Style="{StaticResource CardStyle}">
                 <StackPanel Spacing="6">
-                    <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="How the score is computed" />
+                    <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind l:UiStrings.PcHealth_HowTheScoreIsComputed}" />
                     <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="{x:Bind ViewModel.Method}" />
-                    <TextBlock Margin="0,6,0,0" Style="{StaticResource BodyStrongTextBlockStyle}" Text="Not counted" />
+                    <TextBlock Margin="0,6,0,0" Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind l:UiStrings.PcHealth_NotCounted}" />
                     <ItemsControl ItemsSource="{x:Bind ViewModel.NotAvailable}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="x:String">

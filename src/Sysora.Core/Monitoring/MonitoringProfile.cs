@@ -1,5 +1,6 @@
 using Sysora.Core.Models;
 using Sysora.Core.Settings;
+using Sysora.Localization;
 
 namespace Sysora.Core.Monitoring;
 
@@ -49,9 +50,17 @@ public sealed record MonitoringProfile(
     /// <summary>Plain-language description of the intensity, for Settings.</summary>
     public static string Describe(MonitoringIntensity intensity) => intensity switch
     {
-        MonitoringIntensity.Minimal => "For gaming or battery: samples less often (CPU and memory every 2 intervals, processes, GPU and disks every 3), keeps fewer applications per sample and evaluates alerts every 10 seconds.",
-        MonitoringIntensity.Detailed => "For investigating a problem: samples twice as often where it helps (down to 0.5 s for CPU and memory, 1 s for processes), keeps more applications per sample.",
-        _ => "The default: the intervals set below, a good balance between precision and Sysora's own consumption.",
+        MonitoringIntensity.Minimal => Strings.Intensity_Minimal_Description,
+        MonitoringIntensity.Detailed => Strings.Intensity_Detailed_Description,
+        _ => Strings.Intensity_Balanced_Description,
+    };
+
+    /// <summary>Name of the intensity: "Minimal", "Balanced", "Detailed".</summary>
+    public static string Name(MonitoringIntensity intensity) => intensity switch
+    {
+        MonitoringIntensity.Minimal => Strings.Intensity_Minimal,
+        MonitoringIntensity.Detailed => Strings.Intensity_Detailed,
+        _ => Strings.Intensity_Balanced,
     };
 
     /// <summary>The effective interval of a metric family for a configured interval.</summary>

@@ -10,6 +10,7 @@ using Sysora.Core.Formatting;
 using Sysora.Core.Models;
 using Sysora.Core.Reports;
 using Sysora.Core.Timeline;
+using Sysora.Localization;
 
 namespace Sysora.App.ViewModels;
 
@@ -44,7 +45,13 @@ public sealed partial class TimelineViewModel : PageViewModel
         NewestFirst = true;
     }
 
-    public IReadOnlyList<string> Ranges { get; } = ["Last hour", "Today", "Last 24 hours", "Last 7 days"];
+    public IReadOnlyList<string> Ranges { get; } =
+    [
+        Strings.Usual_Period_LastHour,
+        Strings.Usual_Period_Today,
+        AppImpactPeriodText.Label(AppImpactPeriod.Last24Hours),
+        Strings.Usual_Period_7Days,
+    ];
 
     /// <summary>Day headers and entries, in one flat list (so the list stays virtualized).</summary>
     public ObservableCollection<TimelineRowViewModel> Rows { get; } = [];
@@ -172,7 +179,7 @@ public sealed partial class TimelineViewModel : PageViewModel
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             _logger.LogWarning(ex, "The timeline could not be loaded.");
-            Summary = "The timeline could not be loaded. See the log for details.";
+            Summary = UiStrings.Timeline_LoadFailed;
         }
         finally
         {
@@ -225,14 +232,17 @@ public sealed partial class TimelineViewModel : PageViewModel
 
         IsEmpty = visible.Count == 0;
         Summary = _items.Count == 0
-            ? "Nothing recorded in this period yet. Entries come from what Sysora observes while it runs: applications, games, alerts, spikes, changes, sleep and investigations."
-            : $"{MetricFormatter.Plural(visible.Count, "entry", "entries")} shown of {_items.Count}. Times are those observed by Sysora; ≈ marks a change found by comparing snapshots (it happened at the latest at that time).";
+            ? UiStrings.Timeline_Empty
+            : Text.Format(
+                UiStrings.Timeline_Shown,
+                Text.Plural(visible.Count, Strings.Count_Entry_One, Strings.Count_Entry_Other),
+                _items.Count);
     }
 
     private static string DayTitle(DateTime day)
     {
         var today = DateTime.Now.Date;
-        return day == today ? "Today" : day == today.AddDays(-1) ? "Yesterday" : day.ToString("D", CultureInfo.CurrentCulture);
+        return day == today ? Strings.Usual_Period_Today : day == today.AddDays(-1) ? Strings.Usual_Period_Yesterday : day.ToString("D", CultureInfo.CurrentCulture);
     }
 
     private void Open(TimelineRowViewModel row) => _navigator.Open(row.Action, row.AppKey);

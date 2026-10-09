@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Sysora.Core.Analysis;
 using Sysora.Core.Models;
+using Sysora.Localization;
 
 namespace Sysora.Core.Reports;
 
@@ -52,7 +53,7 @@ public sealed record ReportSystemInfo(string OperatingSystem, string? Processor,
         var version = os.DisplayVersion is { Length: > 0 } display ? $" {display}" : string.Empty;
         var memory = information.InstalledMemoryBytes ?? information.UsableMemoryBytes;
         return new ReportSystemInfo(
-            $"{os.ProductName}{version} (build {os.Build}, {information.OsArchitecture})",
+            Text.Format(Strings.Report_OsVersion, os.ProductName, version, os.Build, information.OsArchitecture),
             information.Processor.Name,
             memory is { } bytes ? Formatting.MetricFormatter.Bytes(bytes) : null,
             information.Gpus.Select(g => g.Name).ToArray());
@@ -149,34 +150,34 @@ public static class ReportWriter
     {
         ArgumentNullException.ThrowIfNull(report);
         var html = new StringBuilder(16 * 1024);
-        html.Append("<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n");
+        html.Append(CultureInfo.InvariantCulture, $"<!doctype html>\n<html lang=\"{AppLanguage.Current.TwoLetterISOLanguageName}\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n");
         html.Append(CultureInfo.InvariantCulture, $"<title>{E(report.Title)}</title>\n<style>{Style}</style>\n</head>\n<body>\n<main>\n");
-        html.Append(CultureInfo.InvariantCulture, $"<header><p class=\"brand\">Sysora · Your PC, Explained.</p><h1>{E(report.Title)}</h1>");
-        html.Append(CultureInfo.InvariantCulture, $"<p class=\"meta\">Generated {E(Time(report.GeneratedAt))} · Sysora {E(report.AppVersion)}");
+        html.Append(CultureInfo.InvariantCulture, $"<header><p class=\"brand\">Sysora · {E(AppInfo.Tagline)}</p><h1>{E(report.Title)}</h1>");
+        html.Append(CultureInfo.InvariantCulture, $"<p class=\"meta\">{E(Text.Format(Strings.Report_Html_Generated, Time(report.GeneratedAt), report.AppVersion))}");
         if (report.From is { } from && report.To is { } to)
         {
-            html.Append(CultureInfo.InvariantCulture, $" · Period analyzed: {E(Time(from))} – {E(Time(to))}");
+            html.Append(CultureInfo.InvariantCulture, $" · {E(Text.Format(Strings.Report_Html_Period, Time(from), Time(to)))}");
         }
 
         html.Append("</p></header>\n");
         html.Append(CultureInfo.InvariantCulture, $"<section class=\"summary\"><p>{E(report.Summary)}</p></section>\n");
         if (report.System is { } system)
         {
-            html.Append("<section><h2>This PC</h2><dl>");
-            Fact(html, "Windows", system.OperatingSystem);
+            html.Append(CultureInfo.InvariantCulture, $"<section><h2>{E(Strings.Report_Html_ThisPc)}</h2><dl>");
+            Fact(html, Strings.Report_Html_Os, system.OperatingSystem);
             if (system.Processor is { } processor)
             {
-                Fact(html, "Processor", processor);
+                Fact(html, Strings.Report_Html_Processor, processor);
             }
 
             if (system.Memory is { } memory)
             {
-                Fact(html, "Memory", memory);
+                Fact(html, Strings.Report_Html_Memory, memory);
             }
 
             if (system.Graphics.Count > 0)
             {
-                Fact(html, "Graphics", string.Join(", ", system.Graphics));
+                Fact(html, Strings.Report_Html_Graphics, string.Join(", ", system.Graphics));
             }
 
             html.Append("</dl></section>\n");
@@ -258,7 +259,7 @@ public static class ReportWriter
 
         if (report.MissingData.Count > 0)
         {
-            html.Append("<section><h2>Not available</h2><p>Sysora never replaces a missing measurement with an estimate.</p><ul>");
+            html.Append(CultureInfo.InvariantCulture, $"<section><h2>{E(Strings.Common_NotAvailable)}</h2><p>{E(Strings.Report_Html_NeverEstimates)}</p><ul>");
             foreach (var missing in report.MissingData)
             {
                 html.Append(CultureInfo.InvariantCulture, $"<li>{E(missing)}</li>");
@@ -269,7 +270,7 @@ public static class ReportWriter
 
         if (report.Notes.Count > 0)
         {
-            html.Append("<section class=\"notes\"><h2>Notes</h2><ul>");
+            html.Append(CultureInfo.InvariantCulture, $"<section class=\"notes\"><h2>{E(Strings.Report_Html_Notes)}</h2><ul>");
             foreach (var note in report.Notes)
             {
                 html.Append(CultureInfo.InvariantCulture, $"<li>{E(note)}</li>");
@@ -278,7 +279,7 @@ public static class ReportWriter
             html.Append("</ul></section>\n");
         }
 
-        html.Append("<footer>Made locally by Sysora: every value comes from this PC. Observed = measured; Inferred = deduced from measurements (not proven); Unknown = not observable.</footer>\n");
+        html.Append(CultureInfo.InvariantCulture, $"<footer>{E(Strings.Report_Html_Footer)}</footer>\n");
         html.Append("</main>\n</body>\n</html>\n");
         return html.ToString();
     }

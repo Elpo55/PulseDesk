@@ -2,6 +2,7 @@ using System.Globalization;
 using Sysora.Core.Analysis;
 using Sysora.Core.Diagnosis;
 using Sysora.Core.Formatting;
+using Sysora.Localization;
 
 namespace Sysora.Core.Gaming;
 
@@ -94,12 +95,10 @@ public sealed record GameRecap
 /// <summary>Builds the recap of a gaming session from its measurements and the previous sessions (pure, deterministic).</summary>
 public static class GameRecapBuilder
 {
-    public const string NotAvailable = "Not available";
+    public static string NotAvailable => Strings.Common_NotAvailable;
 
     /// <summary>Why Sysora shows no frame rate.</summary>
-    public const string FpsNotAvailable =
-        "FPS: Not available. Windows gives other applications no reliable frame-rate source: measuring it requires " +
-        "administrator-level event tracing or hooking into the game, and Sysora does neither.";
+    public static string FpsNotAvailable => Strings.Game_FpsNotAvailable;
 
     /// <summary>Previous sessions used at most for the comparison.</summary>
     public const int MaxComparedSessions = 10;
@@ -124,7 +123,7 @@ public static class GameRecapBuilder
     /// <summary>Measurements needed before an average is interpreted.</summary>
     private const int MinimumSamples = 10;
 
-    private const string CpuSource = "Windows performance counter \\Processor Information(_Total)\\% Processor Utility";
+    private static string CpuSource => MetricSources.Cpu;
 
     public static GameRecap Build(GameSession session, IReadOnlyList<GameSession> history)
     {
@@ -154,8 +153,8 @@ public static class GameRecapBuilder
             {
                 Kind = GameFindingKind.Anomaly,
                 Severity = DiagnosisSeverity.Normal,
-                Title = "No resource limit reached",
-                Description = "Memory, processor, video memory and disks never stayed at their limit during the measured time.",
+                Title = Strings.Game_NoLimit_Title,
+                Description = Strings.Game_NoLimit_Description,
                 Confidence = session.MonitoredSeconds >= 60 ? ConfidenceLevel.High : ConfidenceLevel.Low,
                 Evidence = [Coverage(session)],
             });
@@ -168,9 +167,8 @@ public static class GameRecapBuilder
             Session = session,
             Headline = problems switch
             {
-                0 => "No problem observed",
-                1 => "1 point to watch",
-                _ => $"{problems.ToString(CultureInfo.CurrentCulture)} points to watch",
+                0 => Strings.Game_Headline_None,
+                _ => Text.Plural(problems, Strings.Game_Headline_Points_One, Strings.Game_Headline_Points_Other),
             },
             Summary = Summary(session, ordered),
             Severity = severity,
@@ -186,11 +184,11 @@ public static class GameRecapBuilder
 
     private static string Summary(GameSession session, IReadOnlyList<GameFinding> findings)
     {
-        var parts = new List<string> { $"{MetricFormatter.DurationPrecise(session.Duration)} of {session.Name}." };
+        var parts = new List<string> { Text.Format(Strings.Game_Summary_DurationOf, MetricFormatter.DurationPrecise(session.Duration), session.Name) };
         var averages = new List<string>();
         if (session.Cpu is { } cpu)
         {
-            averages.Add($"CPU {MetricFormatter.Percent(cpu.Average)}");
+            averages.Add(Text.Format(Strings.Game_Summary_Cpu, MetricFormatter.Percent(cpu.Average)));
         }
 
         if (session.Gpu is { } gpu)
@@ -200,21 +198,21 @@ public static class GameRecapBuilder
 
         if (session.Memory is { } memory)
         {
-            averages.Add($"memory {MetricFormatter.Percent(memory.Average)}");
+            averages.Add(Text.Format(Strings.Game_Summary_Memory, MetricFormatter.Percent(memory.Average)));
         }
 
         if (averages.Count > 0)
         {
-            parts.Add($"On average: {string.Join(", ", averages)}.");
+            parts.Add(Text.Format(Strings.Game_Summary_OnAverage, string.Join(Strings.List_Separator, averages)));
         }
 
         if (findings.FirstOrDefault(f => f.Severity >= DiagnosisSeverity.Info) is { } first)
         {
-            parts.Add(first.Qualifier is { } qualifier ? $"{qualifier}: {Lower(first.Title)}." : $"{first.Title}.");
+            parts.Add(first.Qualifier is { } qualifier ? Text.Format(Strings.Game_Summary_Qualified, qualifier, Lower(first.Title)) : $"{first.Title}.");
         }
         else
         {
-            parts.Add("No resource limit was reached.");
+            parts.Add(Strings.Game_Summary_NoLimit);
         }
 
         return string.Join(" ", parts);
@@ -222,24 +220,24 @@ public static class GameRecapBuilder
 
     private static IReadOnlyList<GameRecapMetric> Metrics(GameSession session)
     {
-        var memoryTotal = session.MemoryTotalBytes is { } total ? $"of {MetricFormatter.Bytes(total)}" : null;
-        var videoTotal = session.VideoMemoryTotalBytes is { } video ? $"of {MetricFormatter.Bytes(video)}" : null;
+        var memoryTotal = session.MemoryTotalBytes is { } total ? Text.Format(Strings.Game_OfTotal, MetricFormatter.Bytes(total)) : null;
+        var videoTotal = session.VideoMemoryTotalBytes is { } video ? Text.Format(Strings.Game_OfTotal, MetricFormatter.Bytes(video)) : null;
         return
         [
-            new("FPS", NotAvailable, NotAvailable, "No reliable source in Windows"),
-            Percent("CPU (whole PC)", session.Cpu),
-            Percent("CPU used by the game", session.GameCpu, "Share of total processor capacity"),
-            Percent("GPU (busiest adapter)", session.Gpu, session.GpuName),
+            new("FPS", NotAvailable, NotAvailable, Strings.Game_Fps_Note),
+            Percent(Strings.Game_Metric_CpuPc, session.Cpu),
+            Percent(Strings.Game_Metric_CpuGame, session.GameCpu, Strings.Game_CpuGame_Note),
+            Percent(Strings.Game_Metric_GpuBusiest, session.Gpu, session.GpuName),
             session.GameGpu is null
-                ? new GameRecapMetric("GPU used by the game", NotAvailable, NotAvailable, "Windows did not report GPU usage per process")
-                : Percent("GPU used by the game", session.GameGpu, "Busiest GPU engine used by the game"),
-            Bytes("Video memory in use", session.VideoMemoryBytes, Join(videoTotal, "dedicated memory, all applications")),
-            Percent("Memory (whole PC)", session.Memory, memoryTotal),
-            Bytes("Memory used by the game", session.GameMemoryBytes, "Private working set of the game's processes"),
-            Percent("Busiest disk active time", session.Disk),
-            Rate("Network received (whole PC)", session.NetworkReceive),
-            Rate("Network sent (whole PC)", session.NetworkSend),
-            Percent("Sysora's own CPU", session.SelfCpu, "Measured during the session"),
+                ? new GameRecapMetric(Strings.Game_Metric_GpuGame, NotAvailable, NotAvailable, Strings.Game_GpuGame_NotReported)
+                : Percent(Strings.Game_Metric_GpuGame, session.GameGpu, Strings.Game_GpuGame_Note),
+            Bytes(Strings.Game_Metric_VideoMemory, session.VideoMemoryBytes, Join(videoTotal, Strings.Game_VideoMemory_Note)),
+            Percent(Strings.Game_Metric_MemoryPc, session.Memory, memoryTotal),
+            Bytes(Strings.Game_Metric_MemoryGame, session.GameMemoryBytes, Strings.Game_MemoryGame_Note),
+            Percent(Strings.Game_Metric_Disk, session.Disk),
+            Rate(Strings.Game_Metric_NetReceived, session.NetworkReceive),
+            Rate(Strings.Game_Metric_NetSent, session.NetworkSend),
+            Percent(Strings.Game_Metric_SelfCpu, session.SelfCpu, Strings.Game_SelfCpu_Note),
         ];
     }
 
@@ -248,10 +246,10 @@ public static class GameRecapBuilder
         foreach (var condition in session.Conditions)
         {
             var total = MetricFormatter.DurationPrecise(TimeSpan.FromSeconds(condition.TotalSeconds));
-            var periods = condition.Periods > 1 ? $" over {condition.Periods.ToString(CultureInfo.CurrentCulture)} periods" : string.Empty;
-            var evidence = new AnalysisEvidence(ConditionMetric(condition.Kind), $"At or above {MetricFormatter.Percent(condition.Threshold)} for {total}{periods} (peak {MetricFormatter.Percent(condition.Peak)})")
+            var periods = condition.Periods > 1 ? Text.Format(Strings.Game_OverPeriods, condition.Periods) : string.Empty;
+            var evidence = new AnalysisEvidence(ConditionMetric(condition.Kind), Text.Format(Strings.Game_Condition_Value, MetricFormatter.Percent(condition.Threshold), total, periods, MetricFormatter.Percent(condition.Peak)))
             {
-                Reference = $"Counted when it lasts at least {MetricFormatter.DurationCompact(ConditionMinimum(condition.Kind))}",
+                Reference = Text.Format(Strings.Game_Condition_Reference, MetricFormatter.DurationCompact(ConditionMinimum(condition.Kind))),
                 From = condition.FirstAt,
                 To = session.End,
                 Source = ConditionSource(condition.Kind),
@@ -263,12 +261,12 @@ public static class GameRecapBuilder
                 {
                     Kind = GameFindingKind.Anomaly,
                     Severity = DiagnosisSeverity.Warning,
-                    Title = "Memory was nearly full",
-                    Description = $"Physical memory stayed above {MetricFormatter.Percent(condition.Threshold)} for {total}{periods}.",
-                    Qualifier = "Possible cause of stutters",
+                    Title = Strings.Game_Memory_Title,
+                    Description = Text.Format(Strings.Game_Memory_Description, MetricFormatter.Percent(condition.Threshold), total, periods),
+                    Qualifier = Strings.Game_Qualifier_Stutters,
                     Recommendation = BiggestBackgroundMemory(session) is { } app
-                        ? $"Close applications you don't need before playing. The largest other application was {app.Name} ({MetricFormatter.Bytes(app.MemoryMaximumBytes)})."
-                        : "Close applications you don't need before playing.",
+                        ? Text.Format(Strings.Game_Memory_RecommendationApp, app.Name, MetricFormatter.Bytes(app.MemoryMaximumBytes))
+                        : Strings.Game_Memory_Recommendation,
                     Confidence = longEnough ? ConfidenceLevel.High : ConfidenceLevel.Medium,
                     Evidence = [evidence],
                 },
@@ -276,12 +274,12 @@ public static class GameRecapBuilder
                 {
                     Kind = GameFindingKind.Anomaly,
                     Severity = DiagnosisSeverity.Warning,
-                    Title = "The processor was saturated",
-                    Description = $"Total CPU usage stayed above {MetricFormatter.Percent(condition.Threshold)} for {total}{periods}.",
-                    Qualifier = "Likely contributor to slowdowns",
+                    Title = Strings.Game_Cpu_Title,
+                    Description = Text.Format(Strings.Game_Cpu_Description, MetricFormatter.Percent(condition.Threshold), total, periods),
+                    Qualifier = Strings.Game_Qualifier_Slowdowns,
                     Recommendation = TopBackgroundApp(session) is { } app
-                        ? $"The busiest other application was {app.Name} ({MetricFormatter.Percent(app.CpuAverage, 1)} of CPU on average): close it while playing if you don't need it."
-                        : "Lowering CPU-heavy settings (view distance, crowd density, physics) reduces the load.",
+                        ? Text.Format(Strings.Game_Cpu_RecommendationApp, app.Name, MetricFormatter.Percent(app.CpuAverage, 1))
+                        : Strings.Game_Cpu_Recommendation,
                     Confidence = longEnough ? ConfidenceLevel.High : ConfidenceLevel.Medium,
                     Evidence = [evidence],
                 },
@@ -289,10 +287,10 @@ public static class GameRecapBuilder
                 {
                     Kind = GameFindingKind.Anomaly,
                     Severity = DiagnosisSeverity.Warning,
-                    Title = "Video memory was nearly full",
-                    Description = $"Dedicated video memory stayed above {MetricFormatter.Percent(condition.Threshold)} of {MetricFormatter.Bytes(session.VideoMemoryTotalBytes)} for {total}{periods}.",
-                    Qualifier = "Possible cause of stutters",
-                    Recommendation = "Lowering texture quality or resolution reduces video memory use.",
+                    Title = Strings.Game_Video_Title,
+                    Description = Text.Format(Strings.Game_Video_Description, MetricFormatter.Percent(condition.Threshold), MetricFormatter.Bytes(session.VideoMemoryTotalBytes), total, periods),
+                    Qualifier = Strings.Game_Qualifier_Stutters,
+                    Recommendation = Strings.Game_Video_Recommendation,
                     Confidence = ConfidenceLevel.Medium,
                     Evidence = [evidence],
                 },
@@ -300,10 +298,10 @@ public static class GameRecapBuilder
                 {
                     Kind = GameFindingKind.Anomaly,
                     Severity = longEnough ? DiagnosisSeverity.Warning : DiagnosisSeverity.Info,
-                    Title = "A disk was busy almost all the time",
-                    Description = $"The busiest disk stayed above {MetricFormatter.Percent(condition.Threshold)} active time for {total}{periods}.",
-                    Qualifier = "Possible cause of loading pauses",
-                    Recommendation = "Installing the game on a faster drive (SSD) shortens loading; updates or scans running at the same time also keep disks busy.",
+                    Title = Strings.Game_Disk_Title,
+                    Description = Text.Format(Strings.Game_Disk_Description, MetricFormatter.Percent(condition.Threshold), total, periods),
+                    Qualifier = Strings.Game_Qualifier_Loading,
+                    Recommendation = Strings.Game_Disk_Recommendation,
                     Confidence = ConfidenceLevel.Medium,
                     Evidence = [evidence],
                 },
@@ -321,12 +319,14 @@ public static class GameRecapBuilder
             {
                 Kind = GameFindingKind.Analysis,
                 Severity = DiagnosisSeverity.Info,
-                Title = "The graphics card was the most loaded component",
-                Description = $"The GPU averaged {MetricFormatter.Percent(g.Average)}" + (cpu is { } c ? $" while the processor averaged {MetricFormatter.Percent(c.Average)}." : "."),
-                Qualifier = "Likely limiting factor",
-                Recommendation = "This is expected with a demanding game: the GPU sets the pace. Lower graphics settings or resolution for more smoothness.",
+                Title = Strings.Game_GpuBound_Title,
+                Description = cpu is { } c
+                    ? Text.Format(Strings.Game_GpuBound_DescriptionCpu, MetricFormatter.Percent(g.Average), MetricFormatter.Percent(c.Average))
+                    : Text.Format(Strings.Game_GpuBound_Description, MetricFormatter.Percent(g.Average)),
+                Qualifier = Strings.Game_Qualifier_LikelyLimit,
+                Recommendation = Strings.Game_GpuBound_Recommendation,
                 Confidence = ConfidenceLevel.Medium,
-                Evidence = [Stat("GPU usage (busiest adapter)", g, MetricSources.Gpu, session), .. CpuEvidence(session)],
+                Evidence = [Stat(Strings.Game_Ev_GpuBusiest, g, MetricSources.Gpu, session), .. CpuEvidence(session)],
             };
         }
         else if (cpu is { Samples: >= MinimumSamples } c && c.Average >= CpuHeavyPercent)
@@ -336,14 +336,14 @@ public static class GameRecapBuilder
             {
                 Kind = GameFindingKind.Analysis,
                 Severity = DiagnosisSeverity.Info,
-                Title = "The processor was heavily used",
+                Title = Strings.Game_CpuHeavy_Title,
                 Description = gpu is { } gg
-                    ? $"The processor averaged {MetricFormatter.Percent(c.Average)} while the GPU averaged {MetricFormatter.Percent(gg.Average)}."
-                    : $"The processor averaged {MetricFormatter.Percent(c.Average)}. GPU usage was not available, so Sysora cannot tell which component set the pace.",
-                Qualifier = gpuLow ? "Likely limiting factor" : "Potential contributor",
-                Recommendation = "Close background applications and lower CPU-heavy settings (view distance, crowds, physics).",
+                    ? Text.Format(Strings.Game_CpuHeavy_DescriptionGpu, MetricFormatter.Percent(c.Average), MetricFormatter.Percent(gg.Average))
+                    : Text.Format(Strings.Game_CpuHeavy_Description, MetricFormatter.Percent(c.Average)),
+                Qualifier = gpuLow ? Strings.Game_Qualifier_LikelyLimit : Strings.Game_Qualifier_Potential,
+                Recommendation = Strings.Game_CpuHeavy_Recommendation,
                 Confidence = gpuLow ? ConfidenceLevel.Medium : ConfidenceLevel.Low,
-                Evidence = [.. CpuEvidence(session), .. gpu is { } ge ? new[] { Stat("GPU usage (busiest adapter)", ge, MetricSources.Gpu, session) } : []],
+                Evidence = [.. CpuEvidence(session), .. gpu is { } ge ? new[] { Stat(Strings.Game_Ev_GpuBusiest, ge, MetricSources.Gpu, session) } : []],
             };
         }
 
@@ -353,16 +353,16 @@ public static class GameRecapBuilder
             {
                 Kind = GameFindingKind.Analysis,
                 Severity = app.CpuAverage >= BackgroundAppPercent * 3 ? DiagnosisSeverity.Warning : DiagnosisSeverity.Info,
-                Title = $"{app.Name} was busy during the game",
-                Description = $"{app.Name} used {MetricFormatter.Percent(app.CpuAverage, 1)} of total CPU on average during the session (peak {MetricFormatter.Percent(app.CpuMaximum, 1)}).",
-                Qualifier = "Potential contributor",
-                Recommendation = $"If you don't need {app.Name} while playing, close it before starting the game.",
+                Title = Text.Format(Strings.Game_BusyApp_Title, app.Name),
+                Description = Text.Format(Strings.Game_BusyApp_Description, app.Name, MetricFormatter.Percent(app.CpuAverage, 1), MetricFormatter.Percent(app.CpuMaximum, 1)),
+                Qualifier = Strings.Game_Qualifier_Potential,
+                Recommendation = Text.Format(Strings.Game_BusyApp_Recommendation, app.Name),
                 Confidence = ConfidenceLevel.Medium,
                 Evidence =
                 [
-                    new AnalysisEvidence($"{app.Name} CPU", $"Average {MetricFormatter.Percent(app.CpuAverage, 1)}, peak {MetricFormatter.Percent(app.CpuMaximum, 1)}, up to {MetricFormatter.Bytes(app.MemoryMaximumBytes)} of memory")
+                    new AnalysisEvidence(Diagnosis.Rules.CpuHungryAppRule.AppCpu(app.Name), Text.Format(Strings.Game_BusyApp_Value, MetricFormatter.Percent(app.CpuAverage, 1), MetricFormatter.Percent(app.CpuMaximum, 1), MetricFormatter.Bytes(app.MemoryMaximumBytes)))
                     {
-                        Reference = "Average over every process sample of the session (0 while it was not running)",
+                        Reference = Strings.Game_BusyApp_Reference,
                         From = session.Start,
                         To = session.End,
                         SampleCount = session.ProcessSamples,
@@ -378,8 +378,8 @@ public static class GameRecapBuilder
             {
                 Kind = GameFindingKind.Analysis,
                 Severity = DiagnosisSeverity.Normal,
-                Title = "Measurements were interrupted",
-                Description = $"{MetricFormatter.Plural(session.DataGaps, "interruption")} ({MetricFormatter.DurationCompact(TimeSpan.FromSeconds(session.GapSeconds))} not measured): the PC was asleep or monitoring was paused. Values cover the measured time only.",
+                Title = Strings.Game_Gaps_Title,
+                Description = Text.Format(Strings.Game_Gaps_Description, Interruptions(session.DataGaps), MetricFormatter.DurationCompact(TimeSpan.FromSeconds(session.GapSeconds))),
                 Confidence = ConfidenceLevel.High,
                 Evidence = [Coverage(session)],
             };
@@ -390,13 +390,15 @@ public static class GameRecapBuilder
     {
         if (previous.Count == 0)
         {
-            return ([], $"First recorded session of {session.Name}: nothing to compare with yet.", []);
+            return ([], Text.Format(Strings.Game_Compare_First, session.Name), []);
         }
 
         var note = previous.Count == 1
-            ? $"Compared with your previous session of {session.Name} ({previous[0].Start.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)})."
-            : $"Compared with the average of your {previous.Count.ToString(CultureInfo.CurrentCulture)} previous sessions of {session.Name} (since {previous[^1].Start.ToLocalTime().ToString("d", CultureInfo.CurrentCulture)}).";
-        var reference = previous.Count == 1 ? "your previous session" : $"your {previous.Count.ToString(CultureInfo.CurrentCulture)} previous sessions";
+            ? Text.Format(Strings.Game_Compare_Previous, session.Name, previous[0].Start.ToLocalTime().ToString("g", CultureInfo.CurrentCulture))
+            : Text.Format(Strings.Game_Compare_Average, previous.Count, session.Name, previous[^1].Start.ToLocalTime().ToString("d", CultureInfo.CurrentCulture));
+        var reference = previous.Count == 1
+            ? Strings.Game_Ref_Previous
+            : Text.Format(Strings.Game_Ref_PreviousN, previous.Count);
 
         var items = new List<GameComparisonItem>();
         var findings = new List<GameFinding>();
@@ -413,28 +415,40 @@ public static class GameRecapBuilder
             items.Add(new GameComparisonItem(metric, MetricFormatter.Percent(current.Average), MetricFormatter.Percent(before), Points(difference), notable));
             if (notable && difference > 0)
             {
-                findings.Add(Difference($"{metric} was higher than usual for this game", $"{metric} averaged {MetricFormatter.Percent(current.Average)}, {Points(difference)} compared with {reference} ({MetricFormatter.Percent(before)}).", metric, current, before, v => MetricFormatter.Percent(v)));
+                findings.Add(Difference(
+                    Text.Format(Strings.Game_Compare_HigherTitle, metric),
+                    Text.Format(Strings.Game_Compare_HigherDescription, metric, MetricFormatter.Percent(current.Average), Points(difference), reference, MetricFormatter.Percent(before)),
+                    metric,
+                    current,
+                    before,
+                    v => MetricFormatter.Percent(v)));
             }
         }
 
-        ComparePercent("CPU (whole PC)", s => s.Cpu);
-        ComparePercent("GPU (busiest adapter)", s => s.Gpu);
-        ComparePercent("Memory (whole PC)", s => s.Memory);
-        ComparePercent("CPU used by the game", s => s.GameCpu);
+        ComparePercent(Strings.Game_Metric_CpuPc, s => s.Cpu);
+        ComparePercent(Strings.Game_Metric_GpuBusiest, s => s.Gpu);
+        ComparePercent(Strings.Game_Metric_MemoryPc, s => s.Memory);
+        ComparePercent(Strings.Game_Metric_CpuGame, s => s.GameCpu);
 
         if (session.GameMemoryBytes is { } memory && Average(previous, s => s.GameMemoryBytes) is { } beforeMemory)
         {
             var difference = memory.Average - beforeMemory;
             var notable = Math.Abs(difference) >= NotableMemoryBytes && beforeMemory > 0 && Math.Abs(difference) / beforeMemory >= NotableMemoryRatio;
-            items.Add(new GameComparisonItem("Memory used by the game", MetricFormatter.Bytes(memory.Average), MetricFormatter.Bytes(beforeMemory), SignedBytes(difference), notable));
+            items.Add(new GameComparisonItem(Strings.Game_Metric_MemoryGame, MetricFormatter.Bytes(memory.Average), MetricFormatter.Bytes(beforeMemory), SignedBytes(difference), notable));
             if (notable && difference > 0)
             {
-                findings.Add(Difference("The game used more memory than usual", $"The game used {MetricFormatter.Bytes(memory.Average)} on average, {SignedBytes(difference)} compared with {reference} ({MetricFormatter.Bytes(beforeMemory)}).", "Memory used by the game", memory, beforeMemory, v => MetricFormatter.Bytes(v)));
+                findings.Add(Difference(
+                    Strings.Game_Compare_MoreMemoryTitle,
+                    Text.Format(Strings.Game_Compare_MoreMemoryDescription, MetricFormatter.Bytes(memory.Average), SignedBytes(difference), reference, MetricFormatter.Bytes(beforeMemory)),
+                    Strings.Game_Metric_MemoryGame,
+                    memory,
+                    beforeMemory,
+                    v => MetricFormatter.Bytes(v)));
             }
         }
 
         var averageDuration = TimeSpan.FromSeconds(previous.Average(s => s.Duration.TotalSeconds));
-        items.Add(new GameComparisonItem("Duration", MetricFormatter.DurationPrecise(session.Duration), MetricFormatter.DurationPrecise(averageDuration), SignedDuration(session.Duration - averageDuration), false));
+        items.Add(new GameComparisonItem(Strings.WhyNow_Label_Duration, MetricFormatter.DurationPrecise(session.Duration), MetricFormatter.DurationPrecise(averageDuration), SignedDuration(session.Duration - averageDuration), false));
 
         foreach (var condition in session.Conditions)
         {
@@ -445,9 +459,9 @@ public static class GameRecapBuilder
                 {
                     Kind = GameFindingKind.Comparison,
                     Severity = DiagnosisSeverity.Info,
-                    Title = $"{ConditionMetric(condition.Kind)}: new in this session",
-                    Description = $"This limit was not reached in {reference} of {session.Name}.",
-                    Qualifier = "Observed change, cause unknown",
+                    Title = Text.Format(Strings.Game_Compare_NewLimitTitle, ConditionMetric(condition.Kind)),
+                    Description = Text.Format(Strings.Game_Compare_NewLimitDescription, reference, session.Name),
+                    Qualifier = Strings.Game_Qualifier_ObservedChange,
                     Confidence = previous.Count >= 3 ? ConfidenceLevel.Medium : ConfidenceLevel.Low,
                 });
             }
@@ -461,14 +475,14 @@ public static class GameRecapBuilder
             Severity = DiagnosisSeverity.Info,
             Title = title,
             Description = description,
-            Qualifier = "Observed change, cause unknown",
-            Recommendation = "A game update, different settings or a different part of the game can explain it; if it keeps happening, compare with Changes.",
+            Qualifier = Strings.Game_Qualifier_ObservedChange,
+            Recommendation = Strings.Game_Compare_Recommendation,
             Confidence = previous.Count >= 3 ? ConfidenceLevel.Medium : ConfidenceLevel.Low,
             Evidence =
             [
-                new AnalysisEvidence(metric, $"This session: {format(current.Average)} (peak {format(current.Maximum)})")
+                new AnalysisEvidence(metric, Text.Format(Strings.Game_Compare_ThisSession, format(current.Average), format(current.Maximum)))
                 {
-                    Reference = $"Previous sessions: {format(before)} on average",
+                    Reference = Text.Format(Strings.Game_Compare_PreviousSessions, format(before)),
                     SampleCount = current.Samples,
                     From = session.Start,
                     To = session.End,
@@ -499,49 +513,51 @@ public static class GameRecapBuilder
         var missing = new List<string> { FpsNotAvailable };
         if (session.Gpu is null)
         {
-            missing.Add("GPU usage: Not available (no graphics adapter reported it, or GPU monitoring is turned off in Settings).");
+            missing.Add(Strings.Game_Missing_Gpu);
         }
         else if (session.GameGpu is null)
         {
-            missing.Add("GPU usage of the game: Not available (Windows did not report GPU usage per process).");
+            missing.Add(Strings.Game_Missing_GpuGame);
         }
 
         if (session.VideoMemoryBytes is null)
         {
-            missing.Add("Video memory: Not available (the graphics driver did not report it).");
+            missing.Add(Strings.Game_Missing_Video);
         }
 
-        missing.Add("Temperatures: Not available (Windows has no documented way to read them without a kernel driver).");
-        missing.Add("Network usage of the game: Not available (per-application network usage requires administrator-level event tracing); network values are for the whole PC.");
+        missing.Add(Strings.Game_Missing_Temperatures);
+        missing.Add(Strings.Game_Missing_Network);
         return missing;
     }
 
     private static string CoverageText(GameSession session)
     {
-        var text = $"Measured from {Time(session.Start)} to {Time(session.End)} ({MetricFormatter.DurationPrecise(TimeSpan.FromSeconds(session.MonitoredSeconds))} of measurements).";
+        var text = Text.Format(Strings.Game_Coverage, Time(session.Start), Time(session.End), MetricFormatter.DurationPrecise(TimeSpan.FromSeconds(session.MonitoredSeconds)));
         if (session.GameStartedAt is { } started)
         {
-            text += $" The game was already running since {Time(started)} when Sysora started: the time before is not covered.";
+            text += " " + Text.Format(Strings.Game_Coverage_AlreadyRunning, Time(started));
         }
 
         if (session.DataGaps > 0)
         {
-            text += $" {MetricFormatter.Plural(session.DataGaps, "interruption")} ({MetricFormatter.DurationCompact(TimeSpan.FromSeconds(session.GapSeconds))}).";
+            text += " " + Text.Format(Strings.Game_Coverage_Gaps, Interruptions(session.DataGaps), MetricFormatter.DurationCompact(TimeSpan.FromSeconds(session.GapSeconds)));
         }
 
         text += session.EndReason switch
         {
-            GameSessionEnd.SysoraClosed => " Sysora was closed before the game: the end of the session is not covered.",
-            GameSessionEnd.TrackingStopped => " Game sessions were turned off before the game closed.",
+            GameSessionEnd.SysoraClosed => " " + Strings.Game_Coverage_SysoraClosed,
+            GameSessionEnd.TrackingStopped => " " + Strings.Game_Coverage_TrackingStopped,
             _ => string.Empty,
         };
         return text;
     }
 
     private static AnalysisEvidence Coverage(GameSession session) =>
-        new("Measured time", MetricFormatter.DurationPrecise(TimeSpan.FromSeconds(session.MonitoredSeconds)))
+        new(Strings.Game_Ev_MeasuredTime, MetricFormatter.DurationPrecise(TimeSpan.FromSeconds(session.MonitoredSeconds)))
         {
-            Reference = session.DataGaps > 0 ? $"{MetricFormatter.Plural(session.DataGaps, "interruption")}, {MetricFormatter.DurationCompact(TimeSpan.FromSeconds(session.GapSeconds))} not measured" : "No interruption",
+            Reference = session.DataGaps > 0
+                ? Text.Format(Strings.Game_Ev_Gaps, Interruptions(session.DataGaps), MetricFormatter.DurationCompact(TimeSpan.FromSeconds(session.GapSeconds)))
+                : Strings.Game_Ev_NoGap,
             From = session.Start,
             To = session.End,
         };
@@ -550,17 +566,17 @@ public static class GameRecapBuilder
     {
         if (session.Cpu is { } cpu)
         {
-            yield return Stat("CPU usage (whole PC)", cpu, CpuSource, session);
+            yield return Stat(Strings.Game_Ev_CpuPc, cpu, CpuSource, session);
         }
 
         if (session.GameCpu is { } game)
         {
-            yield return Stat("CPU used by the game", game, MetricSources.Processes, session);
+            yield return Stat(Strings.Game_Metric_CpuGame, game, MetricSources.Processes, session);
         }
     }
 
     private static AnalysisEvidence Stat(string metric, MetricStat stat, string source, GameSession session) =>
-        new(metric, $"Average {MetricFormatter.Percent(stat.Average)}, peak {MetricFormatter.Percent(stat.Maximum)}")
+        new(metric, Text.Format(Strings.Diag_AveragePeak, MetricFormatter.Percent(stat.Average), MetricFormatter.Percent(stat.Maximum)))
         {
             From = session.Start,
             To = session.End,
@@ -576,17 +592,17 @@ public static class GameRecapBuilder
 
     private static string ConditionMetric(GameConditionKind kind) => kind switch
     {
-        GameConditionKind.CpuSaturated => "CPU usage",
-        GameConditionKind.MemoryNearlyFull => "Memory usage",
-        GameConditionKind.VideoMemoryNearlyFull => "Video memory",
-        _ => "Disk active time",
+        GameConditionKind.CpuSaturated => Strings.Diag_Metric_CpuUsage,
+        GameConditionKind.MemoryNearlyFull => Strings.Diag_Metric_MemoryUsage,
+        GameConditionKind.VideoMemoryNearlyFull => Strings.Game_Condition_Video,
+        _ => Strings.Diag_Metric_DiskActive,
     };
 
     private static string ConditionSource(GameConditionKind kind) => kind switch
     {
         GameConditionKind.CpuSaturated => CpuSource,
         GameConditionKind.MemoryNearlyFull => MetricSources.Memory,
-        GameConditionKind.VideoMemoryNearlyFull => "Windows performance counter \\GPU Adapter Memory(*)\\Dedicated Usage",
+        GameConditionKind.VideoMemoryNearlyFull => Strings.Source_VideoMemory,
         _ => MetricSources.Disk,
     };
 
@@ -611,7 +627,7 @@ public static class GameRecapBuilder
     private static string? Join(string? first, string second) => first is null ? second : $"{first} · {second}";
 
     private static string Points(double difference) =>
-        string.Create(CultureInfo.CurrentCulture, $"{(difference >= 0 ? "+" : "−")}{Math.Abs(difference):0} points");
+        (difference >= 0 ? "+" : "−") + Text.Format(Strings.Game_Points, Math.Abs(difference));
 
     private static string SignedBytes(double difference) =>
         $"{(difference >= 0 ? "+" : "−")}{MetricFormatter.Bytes(Math.Abs(difference))}";
@@ -622,4 +638,18 @@ public static class GameRecapBuilder
     private static string Time(DateTimeOffset time) => time.ToLocalTime().ToString("t", CultureInfo.CurrentCulture);
 
     private static string Lower(string text) => text.Length > 0 ? char.ToLowerInvariant(text[0]) + text[1..] : text;
+
+    private static string Interruptions(int count) =>
+        Text.Plural(count, Strings.Count_Interruption_One, Strings.Count_Interruption_Other);
+}
+
+/// <summary>Kinds of game findings in words.</summary>
+public static class GameFindingKindText
+{
+    public static string Label(GameFindingKind kind) => kind switch
+    {
+        GameFindingKind.Anomaly => Strings.GameFinding_Anomaly,
+        GameFindingKind.Analysis => Strings.GameFinding_Analysis,
+        _ => Strings.GameFinding_Comparison,
+    };
 }

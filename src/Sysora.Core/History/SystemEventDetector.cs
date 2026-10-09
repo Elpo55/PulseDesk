@@ -2,6 +2,7 @@ using System.Globalization;
 using Sysora.Core.Analysis;
 using Sysora.Core.Formatting;
 using Sysora.Core.Models;
+using Sysora.Localization;
 
 namespace Sysora.Core.History;
 
@@ -52,23 +53,44 @@ public sealed class SystemEventDetector
     private static readonly string WindowsDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
 
     /// <summary>Title of the event recorded when Windows reports Internet access again.</summary>
-    public const string InternetAvailableTitle = "Internet access available";
+    public static string InternetAvailableTitle => Strings.Event_InternetAvailable;
 
     /// <summary>Title of the event recorded when Windows reports limited Internet access.</summary>
-    public const string InternetLimitedTitle = "Internet access limited";
+    public static string InternetLimitedTitle => Strings.Event_InternetLimited;
 
     /// <summary>Title of the event recorded when only the local network remains reachable.</summary>
-    public const string InternetLostTitle = "Internet access lost (local network only)";
+    public static string InternetLostTitle => Strings.Event_InternetLost;
 
     /// <summary>Title of the event recorded when Windows reports no network connection.</summary>
-    public const string NetworkLostTitle = "Network connection lost";
+    public static string NetworkLostTitle => Strings.Event_NetworkLost;
+
+    /// <summary>
+    /// Titles of the loss events in every supported language: events keep the language they were recorded in, so a loss
+    /// recorded before the language was changed is still recognized.
+    /// </summary>
+    private static readonly Lazy<HashSet<string>> LossTitles = new(() =>
+    {
+        var titles = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var language in AppLanguage.Supported)
+        {
+            var culture = CultureInfo.GetCultureInfo(language.Code);
+            foreach (var key in new[] { nameof(Strings.Event_InternetLimited), nameof(Strings.Event_InternetLost), nameof(Strings.Event_NetworkLost) })
+            {
+                if (Strings.ResourceManager.GetString(key, culture) is { } title)
+                {
+                    titles.Add(title);
+                }
+            }
+        }
+
+        return titles;
+    });
 
     /// <summary>True for a connectivity event that reports a loss or a limitation of Internet access.</summary>
     public static bool IsConnectivityLoss(SystemEvent systemEvent)
     {
         ArgumentNullException.ThrowIfNull(systemEvent);
-        return systemEvent.Kind == SystemEventKind.ConnectivityChanged
-            && systemEvent.Title is InternetLimitedTitle or InternetLostTitle or NetworkLostTitle;
+        return systemEvent.Kind == SystemEventKind.ConnectivityChanged && LossTitles.Value.Contains(systemEvent.Title);
     }
 
     private readonly HashSet<string> _highCpu = new(StringComparer.Ordinal);
@@ -130,11 +152,11 @@ public sealed class SystemEventDetector
             var isUnavailable = (current & kind) != 0;
             if (isUnavailable && !wasUnavailable)
             {
-                events.Add(new SystemEvent(time, SystemEventKind.MetricUnavailable, $"{Describe(kind)} metrics not available"));
+                events.Add(new SystemEvent(time, SystemEventKind.MetricUnavailable, Text.Format(Strings.Event_MetricUnavailable, Describe(kind))));
             }
             else if (!isUnavailable && wasUnavailable)
             {
-                events.Add(new SystemEvent(time, SystemEventKind.MetricRestored, $"{Describe(kind)} metrics available again"));
+                events.Add(new SystemEvent(time, SystemEventKind.MetricRestored, Text.Format(Strings.Event_MetricRestored, Describe(kind))));
             }
         }
     }
@@ -155,7 +177,7 @@ public sealed class SystemEventDetector
                 NetworkConnectivity.LocalAccess => InternetLostTitle,
                 _ => NetworkLostTitle,
             };
-            events.Add(new SystemEvent(time, SystemEventKind.ConnectivityChanged, title, "As reported by Windows"));
+            events.Add(new SystemEvent(time, SystemEventKind.ConnectivityChanged, title, Strings.Event_AsReportedByWindows));
         }
 
         _connectivity = connectivity;
@@ -169,13 +191,13 @@ public sealed class SystemEventDetector
             foreach (var volume in storage.Where(s => !previous.Contains(s.Letter)))
             {
                 var label = volume.Label is { } l ? $" ({l})" : string.Empty;
-                events.Add(new SystemEvent(time, SystemEventKind.VolumeAdded, $"Volume {volume.Letter}{label} connected",
-                    $"{MetricFormatter.Bytes(volume.TotalBytes)} {volume.Kind.ToString().ToLowerInvariant()} volume"));
+                events.Add(new SystemEvent(time, SystemEventKind.VolumeAdded, Text.Format(Strings.Event_VolumeConnected, volume.Letter, label),
+                    Text.Format(Strings.Event_VolumeSize, MetricFormatter.Bytes(volume.TotalBytes), DriveKindText.Lower(volume.Kind))));
             }
 
             foreach (var letter in previous.Where(l => !current.Contains(l)).Order(StringComparer.OrdinalIgnoreCase))
             {
-                events.Add(new SystemEvent(time, SystemEventKind.VolumeRemoved, $"Volume {letter} disconnected"));
+                events.Add(new SystemEvent(time, SystemEventKind.VolumeRemoved, Text.Format(Strings.Event_VolumeDisconnected, letter)));
             }
         }
 
@@ -198,8 +220,8 @@ public sealed class SystemEventDetector
             if (app.CpuPercent >= AppHighCpuPercent && _highCpu.Add(key) && AllowAppEvent(key, SystemEventKind.AppHighCpu, time))
             {
                 events.Add(new SystemEvent(time, SystemEventKind.AppHighCpu,
-                    Invariant($"{app.Identity.Name} CPU rose to {app.CpuPercent:0}%"),
-                    Invariant($"{MetricFormatter.Bytes(app.PrivateWorkingSetBytes)} memory, {MetricFormatter.Plural(app.InstanceCount, "process", "processes")}"))
+                    Text.Format(Strings.Event_AppCpu, app.Identity.Name, MetricFormatter.Percent(app.CpuPercent)),
+                    Text.Format(Strings.Event_AppCpuDetail, MetricFormatter.Bytes(app.PrivateWorkingSetBytes), Text.Plural(app.InstanceCount, Strings.Count_Process_One, Strings.Count_Process_Other)))
                 { AppKey = key });
             }
             else if (app.CpuPercent < AppHighCpuPercent / 2)
@@ -210,8 +232,8 @@ public sealed class SystemEventDetector
             if (memoryShare >= AppHighMemoryPercent && _highMemory.Add(key) && AllowAppEvent(key, SystemEventKind.AppHighMemory, time))
             {
                 events.Add(new SystemEvent(time, SystemEventKind.AppHighMemory,
-                    Invariant($"{app.Identity.Name} uses {MetricFormatter.Bytes(app.PrivateWorkingSetBytes)} of memory"),
-                    Invariant($"{memoryShare:0}% of physical memory"))
+                    Text.Format(Strings.Event_AppMemory, app.Identity.Name, MetricFormatter.Bytes(app.PrivateWorkingSetBytes)),
+                    Text.Format(Strings.Event_AppMemoryDetail, MetricFormatter.Percent(memoryShare)))
                 { AppKey = key });
             }
             else if (memoryShare < AppHighMemoryPercent - 5)
@@ -226,9 +248,9 @@ public sealed class SystemEventDetector
         {
             if (!present.ContainsKey(key))
             {
-                var ran = _followed.Remove(key, out var followed) ? $"Ran for {MetricFormatter.DurationCompact(time - followed.Started)}. " : string.Empty;
-                events.Add(new SystemEvent(time, SystemEventKind.AppExited, $"{last.Identity.Name} exited",
-                    Invariant($"{ran}Was using {last.CpuPercent:0.#}% CPU and {MetricFormatter.Bytes(last.PrivateWorkingSetBytes)} of memory"))
+                var ran = _followed.Remove(key, out var followed) ? Text.Format(Strings.Event_RanFor, MetricFormatter.DurationCompact(time - followed.Started)) + " " : string.Empty;
+                events.Add(new SystemEvent(time, SystemEventKind.AppExited, Text.Format(Strings.Event_AppExited, last.Identity.Name),
+                    ran + Text.Format(Strings.Event_AppExitedDetail, MetricFormatter.Percent(last.CpuPercent, 1), MetricFormatter.Bytes(last.PrivateWorkingSetBytes)))
                 { AppKey = key });
                 _highCpu.Remove(key);
                 _highMemory.Remove(key);
@@ -238,7 +260,7 @@ public sealed class SystemEventDetector
         foreach (var (key, (started, name)) in _followed.Count == 0 ? [] : _followed.Where(f => !present.ContainsKey(f.Key) && !_notable.ContainsKey(f.Key)).ToArray())
         {
             _followed.Remove(key);
-            events.Add(new SystemEvent(time, SystemEventKind.AppExited, $"{name} closed", $"Ran for {MetricFormatter.DurationCompact(time - started)}") { AppKey = key });
+            events.Add(new SystemEvent(time, SystemEventKind.AppExited, Text.Format(Strings.Event_AppClosed, name), Text.Format(Strings.Event_RanForShort, MetricFormatter.DurationCompact(time - started))) { AppKey = key });
         }
 
         _notable = apps
@@ -276,7 +298,7 @@ public sealed class SystemEventDetector
             }
 
             var where = app.Identity.ExecutablePath is { } path ? Path.GetDirectoryName(path) : null;
-            events.Add(new SystemEvent(pending.FirstSeen, SystemEventKind.AppStarted, $"{app.Identity.Name} started", where) { AppKey = key });
+            events.Add(new SystemEvent(pending.FirstSeen, SystemEventKind.AppStarted, Text.Format(Strings.Event_AppStarted, app.Identity.Name), where) { AppKey = key });
         }
 
         if (_processesSampled)
@@ -324,14 +346,17 @@ public sealed class SystemEventDetector
 
     private static string Describe(MetricKind kind) => kind switch
     {
-        MetricKind.Cpu => "CPU",
-        MetricKind.Gpu => "GPU",
-        MetricKind.DiskActivity => "Disk activity",
-        MetricKind.System => "System",
+        MetricKind.Cpu => Strings.Event_Kind_Cpu,
+        MetricKind.Memory => Strings.Event_Kind_Memory,
+        MetricKind.Gpu => Strings.Event_Kind_Gpu,
+        MetricKind.Storage => Strings.Event_Kind_Storage,
+        MetricKind.DiskActivity => Strings.Event_Kind_Disk,
+        MetricKind.Network => Strings.Event_Kind_Network,
+        MetricKind.Processes => Strings.Event_Kind_Processes,
+        MetricKind.System => Strings.Event_Kind_System,
         _ => kind.ToString(),
     };
 
-    private static string Invariant(FormattableString text) => text.ToString(CultureInfo.InvariantCulture);
 
     private readonly record struct PendingStart(DateTimeOffset FirstSeen, DateTimeOffset StartedAt);
 }

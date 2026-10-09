@@ -4,6 +4,7 @@ using Sysora.Core.Diagnosis.Rules;
 using Sysora.Core.Formatting;
 using Sysora.Core.History;
 using Sysora.Core.Metrics;
+using Sysora.Localization;
 
 namespace Sysora.Core.Alerts;
 
@@ -32,7 +33,7 @@ public abstract class AlertRule
     /// <summary>"Top application: chrome.exe (62%)" from the latest snapshot.</summary>
     protected static string? TopCpuApp(AlertContext context) =>
         context.Latest?.TopApps.MaxBy(a => a.CpuPercent) is { CpuPercent: > 1 } app
-            ? $"Top application: {app.Name} ({MetricFormatter.Percent(app.CpuPercent)})"
+            ? Text.Format(Strings.Alert_TopApp, app.Name, MetricFormatter.Percent(app.CpuPercent))
             : null;
 
     protected static string Join(params string?[] parts) => string.Join(" · ", parts.Where(p => !string.IsNullOrEmpty(p)));
@@ -75,24 +76,26 @@ public sealed class SustainedCpuAlertRule : AlertRule
         {
             Key = Id,
             Severity = severity,
-            Title = unusual ? "CPU usage unusually high" : usualForThisPc ? "High CPU usage (usual for this PC)" : "Sustained high CPU usage",
-            Metric = "CPU usage",
-            Value = $"{Percent(span.Average)} on average (peak {Percent(span.Peak)})",
+            Title = unusual
+                ? Strings.Alert_Cpu_UnusualTitle
+                : usualForThisPc ? Strings.Alert_Cpu_UsualTitle : Strings.Alert_Cpu_SustainedTitle,
+            Metric = Strings.Diag_Metric_CpuUsage,
+            Value = Text.Format(Strings.Alert_AveragePeak, Percent(span.Average), Percent(span.Peak)),
             Duration = span.Duration,
-            Context = Join(usual is null ? "Usual level not known yet" : $"Usual level {usual.UsualRange}", TopCpuApp(context)),
+            Context = Join(usual is null ? Strings.Alert_UsualNotKnown : Text.Format(Strings.Alert_UsualLevel, usual.UsualRange), TopCpuApp(context)),
             Explanation = unusual
-                ? $"The CPU has stayed above {Percent(settings.CpuPercent)} for {Duration(span.Duration)}, far above this PC's usual {usual!.UsualRange}."
+                ? Text.Format(Strings.Alert_Cpu_UnusualExplanation, Percent(settings.CpuPercent), Duration(span.Duration), usual!.UsualRange)
                 : usualForThisPc
-                    ? $"The CPU has stayed above {Percent(settings.CpuPercent)} for {Duration(span.Duration)}. This level is common on this PC, so it is reported for information."
-                    : $"The CPU has stayed above {Percent(settings.CpuPercent)} for {Duration(span.Duration)}. Short spikes are ignored; this one lasted.",
-            Recommendation = "Check App Impact to see which applications use the processor.",
-            Evidence = [Evidence("CPU usage", span, settings.CpuPercent, MetricSources.Cpu)],
+                    ? Text.Format(Strings.Alert_Cpu_UsualExplanation, Percent(settings.CpuPercent), Duration(span.Duration))
+                    : Text.Format(Strings.Alert_Cpu_SustainedExplanation, Percent(settings.CpuPercent), Duration(span.Duration)),
+            Recommendation = Strings.Alert_Cpu_Recommendation,
+            Evidence = [Evidence(Strings.Diag_Metric_CpuUsage, span, settings.CpuPercent, MetricSources.Cpu)],
             Action = DiagnosisAction.AppImpact,
         };
     }
 
     internal static AnalysisEvidence Evidence(string metric, SustainedSpan span, double threshold, string source) =>
-        new(metric, $"At or above {MetricFormatter.Percent(threshold)} for {MetricFormatter.DurationPrecise(span.Duration)} (average {MetricFormatter.Percent(span.Average)}, peak {MetricFormatter.Percent(span.Peak)})")
+        new(metric, Text.Format(Strings.Diag_AtOrAboveFor, MetricFormatter.Percent(threshold), MetricFormatter.DurationPrecise(span.Duration), MetricFormatter.Percent(span.Average), MetricFormatter.Percent(span.Peak)))
         {
             From = span.Since,
             To = span.Until,
@@ -124,16 +127,16 @@ public sealed class SustainedMemoryAlertRule : AlertRule
         {
             Key = Id,
             Severity = level >= 95 ? AlertSeverity.Critical : AlertSeverity.Warning,
-            Title = "Memory nearly full",
-            Metric = "Memory usage",
-            Value = $"{Percent(span.Average)} on average (peak {Percent(span.Peak)})",
+            Title = Strings.Alert_Memory_Title,
+            Metric = Strings.Diag_Metric_MemoryUsage,
+            Value = Text.Format(Strings.Alert_AveragePeak, Percent(span.Average), Percent(span.Peak)),
             Duration = span.Duration,
             Context = Join(
-                context.Baseline.Get(HistoryMetric.Memory) is { } usual ? $"Usual level {usual.UsualRange}" : null,
-                largest is null ? null : $"Largest application: {largest.Name} ({MetricFormatter.Bytes(largest.MemoryBytes)})"),
-            Explanation = $"Memory usage has stayed above {Percent(settings.MemoryPercent)} for {Duration(span.Duration)}. Windows then moves data to the disk, which slows applications down.",
-            Recommendation = "Close applications you are not using.",
-            Evidence = [SustainedCpuAlertRule.Evidence("Memory usage", span, settings.MemoryPercent, MetricSources.Memory)],
+                context.Baseline.Get(HistoryMetric.Memory) is { } usual ? Text.Format(Strings.Alert_UsualLevel, usual.UsualRange) : null,
+                largest is null ? null : Text.Format(Strings.Alert_LargestApp, largest.Name, MetricFormatter.Bytes(largest.MemoryBytes))),
+            Explanation = Text.Format(Strings.Alert_Memory_Explanation, Percent(settings.MemoryPercent), Duration(span.Duration)),
+            Recommendation = Strings.Diag_Memory_CloseApps,
+            Evidence = [SustainedCpuAlertRule.Evidence(Strings.Diag_Metric_MemoryUsage, span, settings.MemoryPercent, MetricSources.Memory)],
             AppKey = largest?.Key,
             Action = DiagnosisAction.AppImpact,
         };
@@ -174,18 +177,20 @@ public sealed class MemoryGrowthAlertRule : AlertRule
         {
             Key = Id,
             Severity = AlertSeverity.Info,
-            Title = "Memory usage rising steadily",
-            Metric = "Memory usage",
-            Value = $"+{rise:0} points ({Percent(summary.Minimum)} → {Percent(latest.MemoryPercent ?? summary.Peak)})",
+            Title = Strings.Alert_Growth_Title,
+            Metric = Strings.Diag_Metric_MemoryUsage,
+            Value = Text.Format(Strings.Alert_Growth_Value, rise, Percent(summary.Minimum), Percent(latest.MemoryPercent ?? summary.Peak)),
             Duration = summary.Duration,
-            Context = app is null ? "No single application stands out" : $"{app.Name} grew by {MetricFormatter.Bytes(growth)}",
-            Explanation = $"Memory usage has been rising for {Duration(summary.Duration)}. This can be normal (data being loaded) or an application not releasing memory.",
-            Recommendation = app is null ? null : $"If {app.Name} keeps growing, restarting it frees the memory.",
+            Context = app is null
+                ? Strings.Alert_Growth_NoApp
+                : Text.Format(Strings.Alert_Growth_AppGrew, app.Name, MetricFormatter.Bytes(growth)),
+            Explanation = Text.Format(Strings.Alert_Growth_Explanation, Duration(summary.Duration)),
+            Recommendation = app is null ? null : Text.Format(Strings.Alert_Growth_Recommendation, app.Name),
             Evidence =
             [
-                new AnalysisEvidence("Memory usage trend", $"+{rise:0.#} points in {Duration(summary.Duration)}")
+                new AnalysisEvidence(Strings.Diag_Growth_Trend, Text.Format(Strings.Alert_Growth_TrendValue, rise, Duration(summary.Duration)))
                 {
-                    Reference = "Robust trend (Theil–Sen), insensitive to isolated spikes",
+                    Reference = Strings.Diag_Growth_TrendReference,
                     From = summary.From,
                     To = summary.To,
                     SampleCount = summary.Count,
@@ -226,15 +231,16 @@ public sealed class AppCpuAlertRule : AlertRule
             {
                 Key = key,
                 Severity = AlertSeverity.Warning,
-                Title = $"{app.Name} has used a lot of CPU for {MetricFormatter.DurationCompact(span.Duration)}",
-                Metric = "Application CPU usage",
-                Value = $"{Percent(span.Average)} of total CPU on average (peak {Percent(span.Peak)})",
+                Title = Text.Format(Strings.Alert_AppCpu_Title, app.Name, MetricFormatter.DurationCompact(span.Duration)),
+                Metric = Strings.Diag_Metric_AppCpu,
+                Value = Text.Format(Strings.Alert_AppCpu_Value, Percent(span.Average), Percent(span.Peak)),
                 Duration = span.Duration,
-                Context = $"Total CPU now {MetricFormatter.Percent(latest.CpuPercent)}",
-                Explanation = $"{app.Name} has stayed above {Percent(settings.AppCpuPercent)} of total CPU capacity for {Duration(span.Duration)}. It may be working normally (a build, an export) or be stuck.",
-                Recommendation = $"If you don't need {app.Name} right now, close it or wait for its task to finish.",
-                Evidence = [SustainedCpuAlertRule.Evidence($"{app.Name} CPU", span, settings.AppCpuPercent, MetricSources.Processes)],
+                Context = Text.Format(Strings.Alert_AppCpu_TotalNow, MetricFormatter.Percent(latest.CpuPercent)),
+                Explanation = Text.Format(Strings.Alert_AppCpu_Explanation, app.Name, Percent(settings.AppCpuPercent), Duration(span.Duration)),
+                Recommendation = Text.Format(Strings.Alert_AppCpu_Recommendation, app.Name),
+                Evidence = [SustainedCpuAlertRule.Evidence(Diagnosis.Rules.CpuHungryAppRule.AppCpu(app.Name), span, settings.AppCpuPercent, MetricSources.Processes)],
                 AppKey = app.Key,
+                AppName = app.Name,
                 Action = DiagnosisAction.AppImpact,
             };
         }
@@ -260,16 +266,18 @@ public sealed class DiskBusyAlertRule : AlertRule
         {
             Key = Id,
             Severity = AlertSeverity.Warning,
-            Title = $"Disk {latest.DiskActiveDrive ?? string.Empty} busy for {MetricFormatter.DurationCompact(span.Duration)}".Replace("  ", " ", StringComparison.Ordinal),
-            Metric = "Disk active time",
-            Value = $"{Percent(span.Average)} on average",
+            Title = latest.DiskActiveDrive is { } drive
+                ? Text.Format(Strings.Alert_Disk_Title, drive, MetricFormatter.DurationCompact(span.Duration))
+                : Text.Format(Strings.Alert_Disk_TitleUnnamed, MetricFormatter.DurationCompact(span.Duration)),
+            Metric = Strings.Diag_Metric_DiskActive,
+            Value = Text.Format(Strings.Alert_OnAverage, Percent(span.Average)),
             Duration = span.Duration,
             Context = Join(
-                $"Read {MetricFormatter.BytesPerSecond(latest.DiskReadBytesPerSecond)}, write {MetricFormatter.BytesPerSecond(latest.DiskWriteBytesPerSecond)}",
-                topIo is null ? null : $"Most I/O: {topIo.Name}"),
-            Explanation = $"The disk has been active more than {Percent(settings.DiskActivePercent)} of the time for {Duration(span.Duration)}: applications reading or writing files have to wait.",
-            Recommendation = "Updates, antivirus scans and indexing often cause this temporarily.",
-            Evidence = [SustainedCpuAlertRule.Evidence("Disk active time", span, settings.DiskActivePercent, MetricSources.Disk)],
+                Text.Format(Strings.Alert_Disk_ReadWrite, MetricFormatter.BytesPerSecond(latest.DiskReadBytesPerSecond), MetricFormatter.BytesPerSecond(latest.DiskWriteBytesPerSecond)),
+                topIo is null ? null : Text.Format(Strings.Alert_Disk_MostIo, topIo.Name)),
+            Explanation = Text.Format(Strings.Alert_Disk_Explanation, Percent(settings.DiskActivePercent), Duration(span.Duration)),
+            Recommendation = Strings.Alert_Disk_Recommendation,
+            Evidence = [SustainedCpuAlertRule.Evidence(Strings.Diag_Metric_DiskActive, span, settings.DiskActivePercent, MetricSources.Disk)],
             AppKey = topIo?.Key,
             Action = DiagnosisAction.AppImpact,
         };
@@ -279,11 +287,11 @@ public sealed class DiskBusyAlertRule : AlertRule
 /// <summary>CPU, memory or disk above the PC's usual range for several minutes (needs the baseline).</summary>
 public sealed class UnusualActivityAlertRule : AlertRule
 {
-    private static readonly (HistoryMetric Metric, string Name, double Margin)[] Metrics =
+    private static readonly (HistoryMetric Metric, Func<string> Name, double Margin)[] Metrics =
     [
-        (HistoryMetric.Cpu, "CPU usage", 20),
-        (HistoryMetric.Memory, "Memory usage", 10),
-        (HistoryMetric.Disk, "Disk activity", 20),
+        (HistoryMetric.Cpu, () => Strings.Diag_Metric_CpuUsage, 20),
+        (HistoryMetric.Memory, () => Strings.Diag_Metric_MemoryUsage, 10),
+        (HistoryMetric.Disk, () => Strings.Alert_Unusual_Disk, 20),
     ];
 
     public override string Id => "unusual";
@@ -296,8 +304,9 @@ public sealed class UnusualActivityAlertRule : AlertRule
             yield break;
         }
 
-        foreach (var (metric, name, margin) in Metrics)
+        foreach (var (metric, nameOf, margin) in Metrics)
         {
+            var name = nameOf();
             if (context.Baseline.Get(metric) is not { } usual)
             {
                 continue;
@@ -329,22 +338,22 @@ public sealed class UnusualActivityAlertRule : AlertRule
             {
                 Key = key,
                 Severity = span.Average - usual.Median >= 2 * margin ? AlertSeverity.Warning : AlertSeverity.Info,
-                Title = $"{name} unusually high",
+                Title = Text.Format(Strings.Alert_Unusual_Title, name),
                 Metric = name,
-                Value = $"{Percent(span.Average)} on average",
+                Value = Text.Format(Strings.Alert_OnAverage, Percent(span.Average)),
                 Duration = span.Duration,
-                Context = $"Usual level {usual.UsualRange} (median {Percent(usual.Median)})",
-                Explanation = $"{name} has remained above your recent baseline for {Duration(span.Duration)}.",
-                Recommendation = "Use Replay to see when it started.",
+                Context = Text.Format(Strings.Alert_Unusual_Context, usual.UsualRange, Percent(usual.Median)),
+                Explanation = Text.Format(Strings.Alert_Unusual_Explanation, name, Duration(span.Duration)),
+                Recommendation = Strings.Alert_Unusual_Recommendation,
                 Evidence =
                 [
                     SustainedCpuAlertRule.Evidence(name, span, threshold, MetricSources.For(metric)),
-                    new AnalysisEvidence("Baseline", $"Usual {usual.UsualRange}, 95% of minutes below {Percent(usual.P95)}")
+                    new AnalysisEvidence(Strings.Alert_Baseline, Text.Format(Strings.Diag_Unusual_Reference, usual.UsualRange, Percent(usual.P95)))
                     {
                         From = context.Baseline.From,
                         To = context.Baseline.To,
                         SampleCount = usual.Minutes,
-                        Source = "Per-minute averages of the local history (last 7 days)",
+                        Source = Strings.Source_HistoryMinutes7Days,
                     },
                 ],
                 Action = DiagnosisAction.Replay,
@@ -379,13 +388,13 @@ public sealed class LowDiskSpaceAlertRule : AlertRule
         {
             Key = key,
             Severity = freePercent < limit / 2 ? AlertSeverity.Critical : AlertSeverity.Warning,
-            Title = $"Low free space on {drive.Letter}",
-            Metric = "Free space",
-            Value = $"{MetricFormatter.Bytes(drive.FreeBytes)} free ({freePercent:0.#}%)",
-            Context = $"{MetricFormatter.Bytes(drive.TotalBytes)} volume",
-            Explanation = "Windows needs free space on the system disk for updates, temporary files and the page file.",
-            Recommendation = "Remove files you no longer need, or use Windows Settings › System › Storage.",
-            Evidence = [new AnalysisEvidence($"Volume {drive.Letter}", $"{MetricFormatter.Bytes(drive.FreeBytes)} free of {MetricFormatter.Bytes(drive.TotalBytes)}") { Source = MetricSources.Storage, Reference = $"Alert below {limit:0.#}% free" }],
+            Title = Text.Format(Strings.Alert_Space_Title, drive.Letter),
+            Metric = Strings.Alert_Space_Metric,
+            Value = Text.Format(Strings.Alert_Space_Value, MetricFormatter.Bytes(drive.FreeBytes), MetricFormatter.Percent(freePercent, 1)),
+            Context = Text.Format(Strings.Alert_Space_Context, MetricFormatter.Bytes(drive.TotalBytes)),
+            Explanation = Strings.Alert_Space_Explanation,
+            Recommendation = Strings.Alert_Space_Recommendation,
+            Evidence = [new AnalysisEvidence(Text.Format(Strings.Diag_Volume, drive.Letter), Text.Format(Strings.Diag_Space_FreeOf, MetricFormatter.Bytes(drive.FreeBytes), MetricFormatter.Bytes(drive.TotalBytes))) { Source = MetricSources.Storage, Reference = Text.Format(Strings.Alert_Space_Reference, MetricFormatter.Percent(limit, 1)) }],
             Action = DiagnosisAction.Storage,
         };
     }

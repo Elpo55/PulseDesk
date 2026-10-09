@@ -1,3 +1,5 @@
+using Sysora.Localization;
+
 namespace Sysora.Core.Analysis;
 
 /// <summary>
@@ -29,8 +31,10 @@ public sealed record Finding(string Label, string Text, FindingBasis Basis)
     [System.Text.Json.Serialization.JsonIgnore]
     public string BasisText => Basis switch
     {
-        FindingBasis.Observed => "Observed",
-        FindingBasis.Inferred => Confidence is { } confidence ? $"Inferred · {confidence.ToString().ToLowerInvariant()} confidence" : "Inferred",
-        _ => "Unknown",
+        FindingBasis.Observed => Strings.Basis_Observed,
+        FindingBasis.Inferred => Confidence is { } confidence
+            ? Localization.Text.Format(Strings.Basis_InferredConfidence, ConfidenceText.Lower(confidence))
+            : Strings.Basis_Inferred,
+        _ => Strings.Basis_Unknown,
     };
 }

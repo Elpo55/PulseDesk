@@ -3,6 +3,7 @@ using Sysora.Core.Formatting;
 using Sysora.Core.Metrics;
 using Sysora.Core.Models;
 using Sysora.Core.Settings;
+using Sysora.Localization;
 
 namespace Sysora.App.ViewModels;
 
@@ -20,7 +21,9 @@ public sealed record ChartWindowOption(int Seconds, string Label)
     public override string ToString() => Label;
 
     private static string Describe(int seconds) =>
-        seconds < 60 ? $"{seconds} seconds" : MetricFormatter.Plural(seconds / 60, "minute");
+        seconds < 60
+            ? Text.Plural(seconds, UiStrings.Duration_Second_One, UiStrings.Duration_Second_Other)
+            : Text.Plural(seconds / 60, Strings.Duration_Minute_One, Strings.Duration_Minute_Other);
 }
 
 /// <summary>Builds chart frames from the monitor's history.</summary>
@@ -68,13 +71,13 @@ internal static class ChartFactory
         var trend = TrendCalculator.Compute(series.GetSamples(snapshot.Timestamp - window.Window));
         var direction = trend.Direction switch
         {
-            TrendDirection.Rising => " · Rising",
-            TrendDirection.Falling => " · Falling",
-            TrendDirection.Stable => " · Stable",
+            TrendDirection.Rising => " · " + UiStrings.Chart_Rising,
+            TrendDirection.Falling => " · " + UiStrings.Chart_Falling,
+            TrendDirection.Stable => " · " + UiStrings.Trend_Stable,
             _ => string.Empty,
         };
 
-        return $"Average {MetricFormatter.Percent(stats.Average)} · Peak {MetricFormatter.Percent(stats.Maximum)}{direction}";
+        return Text.Format(UiStrings.Chart_Stats, MetricFormatter.Percent(stats.Average), MetricFormatter.Percent(stats.Maximum), direction);
     }
 
     /// <summary>False until the monitor published its first snapshot (its timestamp is still the default).</summary>

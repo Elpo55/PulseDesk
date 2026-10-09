@@ -5,6 +5,7 @@ using Sysora.Core.Diagnosis;
 using Sysora.Core.Formatting;
 using Sysora.Core.History;
 using Sysora.Core.Models;
+using Sysora.Localization;
 
 namespace Sysora.Core.Troubleshooting;
 
@@ -275,14 +276,14 @@ public sealed class TroubleshootingRecorder(DateTimeOffset start)
             }
         }
 
-        Metric("CPU usage", _cpu, v => MetricFormatter.Percent(v), "%");
-        Metric("Memory in use", _memory, v => MetricFormatter.Percent(v), "%");
-        Metric("Memory in use (amount)", _memoryBytes, v => MetricFormatter.Bytes(v), "bytes");
-        Metric("Disk active time (busiest disk)", _disk, v => MetricFormatter.Percent(v), "%");
-        Metric("GPU usage (busiest adapter)", _gpu, v => MetricFormatter.Percent(v), "%");
-        Metric("Download", _receive, v => MetricFormatter.BitsPerSecond(v), "bit/s");
-        Metric("Upload", _send, v => MetricFormatter.BitsPerSecond(v), "bit/s");
-        Metric("Processes", _processes, v => Math.Round(v).ToString("N0", CultureInfo.CurrentCulture), "count");
+        Metric(Strings.Diag_Metric_CpuUsage, _cpu, v => MetricFormatter.Percent(v), "%");
+        Metric(Strings.State_Metric_MemoryUsed, _memory, v => MetricFormatter.Percent(v), "%");
+        Metric(Strings.Trouble_Metric_MemoryAmount, _memoryBytes, v => MetricFormatter.Bytes(v), "bytes");
+        Metric(Strings.Trouble_Metric_Disk, _disk, v => MetricFormatter.Percent(v), "%");
+        Metric(Strings.Game_Ev_GpuBusiest, _gpu, v => MetricFormatter.Percent(v), "%");
+        Metric(Strings.State_Metric_Download, _receive, v => MetricFormatter.BitsPerSecond(v), "bit/s");
+        Metric(Strings.State_Metric_Upload, _send, v => MetricFormatter.BitsPerSecond(v), "bit/s");
+        Metric(Strings.State_Metric_Processes, _processes, v => Math.Round(v).ToString("N0", CultureInfo.CurrentCulture), "count");
 
         var apps = _apps
             .Select(a => new TroubleshootingApp(
@@ -303,21 +304,25 @@ public sealed class TroubleshootingRecorder(DateTimeOffset start)
         var correlations = Correlations(apps, events);
         var likely = correlations
             .Where(c => c.Confidence >= ConfidenceLevel.Medium)
-            .Select(c => new Finding("Likely", c.Text, FindingBasis.Inferred) { Confidence = c.Confidence })
+            .Select(c => new Finding(Strings.Trouble_Likely, c.Text, FindingBasis.Inferred) { Confidence = c.Confidence })
             .ToArray();
         var unknowns = Unknowns(snapshot);
         var recommendations = Recommendations(apps, likely.Length > 0);
 
         var headline = anomalies.Count == 0
-            ? "Investigation complete: nothing abnormal measured"
-            : $"Investigation complete: {MetricFormatter.Plural(anomalies.Count, "anomaly", "anomalies")} found";
+            ? Strings.Trouble_Headline_Nothing
+            : Text.Plural(anomalies.Count, Strings.Trouble_Headline_One, Strings.Trouble_Headline_Other);
         var summary = SampleCount == 0
-            ? "No measurement was taken during the investigation (monitoring paused or the PC asleep)."
-            : $"{MetricFormatter.Plural(SampleCount, "measurement")} over {MetricFormatter.DurationPrecise(end - Start)}"
-              + (_cpu.Count > 0 ? $": CPU {MetricFormatter.Percent(_cpu.Average)} on average (peak {MetricFormatter.Percent(_cpu.Peak)})" : string.Empty)
-              + (_memory.Count > 0 ? $", memory {MetricFormatter.Percent(_memory.Average)} (peak {MetricFormatter.Percent(_memory.Peak)})" : string.Empty)
+            ? Strings.Trouble_Summary_NoMeasurement
+            : Text.Format(Strings.Trouble_Summary_Over, Text.Plural(SampleCount, Strings.Count_Measurement_One, Strings.Count_Measurement_Other), MetricFormatter.DurationPrecise(end - Start))
+              + (_cpu.Count > 0 ? Text.Format(Strings.Trouble_Summary_Cpu, MetricFormatter.Percent(_cpu.Average), MetricFormatter.Percent(_cpu.Peak)) : string.Empty)
+              + (_memory.Count > 0 ? Text.Format(Strings.Trouble_Summary_Memory, MetricFormatter.Percent(_memory.Average), MetricFormatter.Percent(_memory.Peak)) : string.Empty)
               + ". "
-              + (likely.Length > 0 ? $"Evidence suggests: {likely[0].Text}" : anomalies.Count > 0 ? "No single application clearly explains the anomalies." : "Nothing abnormal was measured.");
+              + (likely.Length > 0
+                ? Text.Format(Strings.Trouble_Summary_Suggests, likely[0].Text)
+                : anomalies.Count > 0
+                    ? Strings.Trouble_Summary_NoSingleApp
+                    : Strings.Trouble_Summary_Nothing);
 
         return new TroubleshootingReport
         {
@@ -348,28 +353,28 @@ public sealed class TroubleshootingRecorder(DateTimeOffset start)
         {
             if (count > 0 && SampleCount > 0)
             {
-                anomalies.Add(new Finding("High load", string.Create(CultureInfo.CurrentCulture, $"{what} in {count} of {SampleCount} measurements ({MetricFormatter.Percent(count * 100.0 / SampleCount)} of the time)"), FindingBasis.Observed));
+                anomalies.Add(new Finding(Strings.Trouble_HighLoad, Text.Format(Strings.Trouble_HighLoad_Text, what, count, SampleCount, MetricFormatter.Percent(count * 100.0 / SampleCount)), FindingBasis.Observed));
             }
         }
 
-        Share(_highCpu, $"CPU at or above {HighCpu:0}%");
-        Share(_highMemory, $"Memory at or above {HighMemory:0}%");
-        Share(_highDisk, $"A disk active at or above {HighDisk:0}% of the time");
+        Share(_highCpu, Text.Format(Strings.Trouble_Share_Cpu, MetricFormatter.Percent(HighCpu)));
+        Share(_highMemory, Text.Format(Strings.Trouble_Share_Memory, MetricFormatter.Percent(HighMemory)));
+        Share(_highDisk, Text.Format(Strings.Trouble_Share_Disk, MetricFormatter.Percent(HighDisk)));
         foreach (var alert in events.Where(e => e.Kind == SystemEventKind.AlertRaised))
         {
-            anomalies.Add(new Finding("Alert", $"{alert.Title} ({Clock(alert.Timestamp)})", FindingBasis.Observed));
+            anomalies.Add(new Finding(Strings.Trouble_Alert, $"{alert.Title} ({Clock(alert.Timestamp)})", FindingBasis.Observed));
         }
 
         foreach (var gap in events.Where(e => e.Kind == SystemEventKind.DataGap))
         {
-            anomalies.Add(new Finding("Interruption", $"{gap.Title} ({Clock(gap.Timestamp)})", FindingBasis.Observed));
+            anomalies.Add(new Finding(Strings.Trouble_Interruption, $"{gap.Title} ({Clock(gap.Timestamp)})", FindingBasis.Observed));
         }
 
         if (diagnosis is not null)
         {
             foreach (var problem in diagnosis.Problems)
             {
-                anomalies.Add(new Finding("Diagnosis at the end", $"{problem.Title}: {problem.Description}", FindingBasis.Observed));
+                anomalies.Add(new Finding(Strings.Trouble_DiagnosisAtEnd, Text.Format(Strings.Common_NameValue, problem.Title, problem.Description), FindingBasis.Observed));
             }
         }
 
@@ -384,7 +389,7 @@ public sealed class TroubleshootingRecorder(DateTimeOffset start)
             var share = cpu.BusiestDuringHighCpu * 1.0 / _highCpu;
             if (share >= 0.4)
             {
-                correlations.Add(new Finding("High CPU", $"{cpu.Name} was the busiest application in {cpu.BusiestDuringHighCpu} of the {_highCpu} high-CPU moments ({MetricFormatter.Percent(cpu.CpuPeak)} at its peak)", FindingBasis.Inferred)
+                correlations.Add(new Finding(Strings.Trouble_HighCpu, Text.Format(Strings.Trouble_HighCpu_Text, cpu.Name, cpu.BusiestDuringHighCpu, _highCpu, MetricFormatter.Percent(cpu.CpuPeak)), FindingBasis.Inferred)
                 {
                     Confidence = share >= 0.8 && _highCpu >= 10 ? ConfidenceLevel.High : share >= 0.6 ? ConfidenceLevel.Medium : ConfidenceLevel.Low,
                 });
@@ -396,7 +401,7 @@ public sealed class TroubleshootingRecorder(DateTimeOffset start)
             var share = disk.BusiestDuringHighDisk * 1.0 / _highDisk;
             if (share >= 0.4)
             {
-                correlations.Add(new Finding("Busy disk", $"{disk.Name} had the most I/O (files, devices and network combined) in {disk.BusiestDuringHighDisk} of the {_highDisk} busy-disk moments", FindingBasis.Inferred)
+                correlations.Add(new Finding(Strings.Trouble_BusyDisk, Text.Format(Strings.Trouble_BusyDisk_Text, disk.Name, disk.BusiestDuringHighDisk, _highDisk), FindingBasis.Inferred)
                 {
                     Confidence = share >= 0.8 && _highDisk >= 10 ? ConfidenceLevel.High : share >= 0.6 ? ConfidenceLevel.Medium : ConfidenceLevel.Low,
                 });
@@ -410,7 +415,7 @@ public sealed class TroubleshootingRecorder(DateTimeOffset start)
             if (apps.MaxBy(a => a.MemoryGrowthBytes) is { MemoryGrowthBytes: > 0 } grower)
             {
                 var share = grower.MemoryGrowthBytes / growth;
-                correlations.Add(new Finding("Memory growth", $"Memory in use grew {MetricFormatter.Bytes(growth)}; {grower.Name} grew {MetricFormatter.Bytes(grower.MemoryGrowthBytes)} of it", FindingBasis.Inferred)
+                correlations.Add(new Finding(Strings.Trouble_MemoryGrowth, Text.Format(Strings.Trouble_MemoryGrowth_Text, MetricFormatter.Bytes(growth), grower.Name, MetricFormatter.Bytes(grower.MemoryGrowthBytes)), FindingBasis.Inferred)
                 {
                     Confidence = share >= 0.7 ? ConfidenceLevel.High : share >= 0.4 ? ConfidenceLevel.Medium : ConfidenceLevel.Low,
                 });
@@ -419,12 +424,12 @@ public sealed class TroubleshootingRecorder(DateTimeOffset start)
 
         foreach (var game in events.Where(e => e.Kind == SystemEventKind.GameStarted))
         {
-            correlations.Add(new Finding("Game", $"{game.Title} at {Clock(game.Timestamp)}: a high load after it is expected", FindingBasis.Observed));
+            correlations.Add(new Finding(Strings.Trouble_Game, Text.Format(Strings.Trouble_Game_Text, game.Title, Clock(game.Timestamp)), FindingBasis.Observed));
         }
 
         foreach (var started in events.Where(e => e.Kind == SystemEventKind.AppStarted).Take(5))
         {
-            correlations.Add(new Finding("Started during the investigation", $"{started.Title} at {Clock(started.Timestamp)}", FindingBasis.Observed));
+            correlations.Add(new Finding(Strings.Trouble_StartedDuring, Text.Format(Strings.Trouble_At, started.Title, Clock(started.Timestamp)), FindingBasis.Observed));
         }
 
         return correlations;
@@ -436,22 +441,22 @@ public sealed class TroubleshootingRecorder(DateTimeOffset start)
         var hasTemperature = snapshot?.Cpu?.TemperatureCelsius is not null || snapshot?.Gpus?.Any(g => g.TemperatureCelsius is not null) == true;
         if (!hasTemperature)
         {
-            unknowns.Add(new Finding("Temperatures", "Not available: Windows has no documented way to read them without a kernel driver.", FindingBasis.Unknown));
+            unknowns.Add(new Finding(Strings.Health_Area_Temperatures, Strings.Trouble_Unknown_Temperatures, FindingBasis.Unknown));
         }
 
         if (_gpu.Count == 0)
         {
-            unknowns.Add(new Finding("GPU usage", "Not available on this PC (or GPU monitoring is turned off).", FindingBasis.Unknown));
+            unknowns.Add(new Finding(Strings.Diag_Metric_GpuUsage, Strings.Trouble_Unknown_Gpu, FindingBasis.Unknown));
         }
 
         if (_detailedSamples == 0)
         {
-            unknowns.Add(new Finding("Applications", "Not available: no process measurement during the investigation.", FindingBasis.Unknown));
+            unknowns.Add(new Finding(Strings.Trouble_Applications, Strings.Trouble_Unknown_Applications, FindingBasis.Unknown));
         }
 
-        unknowns.Add(new Finding("Network per application", "Not available: Windows does not report it without administrator-level event tracing.", FindingBasis.Unknown));
-        unknowns.Add(new Finding("Frame rate (FPS)", "Not available: Windows offers no reliable source to other applications.", FindingBasis.Unknown));
-        unknowns.Add(new Finding("Inside applications", "What an application does internally (why it uses resources) is not observable from outside it.", FindingBasis.Unknown));
+        unknowns.Add(new Finding(Strings.Trouble_NetworkPerApp, Strings.Trouble_Unknown_Network, FindingBasis.Unknown));
+        unknowns.Add(new Finding(Strings.Trouble_Fps, Strings.Trouble_Unknown_Fps, FindingBasis.Unknown));
+        unknowns.Add(new Finding(Strings.Trouble_InsideApps, Strings.Trouble_Unknown_Inside, FindingBasis.Unknown));
         return unknowns;
     }
 
@@ -460,25 +465,25 @@ public sealed class TroubleshootingRecorder(DateTimeOffset start)
         var recommendations = new List<string>();
         if (_highCpu > 0 && apps.MaxBy(a => a.BusiestDuringHighCpu) is { BusiestDuringHighCpu: > 0 } cpu && hasLikely)
         {
-            recommendations.Add($"If the slowdown matched the moments {cpu.Name} was busy, close it or let its task finish, then run another investigation to compare.");
+            recommendations.Add(Text.Format(Strings.Trouble_Rec_Cpu, cpu.Name));
         }
 
         if (_highMemory > 0)
         {
-            recommendations.Add("Memory was nearly full at times: close the applications you do not need. If it happens often, more memory would help.");
+            recommendations.Add(Strings.Trouble_Rec_Memory);
         }
 
         if (_highDisk > 0)
         {
-            recommendations.Add("A disk was very busy at times: let updates or copies finish. App Impact shows which applications read and write the most.");
+            recommendations.Add(Strings.Trouble_Rec_Disk);
         }
 
         if (_highCpu == 0 && _highMemory == 0 && _highDisk == 0)
         {
-            recommendations.Add("Nothing abnormal was measured. If the problem happened during the investigation, it may not show in these measurements (network latency, frame drops, a device fault); otherwise run another investigation while it happens.");
+            recommendations.Add(Strings.Trouble_Rec_Nothing);
         }
 
-        recommendations.Add("Export the report to keep it or to share it with someone who helps you.");
+        recommendations.Add(Strings.Trouble_Rec_Export);
         return recommendations;
     }
 
@@ -609,4 +614,15 @@ public sealed class TroubleshootingRecorder(DateTimeOffset start)
 
         public int BusiestIo { get; set; }
     }
+}
+
+/// <summary>How an investigation ended, in words.</summary>
+public static class TroubleshootingEndText
+{
+    public static string Label(TroubleshootingEndReason reason) => reason switch
+    {
+        TroubleshootingEndReason.Completed => Strings.TroubleEnd_Completed,
+        TroubleshootingEndReason.StoppedByUser => Strings.TroubleEnd_Stopped,
+        _ => Strings.TroubleEnd_Closed,
+    };
 }

@@ -4,6 +4,7 @@ using Sysora.Core.Formatting;
 using Sysora.Core.History;
 using Sysora.Core.Interfaces;
 using Sysora.Core.Settings;
+using Sysora.Localization;
 
 namespace Sysora.Core.Troubleshooting;
 
@@ -121,7 +122,7 @@ public sealed class TroubleshootingService : IAsyncDisposable
 
         _monitor.SetInvestigationMode(true);
         _monitor.RequestRefresh(Models.MetricKind.All);
-        _history.AddEvent(new SystemEvent(_time.GetUtcNow(), SystemEventKind.InvestigationStarted, $"Troubleshooting started ({MetricFormatter.DurationCompact(duration)})", "Detailed collection until the end of the investigation."));
+        _history.AddEvent(new SystemEvent(_time.GetUtcNow(), SystemEventKind.InvestigationStarted, Text.Format(Strings.Trouble_Event_Started, MetricFormatter.DurationCompact(duration)), Strings.Trouble_Event_StartedDetail));
         _logger.LogInformation("Troubleshooting investigation started for {Duration}.", duration);
         StatusChanged?.Invoke(this, status);
         return true;

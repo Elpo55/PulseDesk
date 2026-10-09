@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Sysora.Localization;
 
 namespace Sysora.App.Services;
 
@@ -26,7 +27,7 @@ public sealed class DialogService
             Title = title,
             Content = new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap },
             PrimaryButtonText = confirmText,
-            CloseButtonText = "Cancel",
+            CloseButtonText = UiStrings.LargeFiles_Cancel,
             DefaultButton = ContentDialogButton.Close,
         };
 

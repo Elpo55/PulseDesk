@@ -8,6 +8,7 @@ using Sysora.Core.Diagnosis;
 using Sysora.Core.Formatting;
 using Sysora.Core.Models;
 using Sysora.Core.Reports;
+using Sysora.Localization;
 
 namespace Sysora.App.ViewModels;
 
@@ -124,7 +125,14 @@ public sealed partial class DiagnosisViewModel : PageViewModel
 
     // ---- Why now? -------------------------------------------------------------------------------
 
-    public IReadOnlyList<string> WhyNowMetrics { get; } = ["CPU", "Memory", "Disk", "GPU", "Network"];
+    public IReadOnlyList<string> WhyNowMetrics { get; } =
+    [
+        UiStrings.Common_CPU,
+        UiStrings.Common_Memory,
+        UiStrings.Replay_Disk,
+        UiStrings.Common_GPU,
+        UiStrings.Common_Network,
+    ];
 
     public ObservableCollection<FindingItemViewModel> WhyNowFindings { get; } = [];
 
@@ -229,7 +237,7 @@ public sealed partial class DiagnosisViewModel : PageViewModel
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             _logger.LogWarning(ex, "Why now could not be analyzed.");
-            WhyNowHeadline = "The analysis could not be completed. See the log for details.";
+            WhyNowHeadline = UiStrings.Diagnosis_WhyNowFailed;
         }
         finally
         {
@@ -249,17 +257,19 @@ public sealed partial class DiagnosisViewModel : PageViewModel
         WhyNowSummary = explanation.Summary;
         WhyNowStarted = explanation.Started is { } started
             ? started.ToLocalTime().ToString("T", System.Globalization.CultureInfo.CurrentCulture)
-            : explanation.StartedBeforeData ? "Before the analyzed data" : "—";
+            : explanation.StartedBeforeData ? UiStrings.Diagnosis_BeforeData : "—";
         WhyNowChange = (explanation.BeforeText, explanation.NowText) switch
         {
             ({ } before, { } now) => $"{before} → {now}",
             (null, { } now) => now,
             _ => "—",
         };
-        WhyNowDuration = explanation.Duration is { } duration ? (explanation.StartedBeforeData ? "At least " : string.Empty) + MetricFormatter.DurationPrecise(duration) : "—";
+        WhyNowDuration = explanation.Duration is { } duration
+            ? explanation.StartedBeforeData ? Text.Format(Strings.WhyNow_AtLeast, MetricFormatter.DurationPrecise(duration)) : MetricFormatter.DurationPrecise(duration)
+            : "—";
         WhyNowContributor = explanation.ContributorText;
         WhyNowSimilar = explanation.SimilarText;
-        WhyNowUsual = explanation.UsualText ?? "Usual range not known yet.";
+        WhyNowUsual = explanation.UsualText ?? UiStrings.Diagnosis_UsualNotKnown;
         WhyNowFindings.Clear();
         foreach (var finding in explanation.Findings)
         {
@@ -312,7 +322,7 @@ public sealed partial class DiagnosisViewModel : PageViewModel
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             _logger.LogError(ex, "Diagnosis failed.");
-            Summary = "The diagnosis could not be completed. See the log for details.";
+            Summary = UiStrings.Diagnosis_Failed;
         }
         finally
         {
@@ -327,7 +337,7 @@ public sealed partial class DiagnosisViewModel : PageViewModel
         Summary = report.Summary;
         (StateGlyph, StateBrushKey) = HealthGlyphs.For(report.State);
         AnalyzedText = report.To is { } to && report.From is { } from
-            ? $"Analyzed: last {MetricFormatter.DurationPrecise(to - from)} · {MetricFormatter.Plural(report.SampleCount, "measurement")} · updated {InsightDisplay.Time(report.Timestamp)}"
+            ? Text.Format(UiStrings.Diagnosis_Analyzed, MetricFormatter.DurationPrecise(to - from), Text.Plural(report.SampleCount, Strings.Count_Measurement_One, Strings.Count_Measurement_Other), InsightDisplay.Time(report.Timestamp))
             : string.Empty;
         BaselineText = report.BaselineDescription;
 
@@ -508,14 +518,14 @@ public sealed partial class DiagnosisItemViewModel : ObservableObject
         Description = result.Description;
         (Glyph, BrushKey) = HealthGlyphs.For(result.Severity);
         Observed = result.Duration is { } duration && duration > TimeSpan.Zero
-            ? $"{result.Metric}: {result.ObservedValue} for {MetricFormatter.DurationPrecise(duration)}"
-            : $"{result.Metric}: {result.ObservedValue}";
-        Reference = result.ReferenceValue is { } reference ? $"Reference: {reference}" : string.Empty;
+            ? Text.Format(UiStrings.Diagnosis_ObservedFor, result.Metric, result.ObservedValue, MetricFormatter.DurationPrecise(duration))
+            : Text.Format(Strings.Common_NameValue, result.Metric, result.ObservedValue);
+        Reference = result.ReferenceValue is { } reference ? Text.Format(UiStrings.Diagnosis_Reference, reference) : string.Empty;
         Explanation = result.Explanation;
         Recommendation = result.Recommendation ?? string.Empty;
         HasRecommendation = result.Recommendation is not null;
         ConfidenceText = InsightDisplay.Text(result.Confidence);
-        TimeText = $"Observed {InsightDisplay.Time(result.Timestamp)}";
+        TimeText = Text.Format(UiStrings.Diagnosis_ObservedAt, InsightDisplay.Time(result.Timestamp));
         Action = result.Action;
         AppKey = result.AppKey;
         ActionLabel = InsightNavigator.Label(result.Action);
@@ -556,10 +566,10 @@ internal static class HealthGlyphs
 
     public static string Text(PcHealthState state) => state switch
     {
-        PcHealthState.Problem => "Problem detected",
-        PcHealthState.Attention => "Attention",
-        PcHealthState.Healthy => "Healthy",
-        _ => "Checking…",
+        PcHealthState.Problem => UiStrings.State_ProblemDetected,
+        PcHealthState.Attention => Strings.Health_Status_Attention,
+        PcHealthState.Healthy => UiStrings.State_Healthy,
+        _ => UiStrings.Common_Checking,
     };
 
     public static (string Glyph, string BrushKey) For(ConfidenceLevel confidence) => confidence switch

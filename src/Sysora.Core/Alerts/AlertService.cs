@@ -3,6 +3,7 @@ using Sysora.Core.Analysis;
 using Sysora.Core.History;
 using Sysora.Core.Interfaces;
 using Sysora.Core.Settings;
+using Sysora.Localization;
 
 namespace Sysora.Core.Alerts;
 
@@ -169,7 +170,7 @@ public sealed class AlertService : IAsyncDisposable
 
         foreach (var alert in evaluation.Resolved)
         {
-            _history.AddEvent(new SystemEvent(alert.ResolvedAt ?? now, SystemEventKind.AlertResolved, $"Resolved: {alert.Title}") { AppKey = alert.AppKey });
+            _history.AddEvent(new SystemEvent(alert.ResolvedAt ?? now, SystemEventKind.AlertResolved, Text.Format(Strings.Alert_ResolvedEvent, alert.Title)) { AppKey = alert.AppKey });
         }
 
         if (evaluation.Suppressed > 0)

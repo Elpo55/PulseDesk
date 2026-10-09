@@ -1,5 +1,6 @@
 using Sysora.Core.Analysis;
 using Sysora.Core.Settings;
+using Sysora.Localization;
 
 namespace Sysora.Core.Gaming;
 
@@ -106,7 +107,7 @@ public static class GameClassifier
 
         if (Contains(settings.AddedGames, executablePath))
         {
-            return new GameMatch(executablePath, GameDetectionSource.UserMarked, ConfidenceLevel.High, "You marked this application as a game.");
+            return new GameMatch(executablePath, GameDetectionSource.UserMarked, ConfidenceLevel.High, Strings.Game_Detect_UserMarked);
         }
 
         if (IsSystemPath(executablePath))
@@ -117,13 +118,13 @@ public static class GameClassifier
         if (settings.DetectWindowsGames && recognized.Contains(executablePath))
         {
             return new GameMatch(executablePath, GameDetectionSource.WindowsRecognized, ConfidenceLevel.High,
-                "Windows recognizes this executable as a game (Game Bar's list of your games).");
+                Strings.Game_Detect_Windows);
         }
 
         if (settings.DetectLibraryGames && LibraryOf(executablePath) is { } library && !IsHelper(executablePath))
         {
             return new GameMatch(executablePath, GameDetectionSource.GameLibrary, ConfidenceLevel.Medium,
-                $"Installed in a {library} game library folder: likely a game, not confirmed by Windows.")
+                Text.Format(Strings.Game_Detect_Library, library))
             {
                 Library = library,
             };

@@ -3,6 +3,7 @@ using Sysora.Core.Interfaces;
 using Sysora.Core.Metrics;
 using Sysora.Core.Models;
 using Sysora.Core.Settings;
+using Sysora.Localization;
 
 namespace Sysora.Core.History;
 
@@ -168,13 +169,13 @@ public sealed class PerformanceHistory : IPerformanceHistory, IDisposable
                     if (gap > GapThreshold && !_resumedSinceLastSnapshot)
                     {
                         events.Insert(0, new SystemEvent(previous.Timestamp, SystemEventKind.DataGap,
-                            $"No measurements for {Formatting.MetricFormatter.DurationCompact(gap)}",
-                            "Sysora was not running or the PC was asleep during this period."));
+                            Text.Format(Strings.Event_Gap, Formatting.MetricFormatter.DurationCompact(gap)),
+                            Strings.Event_GapDetail));
                     }
                 }
                 else
                 {
-                    events.Insert(0, new SystemEvent(recorded.Timestamp, SystemEventKind.MonitoringStarted, "Monitoring started"));
+                    events.Insert(0, new SystemEvent(recorded.Timestamp, SystemEventKind.MonitoringStarted, Strings.Event_MonitoringStarted));
                 }
 
                 _resumedSinceLastSnapshot = false;
@@ -327,7 +328,7 @@ public sealed class PerformanceHistory : IPerformanceHistory, IDisposable
             }
 
             systemEvent = new SystemEvent(_time.GetUtcNow(), paused ? SystemEventKind.MonitoringPaused : SystemEventKind.MonitoringResumed,
-                paused ? "Monitoring paused" : "Monitoring resumed");
+                paused ? Strings.Event_MonitoringPaused : Strings.Event_MonitoringResumed);
         }
 
         AddEvent(systemEvent);

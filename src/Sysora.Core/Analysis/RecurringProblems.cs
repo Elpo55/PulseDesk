@@ -4,6 +4,7 @@ using Sysora.Core.Diagnosis;
 using Sysora.Core.Formatting;
 using Sysora.Core.History;
 using Sysora.Core.Interfaces;
+using Sysora.Localization;
 
 namespace Sysora.Core.Analysis;
 
@@ -78,7 +79,7 @@ public sealed record RecurringProblem
 public sealed record RecurringProblemReport(DateTimeOffset Time, bool HasEnoughHistory, TimeSpan HistoryCovered, IReadOnlyList<RecurringProblem> Problems, string Summary)
 {
     /// <summary>Report used before the first detection or when the history cannot be read.</summary>
-    public static RecurringProblemReport Unknown { get; } = new(DateTimeOffset.MinValue, false, TimeSpan.Zero, [], "Not analyzed yet.");
+    public static RecurringProblemReport Unknown { get; } = new(DateTimeOffset.MinValue, false, TimeSpan.Zero, [], Strings.Recurring_NotAnalyzed);
 }
 
 /// <summary>
@@ -130,9 +131,11 @@ public static class RecurringProblemDetector
         var covered = historyStart is { } start ? now - (start > from ? start : from) : TimeSpan.Zero;
         if (covered < MinimumHistory)
         {
-            var have = covered <= TimeSpan.Zero ? "no history yet" : $"{MetricFormatter.DurationCompact(covered)} of history";
+            var have = covered <= TimeSpan.Zero
+                ? Strings.Recurring_NoHistoryYet
+                : Text.Format(Strings.Recurring_OfHistory, MetricFormatter.DurationCompact(covered));
             return new RecurringProblemReport(now, false, covered < TimeSpan.Zero ? TimeSpan.Zero : covered, [],
-                $"Not enough historical data ({have}; recurring problems need at least {MetricFormatter.Plural((int)MinimumHistory.TotalDays, "day")}).");
+                Text.Format(Strings.Recurring_NotEnough, have, Text.Plural((int)MinimumHistory.TotalDays, Strings.Duration_Day_One, Strings.Duration_Day_Other)));
         }
 
         var appEvents = events
@@ -159,9 +162,9 @@ public static class RecurringProblemDetector
             .ToArray();
         var summary = ordered.Length switch
         {
-            0 => $"No recurring problem in the last {MetricFormatter.Plural((int)Window.TotalDays, "day")}.",
-            1 => $"1 recurring problem: {ordered[0].Description}",
-            _ => $"{ordered.Length} recurring problems. Most frequent: {ordered[0].Description}",
+            0 => Text.Format(Strings.Recurring_None, (int)Window.TotalDays),
+            1 => Text.Format(Strings.Recurring_One, ordered[0].Description),
+            _ => Text.Format(Strings.Recurring_Many, ordered.Length, ordered[0].Description),
         };
         return new RecurringProblemReport(now, true, covered, ordered, summary);
     }
@@ -175,16 +178,30 @@ public static class RecurringProblemDetector
             return null;
         }
 
-        var cpu = alert.Evidence.FirstOrDefault(e => e.Metric.EndsWith(" CPU", StringComparison.Ordinal));
-        if (cpu is not null)
+        if (alert.AppName is { Length: > 0 } name)
         {
-            return cpu.Metric[..^4];
+            return name;
         }
 
-        var separator = alert.AppKey.IndexOf(':', StringComparison.Ordinal);
-        var identity = separator >= 0 ? alert.AppKey[(separator + 1)..] : alert.AppKey;
-        return Path.GetFileName(identity).ToLowerInvariant();
+        // Alerts recorded before the name was stored: their CPU evidence is named after the application, in the
+        // language of that time ("chrome.exe CPU", "Processeur de chrome.exe").
+        foreach (var evidence in alert.Evidence)
+        {
+            if (evidence.Metric.EndsWith(" CPU", StringComparison.Ordinal))
+            {
+                return evidence.Metric[..^4];
+            }
+
+            if (evidence.Metric.StartsWith(LegacyFrenchCpuPrefix, StringComparison.Ordinal))
+            {
+                return evidence.Metric[LegacyFrenchCpuPrefix.Length..];
+            }
+        }
+
+        return NameFromKey(alert.AppKey);
     }
+
+    private const string LegacyFrenchCpuPrefix = "Processeur de ";
 
     private static IEnumerable<Family> Families(IEnumerable<Alert> alerts)
     {
@@ -217,11 +234,11 @@ public static class RecurringProblemDetector
 
     private static (RecurringProblemKind Kind, string Title, DiagnosisAction Action) Describe(Alert alert) => alert.RuleId switch
     {
-        "cpu.sustained" => (RecurringProblemKind.HighCpu, "High CPU usage", DiagnosisAction.Diagnosis),
-        "memory.sustained" => (RecurringProblemKind.HighMemory, "High memory usage", DiagnosisAction.AppImpact),
-        "memory.growth" => (RecurringProblemKind.MemoryGrowth, "Memory usage rising", DiagnosisAction.AppImpact),
-        "disk.busy" => (RecurringProblemKind.DiskBusy, "Disk busy", DiagnosisAction.Replay),
-        "app.cpu" => (RecurringProblemKind.ApplicationCpu, $"{AppName(alert)} using a lot of CPU", DiagnosisAction.AppImpact),
+        "cpu.sustained" => (RecurringProblemKind.HighCpu, Strings.Recurring_HighCpu, DiagnosisAction.Diagnosis),
+        "memory.sustained" => (RecurringProblemKind.HighMemory, Strings.Recurring_HighMemory, DiagnosisAction.AppImpact),
+        "memory.growth" => (RecurringProblemKind.MemoryGrowth, Strings.Recurring_MemoryRising, DiagnosisAction.AppImpact),
+        "disk.busy" => (RecurringProblemKind.DiskBusy, Strings.Recurring_DiskBusy, DiagnosisAction.Replay),
+        "app.cpu" => (RecurringProblemKind.ApplicationCpu, Text.Format(Strings.Recurring_AppCpu, AppName(alert)), DiagnosisAction.AppImpact),
         _ => (RecurringProblemKind.UnusualActivity, alert.Title, DiagnosisAction.Diagnosis),
     };
 
@@ -240,7 +257,7 @@ public static class RecurringProblemDetector
             episodes.Add(new Episode(loss.Timestamp, loss.Timestamp, null, null));
         }
 
-        return new Family("network.connectivity", RecurringProblemKind.ConnectivityLoss, "Internet access lost or limited", DiagnosisAction.Network, episodes, null);
+        return new Family("network.connectivity", RecurringProblemKind.ConnectivityLoss, Strings.Recurring_Connectivity, DiagnosisAction.Network, episodes, null);
     }
 
     private static RecurringProblem? Build(Family family, IReadOnlyList<SystemEvent> appEvents, TimeZoneInfo zone)
@@ -255,13 +272,13 @@ public static class RecurringProblemDetector
         var confidence = episodes.Count >= 5 && days >= 3 ? ConfidenceLevel.High : ConfidenceLevel.Medium;
         var findings = new List<Finding>
         {
-            new("Occurrences", $"{MetricFormatter.Plural(episodes.Count, "episode")} on {MetricFormatter.Plural(days, "day")}, from {Stamp(episodes[0].Start, zone)} to {Stamp(episodes[^1].Start, zone)}", FindingBasis.Observed),
+            new(Strings.Recurring_Occurrences, Text.Format(Strings.Recurring_OccurrencesText, Text.Plural(episodes.Count, Strings.Count_Episode_One, Strings.Count_Episode_Other), Text.Plural(days, Strings.Duration_Day_One, Strings.Duration_Day_Other), Stamp(episodes[0].Start, zone), Stamp(episodes[^1].Start, zone)), FindingBasis.Observed),
         };
 
         var pattern = TimePattern(episodes, zone);
         if (pattern is not null)
         {
-            findings.Add(new Finding("When", pattern, FindingBasis.Observed));
+            findings.Add(new Finding(Strings.Recurring_When, pattern, FindingBasis.Observed));
         }
 
         var (app, appKey, count) = family.FixedAppKey is { } fixedKey
@@ -269,7 +286,7 @@ public static class RecurringProblemDetector
             : Associated(episodes, appEvents);
         if (family.FixedAppKey is null && app is not null)
         {
-            findings.Add(new Finding("Most associated application", $"{app} ({count} of {episodes.Count} episodes)", FindingBasis.Inferred)
+            findings.Add(new Finding(Strings.Recurring_MostAssociated, Text.Format(Strings.Recurring_MostAssociatedText, app, count, episodes.Count), FindingBasis.Inferred)
             {
                 Confidence = count * 1.0 / episodes.Count >= 0.75 ? ConfidenceLevel.High : ConfidenceLevel.Medium,
             });
@@ -277,7 +294,7 @@ public static class RecurringProblemDetector
 
         if (family.Kind == RecurringProblemKind.ConnectivityLoss)
         {
-            findings.Add(new Finding("Cause", "Windows reports the loss of access; the reason (router, provider, Wi-Fi signal) is not observable by Sysora.", FindingBasis.Unknown));
+            findings.Add(new Finding(Strings.Recurring_Cause, Strings.Recurring_CauseConnectivity, FindingBasis.Unknown));
         }
 
         return new RecurringProblem
@@ -285,7 +302,7 @@ public static class RecurringProblemDetector
             Key = family.Key,
             Kind = family.Kind,
             Title = family.Title,
-            Description = $"{family.Title} occurred {Times(episodes.Count)} in the last {MetricFormatter.Plural((int)Window.TotalDays, "day")}.",
+            Description = Text.Format(Strings.Recurring_Description, family.Title, Times(episodes.Count), (int)Window.TotalDays),
             Occurrences = episodes.Count,
             Days = days,
             First = episodes[0].Start,
@@ -336,7 +353,7 @@ public static class RecurringProblemDetector
         var offsets = Enumerable.Range(0, 3).Where(offset => hours[(bestStart + offset) % 24] > 0).ToArray();
         var first = (bestStart + offsets[0]) % 24;
         var last = (bestStart + offsets[^1] + 1) % 24;
-        return string.Create(CultureInfo.InvariantCulture, $"Most events happened between {first:00}:00 and {last:00}:00 ({best} of {episodes.Count})");
+        return Text.Format(Strings.Recurring_Pattern, first, last, best, episodes.Count);
     }
 
     /// <summary>The application seen in at least half of the episodes (and in two at least), from the alerts and the application events around them.</summary>
@@ -371,22 +388,29 @@ public static class RecurringProblemDetector
             : (null, null, 0);
     }
 
-    /// <summary>Event titles start with the application name ("chrome.exe CPU rose to 62%").</summary>
-    private static string EventAppName(SystemEvent systemEvent)
+    /// <summary>
+    /// The application an event is about, from its key ("path:C:\TOOLS\BUILD.EXE" → "build.exe"): event titles are
+    /// translated, so they are never parsed.
+    /// </summary>
+    private static string EventAppName(SystemEvent systemEvent) =>
+        systemEvent.AppKey is { } key ? NameFromKey(key) : systemEvent.Title;
+
+    private static string NameFromKey(string appKey)
     {
-        var space = systemEvent.Title.IndexOf(' ', StringComparison.Ordinal);
-        return space > 0 ? systemEvent.Title[..space] : systemEvent.Title;
+        var separator = appKey.IndexOf(':', StringComparison.Ordinal);
+        var identity = separator >= 0 ? appKey[(separator + 1)..] : appKey;
+        return Path.GetFileName(identity).ToLowerInvariant();
     }
 
     private static string Times(int count) => count switch
     {
-        1 => "once",
-        2 => "twice",
-        _ => $"{count} times",
+        1 => Strings.Times_Once,
+        2 => Strings.Times_Twice,
+        _ => Text.Format(Strings.Times_N, count),
     };
 
     private static string Stamp(DateTimeOffset time, TimeZoneInfo zone) =>
-        TimeZoneInfo.ConvertTime(time, zone).ToString("ddd HH:mm", CultureInfo.InvariantCulture);
+        TimeZoneInfo.ConvertTime(time, zone).ToString("ddd HH:mm", CultureInfo.CurrentCulture);
 
     private sealed record Episode(DateTimeOffset Start, DateTimeOffset End, string? AppKey, string? AppName);
 

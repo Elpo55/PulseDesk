@@ -6,6 +6,7 @@ using Sysora.Core.Formatting;
 using Sysora.Core.Models;
 using Sysora.Core.Monitoring;
 using Sysora.Core.Settings;
+using Sysora.Localization;
 
 namespace Sysora.App.ViewModels;
 
@@ -62,7 +63,7 @@ public sealed partial class StorageViewModel : PageViewModel
 
         var total = (ulong)drives.Sum(d => (decimal)d.TotalBytes);
         var free = (ulong)drives.Sum(d => (decimal)d.FreeBytes);
-        Summary = $"{MetricFormatter.Plural(drives.Count, "volume")} · {MetricFormatter.Bytes(free)} free of {MetricFormatter.Bytes(total)}";
+        Summary = Text.Format(UiStrings.Storage_Summary, Text.Plural(drives.Count, UiStrings.Count_Volume_One, UiStrings.Count_Volume_Other), MetricFormatter.Bytes(free), MetricFormatter.Bytes(total));
     }
 }
 
@@ -127,7 +128,7 @@ public sealed partial class DriveItemViewModel : ObservableObject
             : used >= alerts.DiskCriticalPercent ? HealthStatus.Critical
             : used >= alerts.DiskWarningPercent ? HealthStatus.Warning
             : HealthStatus.Normal;
-        UsageText = $"{MetricFormatter.Percent(drive.UsedPercent)} used";
+        UsageText = Text.Format(UiStrings.Storage_UsedPercent, MetricFormatter.Percent(drive.UsedPercent));
         Used = MetricFormatter.Bytes(drive.UsedBytes);
         Free = MetricFormatter.Bytes(drive.FreeBytes);
         Total = MetricFormatter.Bytes(drive.TotalBytes);
@@ -138,19 +139,19 @@ public sealed partial class DriveItemViewModel : ObservableObject
 
     private static string DefaultName(DriveKind kind) => kind switch
     {
-        DriveKind.Removable => "Removable disk",
-        DriveKind.Optical => "Optical drive",
-        DriveKind.RamDisk => "RAM disk",
-        _ => "Local disk",
+        DriveKind.Removable => UiStrings.Storage_RemovableDisk,
+        DriveKind.Optical => UiStrings.Storage_OpticalDrive,
+        DriveKind.RamDisk => UiStrings.Storage_RamDisk,
+        _ => UiStrings.Storage_LocalDisk,
     };
 
     private static string KindName(DriveKind kind) => kind switch
     {
-        DriveKind.Fixed => "Fixed",
-        DriveKind.Removable => "Removable",
-        DriveKind.Optical => "Optical",
-        DriveKind.RamDisk => "RAM disk",
-        DriveKind.Network => "Network",
+        DriveKind.Fixed => UiStrings.Storage_Kind_Fixed,
+        DriveKind.Removable => UiStrings.Storage_Kind_Removable,
+        DriveKind.Optical => UiStrings.Storage_Kind_Optical,
+        DriveKind.RamDisk => UiStrings.Storage_RamDisk,
+        DriveKind.Network => UiStrings.Common_Network,
         _ => string.Empty,
     };
 }

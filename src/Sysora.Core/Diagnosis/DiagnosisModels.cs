@@ -3,6 +3,7 @@ using Sysora.Core.History;
 using Sysora.Core.Models;
 using Sysora.Core.Monitoring;
 using Sysora.Core.Settings;
+using Sysora.Localization;
 
 namespace Sysora.Core.Diagnosis;
 
@@ -195,8 +196,8 @@ public sealed record DiagnosisReport
     {
         Timestamp = DateTimeOffset.MinValue,
         State = PcHealthState.Unknown,
-        Headline = "Analyzing…",
-        Summary = "Sysora needs a few seconds of measurements before it can diagnose the PC.",
+        Headline = Strings.Diag_Analyzing,
+        Summary = Strings.Diag_AnalyzingSummary,
         Results = [],
     };
 

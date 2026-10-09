@@ -11,6 +11,7 @@ using Sysora.Core.Metrics;
 using Sysora.Core.Models;
 using Sysora.Core.Reports;
 using Sysora.Core.Troubleshooting;
+using Sysora.Localization;
 
 namespace Sysora.App.ViewModels;
 
@@ -208,7 +209,7 @@ public sealed partial class TroubleshootingViewModel : PageViewModel
         if (!status.IsRunning || status.Start is not { } start)
         {
             _timer.Stop();
-            StatusText = "Choose how long to investigate, then start while the problem happens (or just before).";
+            StatusText = UiStrings.Troubleshooting_Idle;
             ElapsedText = CountsText = string.Empty;
             Progress = 0;
             return;
@@ -225,10 +226,14 @@ public sealed partial class TroubleshootingViewModel : PageViewModel
             elapsed = TimeSpan.Zero;
         }
 
-        StatusText = "Troubleshooting mode active · Collecting additional context…";
-        ElapsedText = $"{MetricFormatter.DurationPrecise(elapsed)} of {MetricFormatter.DurationPrecise(status.Planned)} · ends by itself, then collection returns to normal";
+        StatusText = UiStrings.Troubleshooting_Active;
+        ElapsedText = Text.Format(UiStrings.Troubleshooting_Elapsed, MetricFormatter.DurationPrecise(elapsed), MetricFormatter.DurationPrecise(status.Planned));
         Progress = Math.Clamp(elapsed / status.Planned * 100, 0, 100);
-        CountsText = $"{status.Samples:N0} measurements · {MetricFormatter.Plural(status.Events, "event")} · {MetricFormatter.Plural(status.Alerts, "alert")}";
+        CountsText = string.Join(
+            " · ",
+            Text.Plural(status.Samples, UiStrings.Count_MeasurementN0_One, UiStrings.Count_MeasurementN0_Other),
+            Text.Plural(status.Events, UiStrings.Count_Event_One, UiStrings.Count_Event_Other),
+            Text.Plural(status.Alerts, Strings.Count_Alert_One, Strings.Count_Alert_Other));
     }
 
     private async Task LoadReportsAsync(Guid? select)
@@ -252,7 +257,7 @@ public sealed partial class TroubleshootingViewModel : PageViewModel
             Investigations.Clear();
             foreach (var report in ordered)
             {
-                Investigations.Add(new InvestigationOption(report.Id, $"{report.Start.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)} · {MetricFormatter.DurationCompact(report.Duration)} · {report.Headline.Replace("Investigation complete: ", string.Empty, StringComparison.Ordinal)}"));
+                Investigations.Add(new InvestigationOption(report.Id, $"{report.Start.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)} · {MetricFormatter.DurationCompact(report.Duration)} · {AfterColon(report.Headline)}"));
             }
 
             HasInvestigations = Investigations.Count > 0;
@@ -270,18 +275,28 @@ public sealed partial class TroubleshootingViewModel : PageViewModel
         }
     }
 
+    /// <summary>"Investigation complete: 2 anomalies found" → "2 anomalies found", in any language.</summary>
+    private static string AfterColon(string headline)
+    {
+        var colon = headline.IndexOf(':', StringComparison.Ordinal);
+        return colon > 0 && colon < headline.Length - 1 ? headline[(colon + 1)..].Trim() : headline;
+    }
+
     private void Show(TroubleshootingReport report)
     {
         _shown = report;
         HasReport = true;
         Headline = report.Headline;
         Summary = report.Summary;
-        PeriodText = $"{InsightDisplay.Period(report.Start, report.End)} · {(report.EndReason switch
-        {
-            TroubleshootingEndReason.Completed => "ended by itself",
-            TroubleshootingEndReason.StoppedByUser => "stopped",
-            _ => "ended when Sysora closed",
-        })} · detailed collection";
+        PeriodText = Text.Format(
+            UiStrings.Troubleshooting_Period,
+            InsightDisplay.Period(report.Start, report.End),
+            report.EndReason switch
+            {
+                TroubleshootingEndReason.Completed => UiStrings.Troubleshooting_EndedByItself,
+                TroubleshootingEndReason.StoppedByUser => UiStrings.Troubleshooting_Stopped,
+                _ => UiStrings.Troubleshooting_EndedOnClose,
+            });
         Replace(Metrics, report.Metrics);
         Replace(Anomalies, report.Anomalies.Select(FindingItemViewModel.From));
         Replace(Correlations, report.Correlations.Concat(report.Likely).Select(FindingItemViewModel.From));
@@ -323,11 +338,13 @@ public sealed class InvestigationAppViewModel(TroubleshootingApp app)
 {
     public string Name { get; } = app.Name;
 
-    public string Cpu { get; } = $"{MetricFormatter.Percent(app.CpuAverage, 1)} avg · {MetricFormatter.Percent(app.CpuPeak)} peak";
+    public string Cpu { get; } = Text.Format(UiStrings.Troubleshooting_AppCpu, MetricFormatter.Percent(app.CpuAverage, 1), MetricFormatter.Percent(app.CpuPeak));
 
-    public string Memory { get; } = $"{MetricFormatter.Bytes(app.MemoryPeakBytes)} peak";
+    public string Memory { get; } = Text.Format(UiStrings.Troubleshooting_AppMemory, MetricFormatter.Bytes(app.MemoryPeakBytes));
 
     public string Note { get; } = app.BusiestDuringHighCpu > 0
-        ? $"Busiest in {MetricFormatter.Plural(app.BusiestDuringHighCpu, "high-CPU moment")}"
-        : app.BusiestDuringHighDisk > 0 ? $"Most I/O in {MetricFormatter.Plural(app.BusiestDuringHighDisk, "busy-disk moment")}" : string.Empty;
+        ? Text.Plural(app.BusiestDuringHighCpu, UiStrings.Troubleshooting_BusiestCpu_One, UiStrings.Troubleshooting_BusiestCpu_Other)
+        : app.BusiestDuringHighDisk > 0
+            ? Text.Plural(app.BusiestDuringHighDisk, UiStrings.Troubleshooting_MostIo_One, UiStrings.Troubleshooting_MostIo_Other)
+            : string.Empty;
 }

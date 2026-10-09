@@ -2,6 +2,7 @@ using System.Globalization;
 using Sysora.Core.Analysis;
 using Sysora.Core.Diagnosis;
 using Sysora.Core.Formatting;
+using Sysora.Localization;
 
 namespace Sysora.Core.Changes;
 
@@ -53,7 +54,11 @@ public static class FrequentAppDetector
             }
 
             var firstSeen = app.FirstSeen.ToLocalTime().ToString("g", CultureInfo.CurrentCulture);
-            var activity = $"Running {MetricFormatter.DurationCompact(TimeSpan.FromSeconds(stats.ActiveSeconds))}, {MetricFormatter.Plural(stats.Launches, "start")} since {firstSeen}";
+            var activity = Text.Format(
+                Strings.Changes_Frequent_Activity,
+                MetricFormatter.DurationCompact(TimeSpan.FromSeconds(stats.ActiveSeconds)),
+                Text.Plural(stats.Launches, Strings.Count_Start_One, Strings.Count_Start_Other),
+                firstSeen);
             changes.Add(new DetectedChange
             {
                 Id = BaselineComparer.ChangeId(ChangeType.NewFrequentApp, app.Key),
@@ -62,16 +67,16 @@ public static class FrequentAppDetector
                 After = app.FirstSeen,
                 Before = now,
                 Subject = app.Name,
-                Title = $"{app.Name} now runs regularly",
+                Title = Text.Format(Strings.Changes_Frequent_Title, app.Name),
                 NewValue = activity,
                 Importance = ChangeImportance.Medium,
-                Explanation = "A program Sysora had not seen before started running regularly. It can be a new application, an update helper or a background task.",
-                Origin = $"First seen by Sysora on {firstSeen}; Sysora has been recording since {recordingSince.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)}.",
+                Explanation = Strings.Changes_Frequent_Explanation,
+                Origin = Text.Format(Strings.Changes_Frequent_Origin, firstSeen, recordingSince.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)),
                 Evidence =
                 [
-                    new AnalysisEvidence("Activity", activity)
+                    new AnalysisEvidence(Strings.Changes_Ev_Activity, activity)
                     {
-                        Source = app.ExecutablePath ?? "Identified by process name only",
+                        Source = app.ExecutablePath ?? Strings.Changes_Ev_NameOnly,
                         From = app.FirstSeen,
                         To = now,
                     },

@@ -1,6 +1,8 @@
 using System.Globalization;
 using Sysora.Core.Analysis;
+using Sysora.Core.Formatting;
 using Sysora.Core.Metrics;
+using Sysora.Localization;
 
 namespace Sysora.App.ViewModels;
 
@@ -17,10 +19,10 @@ internal static class InsightDisplay
 
     public static string Text(ImpactLevel level) => level switch
     {
-        ImpactLevel.VeryHigh => "Very high",
-        ImpactLevel.High => "High",
-        ImpactLevel.Moderate => "Moderate",
-        _ => "Low",
+        ImpactLevel.VeryHigh => ImpactLevelText.Label(ImpactLevel.VeryHigh),
+        ImpactLevel.High => ImpactLevelText.Label(ImpactLevel.High),
+        ImpactLevel.Moderate => ImpactLevelText.Label(ImpactLevel.Moderate),
+        _ => ImpactLevelText.Label(ImpactLevel.Low),
     };
 
     public static string BrushKey(ImpactLevel level) => level switch
@@ -33,9 +35,9 @@ internal static class InsightDisplay
 
     public static string Text(ConfidenceLevel confidence) => confidence switch
     {
-        ConfidenceLevel.High => "High confidence",
-        ConfidenceLevel.Medium => "Medium confidence",
-        _ => "Low confidence",
+        ConfidenceLevel.High => ConfidenceText.Label(ConfidenceLevel.High),
+        ConfidenceLevel.Medium => ConfidenceText.Label(ConfidenceLevel.Medium),
+        _ => ConfidenceText.Label(ConfidenceLevel.Low),
     };
 
     public static string Glyph(TrendDirection direction) => direction switch
@@ -49,14 +51,24 @@ internal static class InsightDisplay
     /// <summary>Short description of a usage trend, e.g. "Memory rising (+34%)".</summary>
     public static string Describe(UsageTrend trend)
     {
-        static string Part(string name, TrendDirection direction, double? change) => direction switch
+        static string Part(bool memory, TrendDirection direction, double? change) => (direction, memory) switch
         {
-            TrendDirection.Rising => change is { } c ? string.Create(CultureInfo.CurrentCulture, $"{name} rising (+{c:0}%)") : $"{name} rising",
-            TrendDirection.Falling => change is { } c ? string.Create(CultureInfo.CurrentCulture, $"{name} falling ({c:0}%)") : $"{name} falling",
+            (TrendDirection.Rising, true) => change is { } c
+                ? Localization.Text.Format(UiStrings.Trend_MemoryRisingBy, MetricFormatter.Percent(c))
+                : UiStrings.Trend_MemoryRising,
+            (TrendDirection.Rising, false) => change is { } c
+                ? Localization.Text.Format(UiStrings.Trend_CpuRisingBy, MetricFormatter.Percent(c))
+                : UiStrings.Trend_CpuRising,
+            (TrendDirection.Falling, true) => change is { } c
+                ? Localization.Text.Format(UiStrings.Trend_MemoryFallingBy, MetricFormatter.Percent(c))
+                : UiStrings.Trend_MemoryFalling,
+            (TrendDirection.Falling, false) => change is { } c
+                ? Localization.Text.Format(UiStrings.Trend_CpuFallingBy, MetricFormatter.Percent(c))
+                : UiStrings.Trend_CpuFalling,
             _ => string.Empty,
         };
 
-        var parts = new[] { Part("Memory", trend.Memory, trend.MemoryChangePercent), Part("CPU", trend.Cpu, trend.CpuChangePercent) }
+        var parts = new[] { Part(true, trend.Memory, trend.MemoryChangePercent), Part(false, trend.Cpu, trend.CpuChangePercent) }
             .Where(p => p.Length > 0)
             .ToArray();
         if (parts.Length > 0)
@@ -64,7 +76,9 @@ internal static class InsightDisplay
             return string.Join(" · ", parts);
         }
 
-        return trend.Cpu == TrendDirection.Unknown && trend.Memory == TrendDirection.Unknown ? "Not enough data" : "Stable";
+        return trend.Cpu == TrendDirection.Unknown && trend.Memory == TrendDirection.Unknown
+            ? UiStrings.Trend_NotEnoughData
+            : UiStrings.Trend_Stable;
     }
 
     /// <summary>The dominant direction of a trend (memory first, as leaks build up there).</summary>
@@ -106,17 +120,17 @@ public sealed record EvidenceItemViewModel(string Metric, string Observed, strin
 
         if (evidence.From is { } from && evidence.To is { } to)
         {
-            details.Add($"Period: {InsightDisplay.Period(from, to)}");
+            details.Add(Localization.Text.Format(Strings.Report_Period, InsightDisplay.Period(from, to)));
         }
 
         if (evidence.SampleCount is { } samples)
         {
-            details.Add(string.Create(CultureInfo.CurrentCulture, $"{samples:N0} measurements"));
+            details.Add(Localization.Text.Plural(samples, UiStrings.Count_MeasurementN0_One, UiStrings.Count_MeasurementN0_Other));
         }
 
         if (evidence.Source is { Length: > 0 } source)
         {
-            details.Add($"Source: {source}");
+            details.Add(Localization.Text.Format(UiStrings.Evidence_Source, source));
         }
 
         return new EvidenceItemViewModel(evidence.Metric, evidence.Observed, string.Join(Environment.NewLine, details));

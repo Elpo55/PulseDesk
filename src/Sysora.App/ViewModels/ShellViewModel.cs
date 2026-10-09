@@ -6,6 +6,7 @@ using Sysora.Core.Alerts;
 using Sysora.Core.Gaming;
 using Sysora.Core.Interfaces;
 using Sysora.Core.Troubleshooting;
+using Sysora.Localization;
 
 namespace Sysora.App.ViewModels;
 
@@ -104,7 +105,7 @@ public sealed partial class ShellViewModel : ObservableObject
         }
     }
 
-    public string PauseLabel => IsPaused ? "Resume monitoring" : "Pause monitoring";
+    public string PauseLabel => IsPaused ? UiStrings.Shell_ResumeMonitoring : UiStrings.Settings_PauseMonitoring;
 
     [RelayCommand]
     private void TogglePause()

@@ -1,4 +1,5 @@
 using Sysora.Core.Metrics;
+using Sysora.Localization;
 
 namespace Sysora.Core.Models;
 
@@ -66,4 +67,19 @@ public sealed record DiskActivityMetrics(string Drive)
 
     /// <summary>Write throughput in bytes per second.</summary>
     public double? WriteBytesPerSecond { get; init; }
+}
+
+/// <summary>Drive kinds in words.</summary>
+public static class DriveKindText
+{
+    /// <summary>"fixed", "removable", "network"... in lowercase, to go inside a sentence.</summary>
+    public static string Lower(DriveKind kind) => kind switch
+    {
+        DriveKind.Fixed => Strings.DriveKind_Fixed,
+        DriveKind.Removable => Strings.DriveKind_Removable,
+        DriveKind.Network => Strings.DriveKind_Network,
+        DriveKind.Optical => Strings.DriveKind_Optical,
+        DriveKind.RamDisk => Strings.DriveKind_Ram,
+        _ => Strings.DriveKind_Other,
+    };
 }

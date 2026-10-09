@@ -2,6 +2,7 @@ using System.Globalization;
 using Sysora.Core.Analysis;
 using Sysora.Core.Formatting;
 using Sysora.Core.History;
+using Sysora.Localization;
 
 namespace Sysora.Core.Diagnosis;
 
@@ -27,21 +28,28 @@ public abstract class DiagnosisRule
 
     protected static string Format(FormattableString text) => text.ToString(CultureInfo.CurrentCulture);
 
+    /// <summary>"Threshold 80%".</summary>
+    protected static string Threshold(string value) => Text.Format(Strings.Diag_Threshold, value);
+
+    /// <summary>"Reported when above 80% for 30s".</summary>
+    protected static string ReportedWhenAbove(string value, TimeSpan duration) =>
+        Text.Format(Strings.Diag_ReportedWhenAbove, value, Duration(duration));
+
     /// <summary>"Usual 35–50% (median 42%, last 7 days)", or null when the baseline is not ready.</summary>
     protected static string? UsualText(MetricBaseline? baseline) =>
-        baseline is null ? null : Format($"Usual {baseline.UsualRange} (median {baseline.Median:0}%)");
+        baseline is null ? null : Text.Format(Strings.Diag_UsualWithMedian, baseline.UsualRange, Percent(baseline.Median));
 
     /// <summary>Evidence describing the usual range used for a comparison.</summary>
     protected static AnalysisEvidence BaselineEvidence(UsageBaseline baseline, HistoryMetric metric, string name) =>
         baseline.Get(metric) is { } usual
-            ? new AnalysisEvidence($"Usual {name}", Format($"{usual.UsualRange} (median {usual.Median:0}%, 95% of minutes below {usual.P95:0}%)"))
+            ? new AnalysisEvidence(Text.Format(Strings.Diag_UsualOf, name), Text.Format(Strings.Diag_UsualDetail, usual.UsualRange, Percent(usual.Median), Percent(usual.P95)))
             {
                 From = baseline.From,
                 To = baseline.To,
                 SampleCount = usual.Minutes,
-                Source = "Per-minute averages of the local history (last 7 days)",
+                Source = Strings.Source_HistoryMinutes7Days,
             }
-            : new AnalysisEvidence($"Usual {name}", "Not known yet")
+            : new AnalysisEvidence(Text.Format(Strings.Diag_UsualOf, name), Strings.Diag_NotKnownYet)
             {
                 Reference = baseline.Description,
             };
@@ -50,7 +58,7 @@ public abstract class DiagnosisRule
     protected static AnalysisEvidence WindowEvidence(string metric, WindowSummary summary, string source, Func<double, string>? format = null)
     {
         format ??= Percent;
-        return new AnalysisEvidence(metric, $"Average {format(summary.Average)}, peak {format(summary.Peak)}")
+        return new AnalysisEvidence(metric, Text.Format(Strings.Diag_AveragePeak, format(summary.Average), format(summary.Peak)))
         {
             From = summary.From,
             To = summary.To,
@@ -63,9 +71,9 @@ public abstract class DiagnosisRule
     protected static AnalysisEvidence SpanEvidence(string metric, SustainedSpan span, double threshold, string source, Func<double, string>? format = null)
     {
         format ??= Percent;
-        return new AnalysisEvidence(metric, $"At or above {format(threshold)} for {Duration(span.Duration)} (average {format(span.Average)}, peak {format(span.Peak)})")
+        return new AnalysisEvidence(metric, Text.Format(Strings.Diag_AtOrAboveFor, format(threshold), Duration(span.Duration), format(span.Average), format(span.Peak)))
         {
-            Reference = $"Threshold {format(threshold)}",
+            Reference = Threshold(format(threshold)),
             From = span.Since,
             To = span.Until,
             SampleCount = span.Samples,

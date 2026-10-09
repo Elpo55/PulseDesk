@@ -12,6 +12,7 @@ using Sysora.Core.Monitoring;
 using Sysora.Core.Storage;
 using Sysora.Core.Timeline;
 using Sysora.Core.Troubleshooting;
+using Sysora.Localization;
 
 namespace Sysora.Core.Reports;
 
@@ -24,31 +25,31 @@ public static class ReportBuilder
     /// <summary>Limits Sysora always states, whatever the report.</summary>
     public static IReadOnlyList<string> CommonLimits { get; } =
     [
-        "Temperatures: not available (Windows has no documented way to read them without a kernel driver).",
-        "Network usage per application: not available (requires administrator-level event tracing).",
+        Strings.Report_Limit_Temperatures,
+        Strings.Diag_Missing_AppNetwork,
     ];
 
     public static ReportDocument PcHealth(PcHealthReport report, SelfImpactReport? self, DateTimeOffset now, ReportSystemInfo? system)
     {
         ArgumentNullException.ThrowIfNull(report);
-        var areas = new ReportTable("Areas", ["Area", "State", "Impact on the score", "Measured"],
+        var areas = new ReportTable(Strings.Report_Areas, [Strings.Report_Col_Area, Strings.Report_Col_State, Strings.Report_Col_ImpactScore, Strings.Report_Col_Measured],
             report.Components.Select(c => (IReadOnlyList<string>)[c.Name, c.StatusText, c.ImpactText, c.Summary]).ToArray());
         var sections = new List<ReportSection>
         {
-            new("Score")
+            new(Strings.Report_Score)
             {
                 Facts =
                 [
-                    new ReportFact("PC Health", report.Score is { } score ? $"{score}/100 · {PcHealthReport.GradeText(report.Grade)}" : MetricFormatter.NotAvailable) { Value = report.Score, Unit = "/100" },
-                    new ReportFact("What lowers it", report.Summary),
-                    new ReportFact("How it is computed", report.Method),
+                    new ReportFact(Strings.Report_PcHealth, report.Score is { } score ? $"{score}/100 · {PcHealthReport.GradeText(report.Grade)}" : MetricFormatter.NotAvailable) { Value = report.Score, Unit = "/100" },
+                    new ReportFact(Strings.Report_WhatLowers, report.Summary),
+                    new ReportFact(Strings.Report_HowComputed, report.Method),
                 ],
                 Tables = [areas],
             },
         };
         foreach (var component in report.Components.Where(c => c.IsScored && c.Penalty > 0))
         {
-            sections.Add(new ReportSection($"{component.Name}: {component.ImpactText}")
+            sections.Add(new ReportSection(Text.Format(Strings.Common_NameValue, component.Name, component.ImpactText))
             {
                 Text = component.Explanation,
                 Facts = component.Evidence.Select(Fact).ToArray(),
@@ -67,7 +68,7 @@ public static class ReportBuilder
         return new ReportDocument
         {
             Kind = ReportKind.PcHealth,
-            Title = "PC Health",
+            Title = Strings.Report_PcHealth,
             GeneratedAt = now,
             System = system,
             From = report.From,
@@ -83,7 +84,7 @@ public static class ReportBuilder
     {
         ArgumentNullException.ThrowIfNull(report);
         var sections = new List<ReportSection>();
-        foreach (var group in new[] { ("Problems", report.Problems), ("Points to watch", report.Potential), ("Checked and normal", report.Normal) })
+        foreach (var group in new[] { (Strings.Report_Problems, report.Problems), (Strings.Report_PointsToWatch, report.Potential), (Strings.Report_CheckedNormal, report.Normal) })
         {
             var results = group.Item2.ToArray();
             if (results.Length == 0)
@@ -95,22 +96,22 @@ public static class ReportBuilder
             {
                 Tables =
                 [
-                    new ReportTable(string.Empty, ["Finding", "Value", "Compared with", "Confidence", "Explanation"],
-                        results.Select(r => (IReadOnlyList<string>)[r.Title, r.ObservedValue, r.ReferenceValue ?? "—", r.Confidence.ToString(), r.Explanation]).ToArray()),
+                    new ReportTable(string.Empty, [Strings.Report_Col_Finding, Strings.Report_Col_Value, Strings.Report_Col_ComparedWith, Strings.Report_Col_Confidence, Strings.Report_Col_Explanation],
+                        results.Select(r => (IReadOnlyList<string>)[r.Title, r.ObservedValue, r.ReferenceValue ?? "—", ConfidenceText.Label(r.Confidence), r.Explanation]).ToArray()),
                 ],
-                Items = results.Where(r => r.Recommendation is not null).Select(r => $"{r.Title}: {r.Recommendation}").ToArray(),
+                Items = results.Where(r => r.Recommendation is not null).Select(r => Text.Format(Strings.Common_NameValue, r.Title, r.Recommendation)).ToArray(),
             });
         }
 
         if (usage is { Metrics.Count: > 0 })
         {
-            var periods = usage.Metrics[0].Periods.Select(p => p.Period.ToString()).ToArray();
-            sections.Add(new ReportSection("Compared with your usual activity")
+            var periods = usage.Metrics[0].Periods.Select(p => UsageComparer.Label(p.Period)).ToArray();
+            sections.Add(new ReportSection(Strings.Report_ComparedUsual)
             {
                 Text = usage.Summary,
                 Tables =
                 [
-                    new ReportTable(string.Empty, ["Metric", "Now", .. periods],
+                    new ReportTable(string.Empty, [Strings.Report_Col_Metric, Strings.State_Label_Now, .. periods],
                         usage.Metrics.Select(m => (IReadOnlyList<string>)[m.Name, MetricFormatter.Percent(m.Current), .. m.Periods.Select(p => p.Average is { } a ? MetricFormatter.Percent(a) : "—")]).ToArray()),
                 ],
             });
@@ -119,7 +120,7 @@ public static class ReportBuilder
         return new ReportDocument
         {
             Kind = ReportKind.Diagnosis,
-            Title = "Diagnosis",
+            Title = Strings.Report_Diagnosis,
             GeneratedAt = now,
             System = system,
             From = report.From,
@@ -127,7 +128,7 @@ public static class ReportBuilder
             Summary = $"{report.Headline}. {report.Summary}",
             Sections = sections,
             MissingData = report.NotAnalyzed,
-            Notes = [report.BaselineDescription, $"{MetricFormatter.Plural(report.SampleCount, "measurement")} analyzed."],
+            Notes = [report.BaselineDescription, Text.Plural(report.SampleCount, Strings.Report_Analyzed_One, Strings.Report_Analyzed_Other)],
             Data = ReportWriter.ToElement(report, ReportJsonContext.Default.DiagnosisReport),
         };
     }
@@ -138,30 +139,30 @@ public static class ReportBuilder
         var facts = new List<ReportFact>();
         if (explanation.Started is { } started)
         {
-            facts.Add(new ReportFact("Started", Local(started)));
+            facts.Add(new ReportFact(Strings.WhyNow_Label_Started, Local(started)));
         }
 
         if (explanation.BeforeText is { } before)
         {
-            facts.Add(new ReportFact("Before", before) { Value = explanation.Before });
+            facts.Add(new ReportFact(Strings.State_Label_Before, before) { Value = explanation.Before });
         }
 
         if (explanation.NowText is { } current)
         {
-            facts.Add(new ReportFact("Now", current) { Value = explanation.Now });
+            facts.Add(new ReportFact(Strings.State_Label_Now, current) { Value = explanation.Now });
         }
 
         if (explanation.Duration is { } duration)
         {
-            facts.Add(new ReportFact("Duration", MetricFormatter.DurationPrecise(duration)) { Value = duration.TotalSeconds, Unit = "s" });
+            facts.Add(new ReportFact(Strings.WhyNow_Label_Duration, MetricFormatter.DurationPrecise(duration)) { Value = duration.TotalSeconds, Unit = "s" });
         }
 
-        facts.Add(new ReportFact("Contributor", explanation.ContributorText));
-        facts.Add(new ReportFact("Similar events", explanation.SimilarText));
+        facts.Add(new ReportFact(Strings.WhyNow_Label_Contributor, explanation.ContributorText));
+        facts.Add(new ReportFact(Strings.WhyNow_Label_Similar, explanation.SimilarText));
         return new ReportDocument
         {
             Kind = ReportKind.WhyNow,
-            Title = $"Why now? {explanation.MetricName}",
+            Title = Text.Format(Strings.Report_WhyNowTitle, explanation.MetricName),
             GeneratedAt = now,
             System = system,
             From = explanation.From,
@@ -169,9 +170,9 @@ public static class ReportBuilder
             Summary = $"{explanation.Headline}. {explanation.Summary}",
             Sections =
             [
-                new ReportSection("What happened") { Facts = facts, Items = explanation.Simultaneous },
-                new ReportSection("Statements and what they rest on") { Findings = explanation.Findings },
-                new ReportSection("Events at the same time") { Text = "A coincidence in time is not proof of cause.", Items = explanation.AssociatedEvents.Select(e => $"{Local(e.Timestamp)} · {e.Title}").ToArray() },
+                new ReportSection(Strings.Report_WhatHappened) { Facts = facts, Items = explanation.Simultaneous },
+                new ReportSection(Strings.Report_Statements) { Findings = explanation.Findings },
+                new ReportSection(Strings.Report_EventsSameTime) { Text = Strings.Report_CoincidenceNotProof, Items = explanation.AssociatedEvents.Select(e => $"{Local(e.Timestamp)} · {e.Title}").ToArray() },
             ],
             MissingData = CommonLimits,
             Notes = [explanation.Source],
@@ -184,12 +185,12 @@ public static class ReportBuilder
         ArgumentNullException.ThrowIfNull(data);
         var metrics = new (HistoryMetric Metric, string Name, Func<double, string> Format)[]
         {
-            (HistoryMetric.Cpu, "CPU usage", v => MetricFormatter.Percent(v)),
-            (HistoryMetric.Memory, "Memory in use", v => MetricFormatter.Percent(v)),
-            (HistoryMetric.Disk, "Disk active time", v => MetricFormatter.Percent(v)),
-            (HistoryMetric.Gpu, "GPU usage", v => MetricFormatter.Percent(v)),
-            (HistoryMetric.NetworkReceive, "Download", v => MetricFormatter.BitsPerSecond(v)),
-            (HistoryMetric.NetworkSend, "Upload", v => MetricFormatter.BitsPerSecond(v)),
+            (HistoryMetric.Cpu, Strings.Diag_Metric_CpuUsage, v => MetricFormatter.Percent(v)),
+            (HistoryMetric.Memory, Strings.State_Metric_MemoryUsed, v => MetricFormatter.Percent(v)),
+            (HistoryMetric.Disk, Strings.Diag_Metric_DiskActive, v => MetricFormatter.Percent(v)),
+            (HistoryMetric.Gpu, Strings.Diag_Metric_GpuUsage, v => MetricFormatter.Percent(v)),
+            (HistoryMetric.NetworkReceive, Strings.State_Metric_Download, v => MetricFormatter.BitsPerSecond(v)),
+            (HistoryMetric.NetworkSend, Strings.State_Metric_Upload, v => MetricFormatter.BitsPerSecond(v)),
         };
         var rows = new List<IReadOnlyList<string>>();
         var missing = new List<string>();
@@ -201,7 +202,7 @@ public static class ReportBuilder
             }
             else
             {
-                missing.Add($"{name}: not measured in this period.");
+                missing.Add(Text.Format(Strings.Report_NotMeasured, name));
             }
         }
 
@@ -210,7 +211,7 @@ public static class ReportBuilder
         return new ReportDocument
         {
             Kind = ReportKind.Replay,
-            Title = "Performance replay",
+            Title = Strings.Report_Replay,
             GeneratedAt = now,
             System = system,
             From = data.From,
@@ -218,12 +219,12 @@ public static class ReportBuilder
             Summary = data.Story.Summary,
             Sections =
             [
-                new ReportSection("Measurements") { Tables = [new ReportTable(string.Empty, ["Metric", "Average", "Peak", "Lowest"], rows)] },
-                new ReportSection("What happened") { Items = data.Story.Moments.Select(m => $"{Local(m.Time)} · {m.Text}").ToArray() },
-                new ReportSection("Events") { Items = data.Events.Select(e => $"{Local(e.Timestamp)} · {e.Title}" + (e.Detail is { } d ? $" ({d})" : string.Empty)).ToArray() },
+                new ReportSection(Strings.Report_Measurements) { Tables = [new ReportTable(string.Empty, [Strings.Report_Col_Metric, Strings.Report_Col_Average, Strings.Report_Col_Peak, Strings.Report_Col_Lowest], rows)] },
+                new ReportSection(Strings.Report_WhatHappened) { Items = data.Story.Moments.Select(m => $"{Local(m.Time)} · {m.Text}").ToArray() },
+                new ReportSection(Strings.Report_Events) { Items = data.Events.Select(e => $"{Local(e.Timestamp)} · {e.Title}" + (e.Detail is { } d ? $" ({d})" : string.Empty)).ToArray() },
             ],
             MissingData = [.. missing, .. CommonLimits],
-            Notes = [data.Source, $"{MetricFormatter.Plural(data.Points.Count, "measurement")}."],
+            Notes = [data.Source, Text.Plural(data.Points.Count, Strings.Count_Measurement_One, Strings.Count_Measurement_Other) + "."],
             Data = ReportWriter.ToElement(export, ReportJsonContext.Default.ReplayExport),
         };
     }
@@ -235,7 +236,7 @@ public static class ReportBuilder
         return new ReportDocument
         {
             Kind = ReportKind.GameSession,
-            Title = $"Game session: {session.Name}",
+            Title = Text.Format(Strings.Report_GameTitle, session.Name),
             GeneratedAt = now,
             System = system,
             From = session.Start,
@@ -243,32 +244,32 @@ public static class ReportBuilder
             Summary = $"{recap.Headline}. {recap.Summary}",
             Sections =
             [
-                new ReportSection("Session")
+                new ReportSection(Strings.Report_Session)
                 {
                     Facts =
                     [
-                        new ReportFact("Game", session.Name) { Detail = session.ExecutablePath },
-                        new ReportFact("Duration", MetricFormatter.DurationPrecise(session.Duration)) { Value = session.Duration.TotalSeconds, Unit = "s" },
-                        new ReportFact("Identified as a game", session.DetectionEvidence),
-                        new ReportFact("Coverage", recap.Coverage),
+                        new ReportFact(Strings.Trouble_Game, session.Name) { Detail = session.ExecutablePath },
+                        new ReportFact(Strings.WhyNow_Label_Duration, MetricFormatter.DurationPrecise(session.Duration)) { Value = session.Duration.TotalSeconds, Unit = "s" },
+                        new ReportFact(Strings.Report_IdentifiedAsGame, session.DetectionEvidence),
+                        new ReportFact(Strings.Report_Coverage, recap.Coverage),
                     ],
                 },
-                new ReportSection("Measurements")
+                new ReportSection(Strings.Report_Measurements)
                 {
-                    Tables = [new ReportTable(string.Empty, ["Metric", "Average", "Maximum", "Note"], recap.Metrics.Select(m => (IReadOnlyList<string>)[m.Name, m.Average, m.Maximum, m.Note ?? string.Empty]).ToArray())],
+                    Tables = [new ReportTable(string.Empty, [Strings.Report_Col_Metric, Strings.Report_Col_Average, Strings.Report_Col_Maximum, Strings.Report_Col_Note], recap.Metrics.Select(m => (IReadOnlyList<string>)[m.Name, m.Average, m.Maximum, m.Note ?? string.Empty]).ToArray())],
                 },
-                new ReportSection("Findings")
+                new ReportSection(Strings.Report_Findings)
                 {
                     Tables =
                     [
-                        new ReportTable(string.Empty, ["Finding", "How to read it", "Confidence", "Description"],
-                            recap.Findings.Select(f => (IReadOnlyList<string>)[f.Title, f.Qualifier ?? f.Kind.ToString(), f.Confidence.ToString(), f.Description]).ToArray()),
+                        new ReportTable(string.Empty, [Strings.Report_Col_Finding, Strings.Report_Col_HowToRead, Strings.Report_Col_Confidence, Strings.Report_Col_Description],
+                            recap.Findings.Select(f => (IReadOnlyList<string>)[f.Title, f.Qualifier ?? GameFindingKindText.Label(f.Kind), ConfidenceText.Label(f.Confidence), f.Description]).ToArray()),
                     ],
                 },
-                new ReportSection("Compared with previous sessions")
+                new ReportSection(Strings.Report_ComparedPrevious)
                 {
                     Text = recap.ComparisonNote,
-                    Tables = [new ReportTable(string.Empty, ["Metric", "This session", "Previous", "Difference"], recap.Comparison.Select(c => (IReadOnlyList<string>)[c.Metric, c.ThisSession, c.Previous, c.Difference]).ToArray())],
+                    Tables = [new ReportTable(string.Empty, [Strings.Report_Col_Metric, Strings.Report_Col_ThisSession, Strings.Report_Col_Previous, Strings.Report_Col_Difference], recap.Comparison.Select(c => (IReadOnlyList<string>)[c.Metric, c.ThisSession, c.Previous, c.Difference]).ToArray())],
                 },
             ],
             MissingData = recap.NotAvailable,
@@ -283,7 +284,7 @@ public static class ReportBuilder
         [
             (i + 1).ToString(CultureInfo.CurrentCulture),
             a.Usage.Identity.Name,
-            $"{a.Score.Value} · {a.Score.Level}",
+            $"{a.Score.Value} · {ImpactLevelText.Label(a.Score.Level)}",
             MetricFormatter.Percent(a.Usage.CpuAverage, 1),
             MetricFormatter.Bytes(a.Usage.MemoryAverageBytes),
             MetricFormatter.BytesPerSecond(a.Usage.IoAverageBytesPerSecond),
@@ -292,21 +293,23 @@ public static class ReportBuilder
         return new ReportDocument
         {
             Kind = ReportKind.AppImpact,
-            Title = "App Impact",
+            Title = Strings.Report_AppImpact,
             GeneratedAt = now,
             System = system,
             From = report.From,
             To = report.To,
             Summary = report.Apps.Count == 0
-                ? "No application usage recorded for this period."
-                : $"Highest impact: {report.Apps[0].Usage.Identity.Name} ({report.Apps[0].Score.Level}). {report.Apps[0].Explanation}",
+                ? Strings.Report_Impact_None
+                : Text.Format(Strings.Report_Impact_Highest, report.Apps[0].Usage.Identity.Name, ImpactLevelText.Label(report.Apps[0].Score.Level).ToLower(CultureInfo.CurrentCulture), report.Apps[0].Explanation),
             Sections =
             [
-                new ReportSection("Applications") { Tables = [new ReportTable(string.Empty, ["#", "Application", "Impact", "CPU (avg)", "Memory (avg)", "I/O (avg)", "Running"], rows)] },
-                new ReportSection("How the score is computed") { Text = AppImpactScore.Formula },
+                new ReportSection(Strings.Report_Applications) { Tables = [new ReportTable(string.Empty, ["#", Strings.Report_Col_Application, Strings.Report_Col_Impact, Strings.Report_Col_CpuAvg, Strings.Report_Col_MemoryAvg, Strings.Report_Col_IoAvg, Strings.Report_Col_Running], rows)] },
+                new ReportSection(Strings.Report_HowScoreComputed) { Text = AppImpactScore.Formula },
             ],
-            MissingData = [.. CommonLimits, "Disk I/O per application combines files, devices and network: Windows does not split it."],
-            Notes = report.Note is { } note ? [note, $"Period: {report.Period}"] : [$"Period: {report.Period}"],
+            MissingData = [.. CommonLimits, Strings.Report_Impact_IoLimit],
+            Notes = report.Note is { } note
+                ? [note, Text.Format(Strings.Report_Period, AppImpactPeriodText.Label(report.Period))]
+                : [Text.Format(Strings.Report_Period, AppImpactPeriodText.Label(report.Period))],
             Data = ReportWriter.ToElement(report, ReportJsonContext.Default.AppImpactReport),
         };
     }
@@ -319,24 +322,26 @@ public static class ReportBuilder
         return new ReportDocument
         {
             Kind = ReportKind.Alerts,
-            Title = "Alerts",
+            Title = Strings.Report_Alerts,
             GeneratedAt = now,
             System = system,
             From = ordered.Length > 0 ? ordered[^1].RaisedAt : null,
             To = now,
-            Summary = ordered.Length == 0 ? "No alert recorded." : $"{MetricFormatter.Plural(ordered.Length, "alert")}, {active} still active.",
+            Summary = ordered.Length == 0
+                ? Strings.Report_Alerts_None
+                : Text.Format(Strings.Report_Alerts_Summary, Text.Plural(ordered.Length, Strings.Count_Alert_One, Strings.Count_Alert_Other), active),
             Sections =
             [
-                new ReportSection("Alerts")
+                new ReportSection(Strings.Report_Alerts)
                 {
                     Tables =
                     [
-                        new ReportTable(string.Empty, ["Raised", "Alert", "Severity", "Status", "Value", "Duration", "Explanation"],
-                            ordered.Select(a => (IReadOnlyList<string>)[Local(a.RaisedAt), a.Title, a.Severity.ToString(), a.Status.ToString(), a.Value, MetricFormatter.DurationCompact(a.Duration), a.Explanation]).ToArray()),
+                        new ReportTable(string.Empty, [Strings.Report_Col_Raised, Strings.Report_Col_Alert, Strings.Report_Col_Severity, Strings.Report_Col_Status, Strings.Report_Col_Value, Strings.WhyNow_Label_Duration, Strings.Report_Col_Explanation],
+                            ordered.Select(a => (IReadOnlyList<string>)[Local(a.RaisedAt), a.Title, AlertSeverityText.Label(a.Severity), AlertStatusText.Label(a.Status), a.Value, MetricFormatter.DurationCompact(a.Duration), a.Explanation]).ToArray()),
                     ],
                 },
             ],
-            Notes = ["Alerts are raised only for problems that last or are unusual for this PC, at most a few per hour."],
+            Notes = [Strings.Report_Alerts_Note],
             Data = ReportWriter.ToElement(ordered, ReportJsonContext.Default.AlertArray),
         };
     }
@@ -348,38 +353,40 @@ public static class ReportBuilder
         var sections = new List<ReportSection>();
         if (sinceYesterday is { HasReference: true } summary)
         {
-            sections.Add(new ReportSection("Since yesterday")
+            sections.Add(new ReportSection(Strings.Report_SinceYesterday)
             {
                 Text = $"{summary.Headline}. {summary.Note}",
                 Tables =
                 [
-                    new ReportTable(string.Empty, ["Area", "Change", "Before", "After", "Importance", "Confidence", "When"],
-                        summary.Items.Select(i => (IReadOnlyList<string>)[i.Area, i.Title, i.OldValue ?? "—", i.NewValue ?? "—", i.Importance.ToString(), i.Confidence.ToString(), i.When]).ToArray()),
+                    new ReportTable(string.Empty, [Strings.Report_Col_Area, Strings.Report_Col_Change, Strings.State_Label_Before, Strings.State_Label_After, Strings.Report_Col_Importance, Strings.Report_Col_Confidence, Strings.Report_Col_When],
+                        summary.Items.Select(i => (IReadOnlyList<string>)[i.Area, i.Title, i.OldValue ?? "—", i.NewValue ?? "—", ChangeImportanceText.Label(i.Importance), ConfidenceText.Label(i.Confidence), i.When]).ToArray()),
                 ],
-                Items = summary.UnchangedAreas.Select(a => $"Unchanged: {a}").Concat(summary.NotCompared.Select(n => $"Not compared: {n}")).ToArray(),
+                Items = summary.UnchangedAreas.Select(a => Text.Format(Strings.Report_Unchanged, a)).Concat(summary.NotCompared.Select(n => Text.Format(Strings.Report_NotCompared, n))).ToArray(),
             });
         }
 
-        sections.Add(new ReportSection("Detected changes")
+        sections.Add(new ReportSection(Strings.Report_DetectedChanges)
         {
             Tables =
             [
-                new ReportTable(string.Empty, ["Change", "Before", "After", "Importance", "When", "Origin"],
-                    ordered.Select(c => (IReadOnlyList<string>)[c.Title, c.OldValue ?? "—", c.NewValue ?? "—", c.Importance.ToString(), c.After is { } after ? $"{Local(after)} – {Local(c.Before)}" : $"Before {Local(c.Before)}", c.Origin]).ToArray()),
+                new ReportTable(string.Empty, [Strings.Report_Col_Change, Strings.State_Label_Before, Strings.State_Label_After, Strings.Report_Col_Importance, Strings.Report_Col_When, Strings.Report_Col_Origin],
+                    ordered.Select(c => (IReadOnlyList<string>)[c.Title, c.OldValue ?? "—", c.NewValue ?? "—", ChangeImportanceText.Label(c.Importance), c.After is { } after ? $"{Local(after)} – {Local(c.Before)}" : Text.Format(Strings.Since_Before, Local(c.Before)), c.Origin]).ToArray()),
             ],
         });
         return new ReportDocument
         {
             Kind = ReportKind.Changes,
-            Title = "Changes",
+            Title = Strings.Report_Changes,
             GeneratedAt = now,
             System = system,
             From = ordered.Length > 0 ? ordered[^1].After ?? ordered[^1].Before : null,
             To = now,
-            Summary = ordered.Length == 0 ? "No change recorded." : $"{MetricFormatter.Plural(ordered.Length, "change")} detected by comparing snapshots of the PC.",
+            Summary = ordered.Length == 0
+                ? Strings.Report_Changes_None
+                : Text.Plural(ordered.Length, Strings.Report_Changes_One, Strings.Report_Changes_Other),
             Sections = sections,
-            MissingData = ["Drivers, services, scheduled tasks and individual files are not compared."],
-            Notes = ["A change is dated between two snapshots unless its installer recorded a date. When its origin is not observable, it says so."],
+            MissingData = [Strings.Report_Changes_Limit],
+            Notes = [Strings.Report_Changes_Note],
             Data = ReportWriter.ToElement(ordered, ReportJsonContext.Default.DetectedChangeArray),
         };
     }
@@ -390,7 +397,7 @@ public static class ReportBuilder
         return new ReportDocument
         {
             Kind = ReportKind.Comparison,
-            Title = $"Comparison: {result.Before.Label} → {result.After.Label}",
+            Title = Text.Format(Strings.Report_ComparisonTitle, result.Before.Label, result.After.Label),
             GeneratedAt = now,
             System = system,
             From = result.Before.From,
@@ -398,12 +405,12 @@ public static class ReportBuilder
             Summary = result.Summary,
             Sections =
             [
-                new ReportSection("Before / after")
+                new ReportSection(Strings.Report_BeforeAfter)
                 {
                     Tables =
                     [
-                        new ReportTable(string.Empty, ["Metric", result.Before.Label, result.After.Label, "Change", "Relative", "Importance"],
-                            result.Rows.Select(r => (IReadOnlyList<string>)[r.Name, r.BeforeText, r.AfterText, r.ChangeText, r.RelativeText ?? "—", r.IsComparable ? r.Importance.ToString() : "—"]).ToArray()),
+                        new ReportTable(string.Empty, [Strings.Report_Col_Metric, result.Before.Label, result.After.Label, Strings.Report_Col_Evolution, Strings.Report_Col_Relative, Strings.Report_Col_Importance],
+                            result.Rows.Select(r => (IReadOnlyList<string>)[r.Name, r.BeforeText, r.AfterText, r.ChangeText, r.RelativeText ?? "—", r.IsComparable ? ChangeImportanceText.Label(r.Importance) : "—"]).ToArray()),
                     ],
                 },
             ],
@@ -419,24 +426,28 @@ public static class ReportBuilder
         return new ReportDocument
         {
             Kind = ReportKind.Timeline,
-            Title = "Timeline",
+            Title = Strings.Report_Timeline,
             GeneratedAt = now,
             System = system,
             From = from,
             To = to,
-            Summary = $"{MetricFormatter.Plural(ordered.Length, "entry", "entries")} between {Local(from)} and {Local(to)}.",
+            Summary = Text.Format(
+                Strings.Report_Timeline_Summary,
+                Text.Plural(ordered.Length, Strings.Count_Entry_One, Strings.Count_Entry_Other),
+                Local(from),
+                Local(to)),
             Sections =
             [
-                new ReportSection("Entries")
+                new ReportSection(Strings.Report_Entries)
                 {
                     Tables =
                     [
-                        new ReportTable(string.Empty, ["Time", "Category", "Entry", "Detail", "Source"],
-                            ordered.Select(i => (IReadOnlyList<string>)[(i.IsApproximate ? "≈ " : string.Empty) + Local(i.Time), i.Category.ToString(), i.Title, i.Detail ?? string.Empty, i.Source]).ToArray()),
+                        new ReportTable(string.Empty, [Strings.Report_Col_Time, Strings.Report_Col_Category, Strings.Report_Col_Entry, Strings.Report_Col_Detail, Strings.Report_Col_Source],
+                            ordered.Select(i => (IReadOnlyList<string>)[(i.IsApproximate ? "≈ " : string.Empty) + Local(i.Time), TimelineCategoryText.Label(i.Category), i.Title, i.Detail ?? string.Empty, i.Source]).ToArray()),
                     ],
                 },
             ],
-            Notes = ["Times are those observed by Sysora. A change found by comparing snapshots (≈) happened at the latest at the time shown."],
+            Notes = [Strings.Report_Timeline_Note],
             Data = ReportWriter.ToElement(ordered, ReportJsonContext.Default.TimelineItemArray),
         };
     }
@@ -447,7 +458,7 @@ public static class ReportBuilder
         return new ReportDocument
         {
             Kind = ReportKind.Troubleshooting,
-            Title = "Troubleshooting investigation",
+            Title = Strings.Report_Troubleshooting,
             GeneratedAt = now,
             System = system,
             From = report.Start,
@@ -455,25 +466,29 @@ public static class ReportBuilder
             Summary = $"{report.Headline}. {report.Summary}",
             Sections =
             [
-                new ReportSection("Measurements")
+                new ReportSection(Strings.Report_Measurements)
                 {
-                    Tables = [new ReportTable(string.Empty, ["Metric", "Average", "Peak", "Measurements"], report.Metrics.Select(m => (IReadOnlyList<string>)[m.Name, m.Average, m.Peak, m.Samples.ToString(CultureInfo.CurrentCulture)]).ToArray())],
+                    Tables = [new ReportTable(string.Empty, [Strings.Report_Col_Metric, Strings.Report_Col_Average, Strings.Report_Col_Peak, Strings.Report_Measurements], report.Metrics.Select(m => (IReadOnlyList<string>)[m.Name, m.Average, m.Peak, m.Samples.ToString(CultureInfo.CurrentCulture)]).ToArray())],
                 },
-                new ReportSection("Anomalies") { Findings = report.Anomalies, Text = report.Anomalies.Count == 0 ? "None measured." : null },
-                new ReportSection("Correlations and likely explanations") { Findings = [.. report.Correlations, .. report.Likely] },
-                new ReportSection("Applications involved")
+                new ReportSection(Strings.Report_Anomalies) { Findings = report.Anomalies, Text = report.Anomalies.Count == 0 ? Strings.Report_NoneMeasured : null },
+                new ReportSection(Strings.Report_Correlations) { Findings = [.. report.Correlations, .. report.Likely] },
+                new ReportSection(Strings.Report_AppsInvolved)
                 {
                     Tables =
                     [
-                        new ReportTable(string.Empty, ["Application", "CPU (avg)", "CPU (peak)", "Memory (peak)", "I/O (avg)"],
+                        new ReportTable(string.Empty, [Strings.Report_Col_Application, Strings.Report_Col_CpuAvg, Strings.Report_Col_CpuPeak, Strings.Report_Col_MemoryPeak, Strings.Report_Col_IoAvg],
                             report.Applications.Select(a => (IReadOnlyList<string>)[a.Name, MetricFormatter.Percent(a.CpuAverage, 1), MetricFormatter.Percent(a.CpuPeak), MetricFormatter.Bytes(a.MemoryPeakBytes), MetricFormatter.BytesPerSecond(a.IoAverageBytesPerSecond)]).ToArray()),
                     ],
                 },
-                new ReportSection("Events") { Items = report.Events.Select(e => $"{Local(e.Timestamp)} · {e.Title}").ToArray() },
-                new ReportSection("Unknown") { Findings = report.Unknowns },
-                new ReportSection("Recommendations") { Items = report.Recommendations },
+                new ReportSection(Strings.Report_Events) { Items = report.Events.Select(e => $"{Local(e.Timestamp)} · {e.Title}").ToArray() },
+                new ReportSection(Strings.Report_Unknown) { Findings = report.Unknowns },
+                new ReportSection(Strings.Report_Recommendations) { Items = report.Recommendations },
             ],
-            Notes = [$"Ended: {report.EndReason}. Planned duration {MetricFormatter.DurationCompact(report.Planned)}.", "Collected with the Detailed monitoring intensity."],
+            Notes =
+            [
+                Text.Format(Strings.Report_Trouble_Ended, TroubleshootingEndText.Label(report.EndReason), MetricFormatter.DurationCompact(report.Planned)),
+                Strings.Report_Trouble_Collected,
+            ],
             Data = ReportWriter.ToElement(report, ReportJsonContext.Default.TroubleshootingReport),
         };
     }
@@ -484,19 +499,19 @@ public static class ReportBuilder
         var missing = new List<string>();
         if (result.AccessDenied > 0)
         {
-            missing.Add($"{MetricFormatter.Plural(result.AccessDenied, "folder")} could not be read (access denied); their content is unknown. Examples: {string.Join(", ", result.AccessDeniedSamples.Take(5))}");
+            missing.Add(Text.Format(Strings.Report_Large_Denied, Text.Plural(result.AccessDenied, Strings.LargeFiles_Denied_One, Strings.LargeFiles_Denied_Other), string.Join(Strings.List_Separator, result.AccessDeniedSamples.Take(5))));
         }
 
         if (result.Unavailable > 0)
         {
-            missing.Add($"{MetricFormatter.Plural(result.Unavailable, "folder")} unavailable during the scan.");
+            missing.Add(Text.Plural(result.Unavailable, Strings.Report_Large_Unavailable_One, Strings.Report_Large_Unavailable_Other));
         }
 
-        missing.AddRange(result.Exclusions.Select(e => $"Not scanned: {e.Path} ({e.Reason})"));
+        missing.AddRange(result.Exclusions.Select(e => Text.Format(Strings.Report_Large_NotScanned, e.Path, e.Reason)));
         return new ReportDocument
         {
             Kind = ReportKind.LargeFiles,
-            Title = "Large files",
+            Title = Strings.Report_LargeFiles,
             GeneratedAt = now,
             System = system,
             From = result.Started,
@@ -504,30 +519,35 @@ public static class ReportBuilder
             Summary = result.Message,
             Sections =
             [
-                new ReportSection("Largest files")
+                new ReportSection(Strings.Report_LargestFiles)
                 {
-                    Text = "Sysora lists files; it never moves, modifies or deletes them.",
+                    Text = Strings.Report_Large_ReadOnly,
                     Tables =
                     [
-                        new ReportTable(string.Empty, ["File", "Size", "Type", "Modified", "Folder", "Note"],
+                        new ReportTable(string.Empty, [Strings.Report_Col_File, Strings.Report_Col_Size, Strings.Report_Col_Type, Strings.Report_Col_Modified, Strings.Report_Col_Folder, Strings.Report_Col_Note],
                             result.Files.Select(f => (IReadOnlyList<string>)[f.Name, MetricFormatter.Bytes(f.SizeBytes), LargeFileCategorizer.Name(f.Category), f.Modified is { } m ? Local(m) : "—", f.Directory, f.Note ?? string.Empty]).ToArray()),
                     ],
                 },
-                new ReportSection("By type") { Tables = [Groups(result.ByCategory)] },
-                new ReportSection("By folder") { Tables = [Groups(result.ByFolder)] },
+                new ReportSection(Strings.Report_ByType) { Tables = [Groups(result.ByCategory)] },
+                new ReportSection(Strings.Report_ByFolder) { Tables = [Groups(result.ByFolder)] },
             ],
             MissingData = missing,
             Notes =
             [
-                $"Scanned: {string.Join(", ", result.Roots)}; minimum size {MetricFormatter.Bytes(result.MinimumSizeBytes)}.",
-                $"{result.FilesScanned.ToString("N0", CultureInfo.CurrentCulture)} files in {result.DirectoriesScanned.ToString("N0", CultureInfo.CurrentCulture)} folders; {MetricFormatter.Plural(result.SkippedLinks, "link")} not followed; {MetricFormatter.Plural(result.CloudOnlyFiles, "online-only file")} skipped.",
+                Text.Format(Strings.Report_Large_Scanned, string.Join(Strings.List_Separator, result.Roots), MetricFormatter.Bytes(result.MinimumSizeBytes)),
+                Text.Format(
+                    Strings.Report_Large_Counts,
+                    Text.Plural(result.FilesScanned, Strings.Count_File_One, Strings.Count_File_Other),
+                    Text.Plural(result.DirectoriesScanned, Strings.Count_Folder_One, Strings.Count_Folder_Other),
+                    Text.Plural(result.SkippedLinks, Strings.Count_Link_One, Strings.Count_Link_Other),
+                    Text.Plural(result.CloudOnlyFiles, Strings.Count_CloudFile_One, Strings.Count_CloudFile_Other)),
             ],
             Data = ReportWriter.ToElement(result, ReportJsonContext.Default.LargeFileScanResult),
         };
     }
 
     private static ReportTable Groups(IReadOnlyList<LargeFileGroup> groups) =>
-        new(string.Empty, ["Group", "Files", "Total size"], groups.Select(g => (IReadOnlyList<string>)[g.Name, g.Count.ToString(CultureInfo.CurrentCulture), MetricFormatter.Bytes(g.TotalBytes)]).ToArray());
+        new(string.Empty, [Strings.Report_Col_Group, Strings.Report_Col_Files, Strings.Report_Col_TotalSize], groups.Select(g => (IReadOnlyList<string>)[g.Name, g.Count.ToString(CultureInfo.CurrentCulture), MetricFormatter.Bytes(g.TotalBytes)]).ToArray());
 
     private static ReportFact Fact(AnalysisEvidence evidence)
     {

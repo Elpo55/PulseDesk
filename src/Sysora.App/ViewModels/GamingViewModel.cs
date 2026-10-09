@@ -12,6 +12,7 @@ using Sysora.Core.Gaming;
 using Sysora.Core.Metrics;
 using Sysora.Core.Models;
 using Sysora.Core.Settings;
+using Sysora.Localization;
 
 namespace Sysora.App.ViewModels;
 
@@ -185,7 +186,7 @@ public sealed partial class GamingViewModel : PageViewModel
         if (SelectedIndex >= 0 && SelectedIndex < _recaps.Count)
         {
             _games.MarkNotAGame(_recaps[SelectedIndex].Session.ExecutablePath);
-            Note = $"{_recaps[SelectedIndex].Session.Name} will not be followed as a game any more. You can undo this in Settings › Gaming.";
+            Note = Text.Format(UiStrings.Gaming_NotFollowed, _recaps[SelectedIndex].Session.Name);
         }
     }
 
@@ -246,33 +247,33 @@ public sealed partial class GamingViewModel : PageViewModel
             return;
         }
 
-        LiveTitle = $"{live.Name} · running for {MetricFormatter.DurationPrecise(live.Duration)}";
-        LiveDetail = $"{live.DetectionEvidence} ({InsightDisplay.Text(live.Confidence).ToLowerInvariant()}) · {live.ExecutablePath}";
+        LiveTitle = Text.Format(UiStrings.Gaming_LiveTitle, live.Name, MetricFormatter.DurationPrecise(live.Duration));
+        LiveDetail = $"{live.DetectionEvidence} ({InsightDisplay.Text(live.Confidence).ToLower(CultureInfo.CurrentCulture)}) · {live.ExecutablePath}";
         var parts = new List<string>();
         if (live.Cpu is { } cpu)
         {
-            parts.Add($"CPU {MetricFormatter.Percent(cpu.Average)} avg ({MetricFormatter.Percent(cpu.Maximum)} peak)");
+            parts.Add(Text.Format(UiStrings.Gaming_LiveCpu, MetricFormatter.Percent(cpu.Average), MetricFormatter.Percent(cpu.Maximum)));
         }
 
         if (live.Gpu is { } gpu)
         {
-            parts.Add($"GPU {MetricFormatter.Percent(gpu.Average)} avg ({MetricFormatter.Percent(gpu.Maximum)} peak)");
+            parts.Add(Text.Format(UiStrings.Gaming_LiveGpu, MetricFormatter.Percent(gpu.Average), MetricFormatter.Percent(gpu.Maximum)));
         }
 
         if (live.Memory is { } memory)
         {
-            parts.Add($"memory {MetricFormatter.Percent(memory.Average)} avg");
+            parts.Add(Text.Format(UiStrings.Gaming_LiveMemory, MetricFormatter.Percent(memory.Average)));
         }
 
         if (live.GameMemoryBytes is { } gameMemory)
         {
-            parts.Add($"game {MetricFormatter.Bytes(gameMemory.Average)} avg");
+            parts.Add(Text.Format(UiStrings.Gaming_LiveGameMemory, MetricFormatter.Bytes(gameMemory.Average)));
         }
 
-        LiveStats = parts.Count > 0 ? string.Join(" · ", parts) : "Collecting the first measurements…";
+        LiveStats = parts.Count > 0 ? string.Join(" · ", parts) : UiStrings.Gaming_Collecting;
         LiveOverhead = live.SelfCpu is { } self
-            ? $"Sysora itself: {MetricFormatter.Percent(self.Average, 2)} of CPU on average during this session. FPS: Not available."
-            : "FPS: Not available.";
+            ? Text.Format(UiStrings.Gaming_SelfCpu, MetricFormatter.Percent(self.Average, 2))
+            : UiStrings.Gaming_FpsNotAvailable;
     }
 
     private async Task LoadAsync()
@@ -301,8 +302,11 @@ public sealed partial class GamingViewModel : PageViewModel
             CollectionSync.Resize(Sessions, recaps.Length, _ => new GameSessionItemViewModel(), (item, i) => item.Set(recaps[i]));
             IsEmpty = recaps.Length == 0;
             Summary = recaps.Length == 0
-                ? "No game session recorded yet."
-                : $"{MetricFormatter.Plural(recaps.Length, "session")} in the last 90 days · {MetricFormatter.DurationCompact(TimeSpan.FromSeconds(recaps.Sum(r => r.Session.Duration.TotalSeconds)))} of play measured";
+                ? UiStrings.Gaming_NoSessionYet
+                : Text.Format(
+                    UiStrings.Gaming_Summary,
+                    Text.Plural(recaps.Length, UiStrings.Count_Session_One, UiStrings.Count_Session_Other),
+                    MetricFormatter.DurationCompact(TimeSpan.FromSeconds(recaps.Sum(r => r.Session.Duration.TotalSeconds))));
 
             if (_requestedSession is not null)
             {
@@ -322,7 +326,7 @@ public sealed partial class GamingViewModel : PageViewModel
         {
             _logger.LogWarning(ex, "Game sessions could not be loaded.");
             HasError = true;
-            ErrorText = $"Game sessions could not be loaded: {ex.Message}";
+            ErrorText = Text.Format(UiStrings.Gaming_LoadFailed, ex.Message);
         }
         finally
         {
@@ -482,7 +486,7 @@ public sealed partial class GameRecapViewModel : ObservableObject
         Headline = recap.Headline;
         Summary = recap.Summary;
         Coverage = recap.Coverage;
-        Detection = $"Identified as a game: {session.DetectionEvidence} ({InsightDisplay.Text(session.Confidence).ToLowerInvariant()})";
+        Detection = Text.Format(UiStrings.Gaming_Detection, session.DetectionEvidence, InsightDisplay.Text(session.Confidence).ToLower(CultureInfo.CurrentCulture));
         ExecutablePath = session.ExecutablePath;
         (Glyph, BrushKey) = HealthGlyphs.For(recap.Severity);
 
@@ -503,23 +507,25 @@ public sealed partial class GameRecapViewModel : ObservableObject
         var end = session.Timeline.Count > 0 ? session.Timeline[^1].Start + TimeSpan.FromSeconds(session.TimelineStepSeconds) : session.End;
         var label = MetricFormatter.DurationPrecise(session.Duration);
         CpuChart = new TimeSeriesData(Series(session, p => p.Cpu), Series(session, p => p.GameCpu), end, window, 100, "100%", label);
-        CpuLegend = $"Whole PC (filled) and the game (line), {Step(session)}";
+        CpuLegend = Text.Format(UiStrings.Gaming_CpuLegend, Step(session));
         var gpu = Series(session, p => p.Gpu);
         HasGpuChart = gpu.Count > 0;
         GpuChart = HasGpuChart ? new TimeSeriesData(gpu, Series(session, p => p.GameGpu), end, window, 100, "100%", label) : null;
         GpuLegend = session.GameGpu is null
-            ? $"Busiest graphics adapter, {Step(session)} (GPU usage of the game: not available)"
-            : $"Busiest graphics adapter (filled) and the game (line), {Step(session)}";
+            ? Text.Format(UiStrings.Gaming_GpuLegendNoGame, Step(session))
+            : Text.Format(UiStrings.Gaming_GpuLegend, Step(session));
     }
 
     private static string Step(GameSession session) =>
-        session.TimelineStepSeconds <= 60 ? "average per minute" : $"average per {MetricFormatter.DurationCompact(TimeSpan.FromSeconds(session.TimelineStepSeconds))}";
+        session.TimelineStepSeconds <= 60
+            ? UiStrings.Gaming_StepMinute
+            : Text.Format(UiStrings.Gaming_StepOther, MetricFormatter.DurationCompact(TimeSpan.FromSeconds(session.TimelineStepSeconds)));
 
     private static List<MetricSample> Series(GameSession session, Func<GameTimelinePoint, double?> value) =>
         session.Timeline.Where(p => value(p) is not null).Select(p => new MetricSample(p.Start, value(p)!.Value)).ToList();
 
     private static string Describe(GameAppUsage app) =>
-        string.Create(CultureInfo.CurrentCulture, $"{app.Name}: {MetricFormatter.Percent(app.CpuAverage, 1)} CPU on average (peak {MetricFormatter.Percent(app.CpuMaximum, 1)}), up to {MetricFormatter.Bytes(app.MemoryMaximumBytes)}");
+        Text.Format(UiStrings.Gaming_AppLine, app.Name, MetricFormatter.Percent(app.CpuAverage, 1), MetricFormatter.Percent(app.CpuMaximum, 1), MetricFormatter.Bytes(app.MemoryMaximumBytes));
 
     private static void Replace<T>(ObservableCollection<T> items, IEnumerable<T> values)
     {

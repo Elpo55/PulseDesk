@@ -4,6 +4,7 @@ using Sysora.Core.History;
 using Sysora.Core.Interfaces;
 using Sysora.Core.Models;
 using Sysora.Core.Settings;
+using Sysora.Localization;
 
 namespace Sysora.Core.Gaming;
 
@@ -234,7 +235,7 @@ public sealed class GameSessionService : IAsyncDisposable
         foreach (var started in update.Started)
         {
             _logger.LogInformation("Game session started: {Game}. {Evidence}", started.Name, started.DetectionEvidence);
-            _history.AddEvent(new SystemEvent(started.Start, SystemEventKind.GameStarted, $"Game started: {started.Name}", started.DetectionEvidence)
+            _history.AddEvent(new SystemEvent(started.Start, SystemEventKind.GameStarted, Text.Format(Strings.Game_Event_Started, started.Name), started.DetectionEvidence)
             {
                 AppKey = started.GameKey,
             });
@@ -243,7 +244,7 @@ public sealed class GameSessionService : IAsyncDisposable
 
         foreach (var ended in update.Ended)
         {
-            _history.AddEvent(new SystemEvent(ended.End, SystemEventKind.GameEnded, $"Game closed: {ended.Name} ({MetricFormatter.DurationPrecise(ended.Duration)})")
+            _history.AddEvent(new SystemEvent(ended.End, SystemEventKind.GameEnded, Text.Format(Strings.Game_Event_Closed, ended.Name, MetricFormatter.DurationPrecise(ended.Duration)))
             {
                 AppKey = ended.GameKey,
             });

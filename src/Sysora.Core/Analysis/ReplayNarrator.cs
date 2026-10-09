@@ -1,6 +1,7 @@
 using System.Globalization;
 using Sysora.Core.Formatting;
 using Sysora.Core.History;
+using Sysora.Localization;
 
 namespace Sysora.Core.Analysis;
 
@@ -41,13 +42,40 @@ public static class ReplayNarrator
     /// <summary>Moments kept at most (the earliest ones are dropped first beyond it).</summary>
     public const int MaxMoments = 20;
 
-    private static readonly (HistoryMetric Metric, string Name, double High, double Jump)[] Metrics =
+    private static readonly (HistoryMetric Metric, double High, double Jump)[] Metrics =
     [
-        (HistoryMetric.Cpu, "CPU", 80, 25),
-        (HistoryMetric.Memory, "Memory", 85, 15),
-        (HistoryMetric.Disk, "Disk activity", 90, 40),
-        (HistoryMetric.Gpu, "GPU", 90, 40),
+        (HistoryMetric.Cpu, 80, 25),
+        (HistoryMetric.Memory, 85, 15),
+        (HistoryMetric.Disk, 90, 40),
+        (HistoryMetric.Gpu, 90, 40),
     ];
+
+    /// <summary>"CPU rose from 20% to 85%".</summary>
+    private static string RoseTemplate(HistoryMetric metric) => metric switch
+    {
+        HistoryMetric.Cpu => Strings.Replay_Rose_Cpu,
+        HistoryMetric.Memory => Strings.Replay_Rose_Memory,
+        HistoryMetric.Disk => Strings.Replay_Rose_Disk,
+        _ => Strings.Replay_Rose_Gpu,
+    };
+
+    /// <summary>"CPU reached 95%".</summary>
+    private static string ReachedTemplate(HistoryMetric metric) => metric switch
+    {
+        HistoryMetric.Cpu => Strings.Replay_Reached_Cpu,
+        HistoryMetric.Memory => Strings.Replay_Reached_Memory,
+        HistoryMetric.Disk => Strings.Replay_Reached_Disk,
+        _ => Strings.Replay_Reached_Gpu,
+    };
+
+    /// <summary>"CPU back to 30%".</summary>
+    private static string BackTemplate(HistoryMetric metric) => metric switch
+    {
+        HistoryMetric.Cpu => Strings.Replay_Back_Cpu,
+        HistoryMetric.Memory => Strings.Replay_Back_Memory,
+        HistoryMetric.Disk => Strings.Replay_Back_Disk,
+        _ => Strings.Replay_Back_Gpu,
+    };
 
     public static ReplayStory Narrate(IReadOnlyList<MetricSnapshot> snapshots, IReadOnlyList<SystemEvent> events)
     {
@@ -55,13 +83,13 @@ public static class ReplayNarrator
         ArgumentNullException.ThrowIfNull(events);
         if (snapshots.Count == 0)
         {
-            return new ReplayStory([], "No measurements for this period.");
+            return new ReplayStory([], Strings.Replay_NoMeasurements);
         }
 
         var moments = new List<ReplayMoment>();
-        foreach (var (metric, name, high, jump) in Metrics)
+        foreach (var (metric, high, jump) in Metrics)
         {
-            moments.AddRange(DetectMetric(snapshots, metric, name, high, jump));
+            moments.AddRange(DetectMetric(snapshots, metric, high, jump));
         }
 
         moments.AddRange(events.Select(e => new ReplayMoment(e.Timestamp, e.Title, ReplayMomentKind.Event) { AppKey = e.AppKey }));
@@ -75,7 +103,7 @@ public static class ReplayNarrator
     }
 
     /// <summary>Rises (sharp increases or crossing the high level, lasting) and recoveries of one metric.</summary>
-    private static IEnumerable<ReplayMoment> DetectMetric(IReadOnlyList<MetricSnapshot> snapshots, HistoryMetric metric, string name, double high, double jump)
+    private static IEnumerable<ReplayMoment> DetectMetric(IReadOnlyList<MetricSnapshot> snapshots, HistoryMetric metric, double high, double jump)
     {
         var points = snapshots.Where(s => s.Get(metric) is not null).Select(s => (s.Timestamp, Value: s.Get(metric)!.Value, Snapshot: s)).ToArray();
         if (points.Length < 3)
@@ -114,8 +142,8 @@ public static class ReplayNarrator
                 var reached = smooth.AsSpan(i, Math.Min(lookBack + 1, smooth.Length - i)).ToArray().Max();
                 var app = metric is HistoryMetric.Cpu or HistoryMetric.Memory or HistoryMetric.Disk ? Culprit(points[i].Snapshot, metric) : null;
                 var text = jumped && before < high
-                    ? Format($"{name} rose from {MetricFormatter.Percent(before)} to {MetricFormatter.Percent(reached)}")
-                    : Format($"{name} reached {MetricFormatter.Percent(reached)}");
+                    ? Text.Format(RoseTemplate(metric), MetricFormatter.Percent(before), MetricFormatter.Percent(reached))
+                    : Text.Format(ReachedTemplate(metric), MetricFormatter.Percent(reached));
                 if (app is not null)
                 {
                     text += $" ({app.Value.Description})";
@@ -135,7 +163,7 @@ public static class ReplayNarrator
             {
                 isHigh = false;
                 armed = true;
-                yield return new ReplayMoment(points[i].Timestamp, Format($"{name} back to {MetricFormatter.Percent(value)}"), ReplayMomentKind.Recovery, metric);
+                yield return new ReplayMoment(points[i].Timestamp, Text.Format(BackTemplate(metric), MetricFormatter.Percent(value)), ReplayMomentKind.Recovery, metric);
                 lastMoment = points[i].Timestamp;
             }
         }
@@ -155,7 +183,7 @@ public static class ReplayNarrator
             case HistoryMetric.Cpu:
                 var cpu = apps.MaxBy(a => a.CpuPercent)!;
                 return snapshot.CpuPercent is { } total && total > 0 && cpu.CpuPercent >= 15 && cpu.CpuPercent / total >= 0.4
-                    ? (cpu.Key, Format($"{cpu.Name} {cpu.CpuPercent:0}%"))
+                    ? (cpu.Key, $"{cpu.Name} {MetricFormatter.Percent(cpu.CpuPercent)}")
                     : null;
             case HistoryMetric.Memory:
                 var memory = apps.MaxBy(a => a.MemoryBytes)!;
@@ -164,7 +192,9 @@ public static class ReplayNarrator
                     : null;
             default:
                 var io = apps.MaxBy(a => a.IoBytesPerSecond)!;
-                return io.IoBytesPerSecond >= 5 * 1024 * 1024 ? (io.Key, $"most I/O: {io.Name} {MetricFormatter.BytesPerSecond(io.IoBytesPerSecond)}") : null;
+                return io.IoBytesPerSecond >= 5 * 1024 * 1024
+                    ? (io.Key, Text.Format(Strings.Replay_MostIo, io.Name, MetricFormatter.BytesPerSecond(io.IoBytesPerSecond)))
+                    : null;
         }
     }
 
@@ -175,24 +205,26 @@ public static class ReplayNarrator
         {
             var cpu = SnapshotStatistics.Summarize(snapshots, s => s.CpuPercent);
             var memory = SnapshotStatistics.Summarize(snapshots, s => s.MemoryPercent);
-            var levels = string.Join(", ", new[]
+            var levels = string.Join(Strings.List_Separator, new[]
             {
-                cpu is { } c ? $"CPU averaged {MetricFormatter.Percent(c.Average)} (peak {MetricFormatter.Percent(c.Peak)})" : null,
-                memory is { } m ? $"memory {MetricFormatter.Percent(m.Average)}" : null,
+                cpu is { } c ? Text.Format(Strings.Replay_CpuAveraged, MetricFormatter.Percent(c.Average), MetricFormatter.Percent(c.Peak)) : null,
+                memory is { } m ? Text.Format(Strings.Replay_MemoryLevel, MetricFormatter.Percent(m.Average)) : null,
             }.Where(p => p is not null));
             return levels.Length == 0
-                ? "No notable change in this period."
-                : $"No sharp rise or saturation in this period: {levels}.";
+                ? Strings.Replay_NoNotableChange
+                : Text.Format(Strings.Replay_NoSharpRise, levels);
         }
 
         // First rise of each metric, in order: "A rise in CPU usage appeared at 14:33, followed by memory at 14:34."
         var firsts = rises.GroupBy(r => r.Metric).Select(g => g.First()).OrderBy(r => r.Time).Take(3).ToList();
         var first = firsts[0];
         var culprit = first.AppKey is null ? string.Empty : " " + Culprit(first.Text);
-        var sentence = $"A sharp rise in {Noun(first.Metric)}{culprit} appeared at {Clock(first.Time)}";
+        var sentence = Text.Format(Strings.Replay_SharpRise, Noun(first.Metric), culprit, Clock(first.Time));
         if (firsts.Count > 1)
         {
-            sentence += ", followed by " + string.Join(" and ", firsts.Skip(1).Select(r => $"{Noun(r.Metric)} at {Clock(r.Time)}"));
+            sentence += Text.Format(
+                Strings.Replay_FollowedBy,
+                Text.List(firsts.Skip(1).Select(r => Text.Format(Strings.Replay_NounAt, Noun(r.Metric), Clock(r.Time)))));
         }
 
         return sentence + ".";
@@ -206,11 +238,11 @@ public static class ReplayNarrator
 
     private static string Noun(HistoryMetric? metric) => metric switch
     {
-        HistoryMetric.Cpu => "CPU usage",
-        HistoryMetric.Memory => "memory usage",
-        HistoryMetric.Disk => "disk activity",
-        HistoryMetric.Gpu => "GPU usage",
-        _ => "activity",
+        HistoryMetric.Cpu => Strings.Replay_Noun_Cpu,
+        HistoryMetric.Memory => Strings.Replay_Noun_Memory,
+        HistoryMetric.Disk => Strings.Replay_Noun_Disk,
+        HistoryMetric.Gpu => Strings.Replay_Noun_Gpu,
+        _ => Strings.Replay_Noun_Other,
     };
 
     private static string Clock(DateTimeOffset time) => time.ToLocalTime().ToString("T", CultureInfo.CurrentCulture);

@@ -2,6 +2,7 @@ using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Sysora.Core.Analysis;
 using Sysora.Core.Formatting;
+using Sysora.Localization;
 
 namespace Sysora.App.ViewModels;
 
@@ -43,8 +44,8 @@ public sealed partial class ComparisonRowViewModel : ObservableObject
         ArgumentNullException.ThrowIfNull(metric);
         Name = metric.Name;
         Now = metric.Current is { } current
-            ? new ComparisonCell(MetricFormatter.Percent(current), string.Create(CultureInfo.CurrentCulture, $"Average of the last {UsageComparer.CurrentWindow.TotalMinutes:0} minutes"))
-            : new ComparisonCell(ComparisonCell.Missing, "Not measured in the last minutes");
+            ? new ComparisonCell(MetricFormatter.Percent(current), Text.Format(UiStrings.Usual_CurrentAverage, UsageComparer.CurrentWindow.TotalMinutes))
+            : new ComparisonCell(ComparisonCell.Missing, UiStrings.Usual_NotMeasuredRecently);
         LastHour = Cell(metric.Get(ComparisonPeriod.LastHour));
         Today = Cell(metric.Get(ComparisonPeriod.Today));
         Yesterday = Cell(metric.Get(ComparisonPeriod.Yesterday));
@@ -57,8 +58,8 @@ public sealed partial class ComparisonRowViewModel : ObservableObject
         period.Average is { } average
             ? new ComparisonCell(
                 MetricFormatter.Percent(average),
-                $"{UsageComparer.Label(period.Period)}: average over {MetricFormatter.DurationCompact(TimeSpan.FromHours(period.MonitoredHours))} of measurements ({MetricFormatter.Plural(period.Days, "day")})")
-            : new ComparisonCell(ComparisonCell.Missing, period.NotEnoughData ?? "Not enough data");
+                Text.Format(UiStrings.Usual_PeriodAverage, UsageComparer.Label(period.Period), MetricFormatter.DurationCompact(TimeSpan.FromHours(period.MonitoredHours)), Text.Plural(period.Days, Strings.Duration_Day_One, Strings.Duration_Day_Other)))
+            : new ComparisonCell(ComparisonCell.Missing, period.NotEnoughData ?? UiStrings.Trend_NotEnoughData);
 }
 
 /// <summary>A value of the comparison table and where it comes from.</summary>
@@ -68,5 +69,5 @@ public sealed record ComparisonCell(string Text, string Tooltip)
 {
     public const string Missing = "—";
 
-    public static ComparisonCell Unknown { get; } = new(Missing, "Not enough data");
+    public static ComparisonCell Unknown { get; } = new(Missing, UiStrings.Trend_NotEnoughData);
 }

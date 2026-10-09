@@ -2,6 +2,7 @@
     x:Class="Sysora.App.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:l="using:Sysora.Localization"
     Title="Sysora">
 
     <Window.SystemBackdrop>
@@ -30,13 +31,13 @@
                         VerticalAlignment="Center"
                         Background="{ThemeResource DemoBadgeBackgroundBrush}"
                         CornerRadius="{StaticResource ControlCornerRadius}"
-                        ToolTipService.ToolTip="Sysora was started with --demo: every value on screen is simulated."
+                        ToolTipService.ToolTip="{x:Bind l:UiStrings.Shell_SysoraWasStartedWithDemoEveryValueOnScreenIs}"
                         Visibility="{x:Bind ViewModel.IsDemoMode}">
                         <TextBlock
                             FontWeight="SemiBold"
                             Foreground="{ThemeResource DemoBadgeForegroundBrush}"
                             Style="{StaticResource CaptionTextBlockStyle}"
-                            Text="DEMO MODE · simulated data" />
+                            Text="{x:Bind l:UiStrings.Shell_DEMOMODESimulatedData}" />
                     </Border>
                     <Border
                         Padding="8,2"
@@ -44,7 +45,7 @@
                         Background="{ThemeResource SystemFillColorCautionBackgroundBrush}"
                         CornerRadius="{StaticResource ControlCornerRadius}"
                         Visibility="{x:Bind ViewModel.IsPaused, Mode=OneWay}">
-                        <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Text="Monitoring paused" />
+                        <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Text="{x:Bind l:UiStrings.Shell_MonitoringPaused}" />
                     </Border>
                     <Button
                         AutomationProperties.Name="{x:Bind ViewModel.PauseLabel, Mode=OneWay}"
@@ -67,109 +68,109 @@
             PaneDisplayMode="Auto"
             SelectionChanged="OnNavigationSelectionChanged">
             <NavigationView.MenuItems>
-                <NavigationViewItem AutomationProperties.AutomationId="NavDashboard" Content="Dashboard" Tag="Dashboard">
+                <NavigationViewItem AutomationProperties.AutomationId="NavDashboard" Content="{x:Bind l:UiStrings.Common_Dashboard}" Tag="Dashboard">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE80F;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem AutomationProperties.AutomationId="NavPcHealth" Content="PC Health" Tag="PcHealth">
+                <NavigationViewItem AutomationProperties.AutomationId="NavPcHealth" Content="{x:Bind l:UiStrings.Common_PCHealth}" Tag="PcHealth">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xEB51;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem AutomationProperties.AutomationId="NavTimeline" Content="Timeline" Tag="Timeline">
+                <NavigationViewItem AutomationProperties.AutomationId="NavTimeline" Content="{x:Bind l:UiStrings.Common_Timeline}" Tag="Timeline">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE823;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
                 <NavigationViewItemSeparator />
-                <NavigationViewItemHeader Content="Investigate" />
-                <NavigationViewItem AutomationProperties.AutomationId="NavDiagnosis" Content="Diagnosis" Tag="Diagnosis">
+                <NavigationViewItemHeader Content="{x:Bind l:UiStrings.Shell_Investigate}" />
+                <NavigationViewItem AutomationProperties.AutomationId="NavDiagnosis" Content="{x:Bind l:UiStrings.Common_Diagnosis}" Tag="Diagnosis">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE95E;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem AutomationProperties.AutomationId="NavTroubleshooting" Content="Troubleshooting" Tag="Troubleshooting">
+                <NavigationViewItem AutomationProperties.AutomationId="NavTroubleshooting" Content="{x:Bind l:UiStrings.Common_Troubleshooting}" Tag="Troubleshooting">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE90F;" />
                     </NavigationViewItem.Icon>
                     <NavigationViewItem.InfoBadge>
                         <InfoBadge
-                            AutomationProperties.Name="Investigation in progress"
+                            AutomationProperties.Name="{x:Bind l:UiStrings.Shell_InvestigationInProgress}"
                             Style="{StaticResource AttentionDotInfoBadgeStyle}"
                             Visibility="{x:Bind ViewModel.IsInvestigating, Mode=OneWay}" />
                     </NavigationViewItem.InfoBadge>
                 </NavigationViewItem>
-                <NavigationViewItem AutomationProperties.AutomationId="NavReplay" Content="Replay" Tag="Replay">
+                <NavigationViewItem AutomationProperties.AutomationId="NavReplay" Content="{x:Bind l:UiStrings.Common_Replay}" Tag="Replay">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE81C;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem AutomationProperties.AutomationId="NavCompare" Content="Compare" Tag="Compare">
+                <NavigationViewItem AutomationProperties.AutomationId="NavCompare" Content="{x:Bind l:UiStrings.Common_Compare}" Tag="Compare">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE81E;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem AutomationProperties.AutomationId="NavAppImpact" Content="App Impact" Tag="AppImpact">
+                <NavigationViewItem AutomationProperties.AutomationId="NavAppImpact" Content="{x:Bind l:UiStrings.Common_AppImpact}" Tag="AppImpact">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE9F9;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem AutomationProperties.AutomationId="NavChanges" Content="Changes" Tag="Changes">
+                <NavigationViewItem AutomationProperties.AutomationId="NavChanges" Content="{x:Bind l:UiStrings.Common_Changes}" Tag="Changes">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE8AB;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem AutomationProperties.AutomationId="NavAlerts" Content="Alerts" Tag="Alerts">
+                <NavigationViewItem AutomationProperties.AutomationId="NavAlerts" Content="{x:Bind l:UiStrings.Common_Alerts}" Tag="Alerts">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xEA8F;" />
                     </NavigationViewItem.Icon>
                     <NavigationViewItem.InfoBadge>
                         <InfoBadge
-                            AutomationProperties.Name="New alerts"
+                            AutomationProperties.Name="{x:Bind l:UiStrings.Shell_NewAlerts}"
                             Value="{x:Bind ViewModel.NewAlertCount, Mode=OneWay}"
                             Visibility="{x:Bind ViewModel.HasNewAlerts, Mode=OneWay}" />
                     </NavigationViewItem.InfoBadge>
                 </NavigationViewItem>
-                <NavigationViewItem AutomationProperties.AutomationId="NavGaming" Content="Gaming" Tag="Gaming">
+                <NavigationViewItem AutomationProperties.AutomationId="NavGaming" Content="{x:Bind l:UiStrings.Common_Gaming}" Tag="Gaming">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE7FC;" />
                     </NavigationViewItem.Icon>
                     <NavigationViewItem.InfoBadge>
                         <InfoBadge
-                            AutomationProperties.Name="Game running"
+                            AutomationProperties.Name="{x:Bind l:UiStrings.Shell_GameRunning}"
                             Style="{StaticResource AttentionDotInfoBadgeStyle}"
                             Visibility="{x:Bind ViewModel.IsGameRunning, Mode=OneWay}" />
                     </NavigationViewItem.InfoBadge>
                 </NavigationViewItem>
                 <NavigationViewItemSeparator />
-                <NavigationViewItemHeader Content="Details" />
-                <NavigationViewItem AutomationProperties.AutomationId="NavPerformance" Content="Performance" Tag="Performance">
+                <NavigationViewItemHeader Content="{x:Bind l:UiStrings.Common_Details}" />
+                <NavigationViewItem AutomationProperties.AutomationId="NavPerformance" Content="{x:Bind l:UiStrings.Common_Performance}" Tag="Performance">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE9D9;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem AutomationProperties.AutomationId="NavProcesses" Content="Processes" Tag="Processes">
+                <NavigationViewItem AutomationProperties.AutomationId="NavProcesses" Content="{x:Bind l:UiStrings.Common_Processes}" Tag="Processes">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE71D;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem AutomationProperties.AutomationId="NavStorage" Content="Storage" Tag="Storage">
+                <NavigationViewItem AutomationProperties.AutomationId="NavStorage" Content="{x:Bind l:UiStrings.Common_Storage}" Tag="Storage">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xEDA2;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem AutomationProperties.AutomationId="NavLargeFiles" Content="Large files" Tag="LargeFiles">
+                <NavigationViewItem AutomationProperties.AutomationId="NavLargeFiles" Content="{x:Bind l:UiStrings.Common_LargeFiles}" Tag="LargeFiles">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE8B7;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem AutomationProperties.AutomationId="NavNetwork" Content="Network" Tag="Network">
+                <NavigationViewItem AutomationProperties.AutomationId="NavNetwork" Content="{x:Bind l:UiStrings.Common_Network}" Tag="Network">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE968;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem AutomationProperties.AutomationId="NavSystem" Content="System" Tag="System">
+                <NavigationViewItem AutomationProperties.AutomationId="NavSystem" Content="{x:Bind l:UiStrings.Common_System}" Tag="System">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE770;" />
                     </NavigationViewItem.Icon>
@@ -187,7 +188,7 @@
                     Message="{x:Bind ViewModel.MessageText, Mode=OneWay}"
                     Severity="{x:Bind ViewModel.MessageSeverity, Mode=OneWay}">
                     <InfoBar.ActionButton>
-                        <Button Command="{x:Bind ViewModel.OpenMessageFolderCommand}" Content="Open folder" Visibility="{x:Bind ViewModel.HasMessageFolder, Mode=OneWay}" />
+                        <Button Command="{x:Bind ViewModel.OpenMessageFolderCommand}" Content="{x:Bind l:UiStrings.Shell_OpenFolder}" Visibility="{x:Bind ViewModel.HasMessageFolder, Mode=OneWay}" />
                     </InfoBar.ActionButton>
                 </InfoBar>
                 <Frame x:Name="ContentFrame" Grid.Row="1" />
