@@ -1,4 +1,5 @@
 using System.Reflection;
+using Sysora.Localization;
 
 namespace Sysora.Core;
 
@@ -25,10 +26,7 @@ public static class AppInfo
         Source.GetCustomAttribute<AssemblyDescriptionAttribute>()?.Description ?? string.Empty;
 
     /// <summary>Longer description used in the About section.</summary>
-    public const string LongDescription =
-        "Sysora is a local-first Windows dashboard that monitors performance, processes, storage, network activity " +
-        "and system health in real time, and explains what it measures: why the PC is slow, what changed and which " +
-        "applications weigh the most.";
+    public static string LongDescription => Strings.App_LongDescription;
 
     /// <summary>Full informational version, including the source revision when available (e.g. "0.1.0+3f2a1c9").</summary>
     public static string InformationalVersion { get; } =

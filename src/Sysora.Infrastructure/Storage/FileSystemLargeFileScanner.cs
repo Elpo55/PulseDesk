@@ -2,6 +2,7 @@ using System.IO.Enumeration;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using Sysora.Core.Storage;
+using Sysora.Localization;
 
 namespace Sysora.Infrastructure.Storage;
 
@@ -55,10 +56,10 @@ public sealed partial class FileSystemLargeFileScanner(ILogger<FileSystemLargeFi
         var windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
         foreach (var root in roots.Select(Path.GetPathRoot).OfType<string>().Distinct(StringComparer.OrdinalIgnoreCase))
         {
-            exclusions.Add(new LargeFileExclusion(Path.Combine(root, "System Volume Information"), "Restore points and volume data reserved to Windows (not readable)."));
+            exclusions.Add(new LargeFileExclusion(Path.Combine(root, "System Volume Information"), Strings.LargeFiles_Excl_Svi));
             if (windows.Length > 0 && string.Equals(Path.GetPathRoot(windows), root, StringComparison.OrdinalIgnoreCase))
             {
-                exclusions.Add(new LargeFileExclusion(Path.Combine(windows, "WinSxS"), "Windows component store: its files are hard links shared with the rest of Windows, so their sizes would be counted twice."));
+                exclusions.Add(new LargeFileExclusion(Path.Combine(windows, "WinSxS"), Strings.LargeFiles_Excl_WinSxS));
             }
         }
 

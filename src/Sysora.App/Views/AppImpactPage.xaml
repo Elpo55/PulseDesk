@@ -113,7 +113,7 @@
                             <ColumnDefinition Width="72" />
                             <ColumnDefinition Width="80" />
                             <ColumnDefinition Width="64" />
-                            <ColumnDefinition Width="40" />
+                            <ColumnDefinition Width="64" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Style="{StaticResource ColumnHeaderTextStyle}" Text="#" />
                         <TextBlock Grid.Column="1" Style="{StaticResource ColumnHeaderTextStyle}" Text="{x:Bind l:UiStrings.AppImpact_Application}" />
@@ -142,7 +142,7 @@
                                         <ColumnDefinition Width="72" />
                                         <ColumnDefinition Width="80" />
                                         <ColumnDefinition Width="64" />
-                                        <ColumnDefinition Width="40" />
+                                        <ColumnDefinition Width="64" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock VerticalAlignment="Center" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{x:Bind RankText, Mode=OneWay}" />
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center" ToolTipService.ToolTip="{x:Bind Location, Mode=OneWay}">

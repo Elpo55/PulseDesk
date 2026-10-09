@@ -3,6 +3,7 @@ using Sysora.Core.Formatting;
 using Sysora.Core.Models;
 using Sysora.Core.Monitoring;
 using Sysora.Core.Settings;
+using Sysora.Localization;
 
 namespace Sysora.Tests.Core;
 
@@ -93,16 +94,16 @@ public sealed class SnapshotAndFormattingTests
     [InlineData(1, "1 process")]
     [InlineData(2, "2 processes")]
     [InlineData(0, "0 processes")]
-    public void Plural_UsesIrregularPluralWhenGiven(int count, string expected)
+    public void Plural_PicksTheEnglishForm(int count, string expected)
     {
-        Assert.Equal(expected, MetricFormatter.Plural(count, "process", "processes"));
+        Assert.Equal(expected, Text.Plural(count, Strings.Count_Process_One, Strings.Count_Process_Other));
     }
 
     [Fact]
-    public void Plural_DefaultsToAddingS()
+    public void Plural_FillsExtraPlaceholders()
     {
-        Assert.Equal("16 threads", MetricFormatter.Plural(16, "thread"));
-        Assert.Equal("1 core", MetricFormatter.Plural(1, "core"));
+        Assert.Equal("16 threads", Text.Plural(16, "{0} thread", "{0} threads"));
+        Assert.Equal("1 core of 8", Text.Plural(1, "{0} core of {1}", "{0} cores of {1}", 8));
     }
 
     [Fact]

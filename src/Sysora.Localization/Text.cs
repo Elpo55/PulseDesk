@@ -35,8 +35,14 @@ public static class Text
     }
 
     /// <summary>Whether <paramref name="count"/> takes the singular in the interface language.</summary>
-    public static bool IsSingular(long count) =>
-        AppLanguage.Current.TwoLetterISOLanguageName == "fr" ? count is 0 or 1 or -1 : count is 1 or -1;
+    public static bool IsSingular(long count) => IsSingular(count, AppLanguage.Current);
+
+    /// <summary>Whether <paramref name="count"/> takes the singular in <paramref name="language"/>.</summary>
+    public static bool IsSingular(long count, CultureInfo language)
+    {
+        ArgumentNullException.ThrowIfNull(language);
+        return language.TwoLetterISOLanguageName == "fr" ? count is 0 or 1 or -1 : count is 1 or -1;
+    }
 
     /// <summary>Joins items as a readable list: "a, b and c" (", " and " and " are translated).</summary>
     public static string List(IEnumerable<string> items)

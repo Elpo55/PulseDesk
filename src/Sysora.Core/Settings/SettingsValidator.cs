@@ -1,3 +1,5 @@
+using Sysora.Localization;
+
 namespace Sysora.Core.Settings;
 
 /// <summary>
@@ -42,6 +44,7 @@ public static class SettingsValidator
     {
         Theme = DefinedOr(general.Theme, ThemePreference.System),
         CloseBehavior = DefinedOr(general.CloseBehavior, CloseBehavior.MinimizeToTray),
+        Language = AppLanguage.Normalize(general.Language),
     };
 
     private static MonitoringSettings Normalize(MonitoringSettings monitoring) => monitoring with

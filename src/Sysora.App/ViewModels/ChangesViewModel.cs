@@ -208,7 +208,7 @@ public sealed partial class ChangesViewModel : PageViewModel
 
                 Note = comparison.ReferenceSnapshot is null || comparison.Changes.Count > 0
                     ? comparison.Note
-                    : $"{comparison.Note} No change found.";
+                    : $"{comparison.Note} {UiStrings.Changes_NoneFound}";
                 ShowGroups([(comparison.ReferenceSnapshot is null ? string.Empty : UiStrings.Common_Changes, comparison.Changes)]);
             }
         }

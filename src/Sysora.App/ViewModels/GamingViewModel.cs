@@ -506,11 +506,11 @@ public sealed partial class GameRecapViewModel : ObservableObject
         var window = session.Duration > TimeSpan.Zero ? session.Duration + TimeSpan.FromSeconds(session.TimelineStepSeconds) : TimeSpan.FromMinutes(1);
         var end = session.Timeline.Count > 0 ? session.Timeline[^1].Start + TimeSpan.FromSeconds(session.TimelineStepSeconds) : session.End;
         var label = MetricFormatter.DurationPrecise(session.Duration);
-        CpuChart = new TimeSeriesData(Series(session, p => p.Cpu), Series(session, p => p.GameCpu), end, window, 100, "100%", label);
+        CpuChart = new TimeSeriesData(Series(session, p => p.Cpu), Series(session, p => p.GameCpu), end, window, 100, MetricFormatter.Percent(100), label);
         CpuLegend = Text.Format(UiStrings.Gaming_CpuLegend, Step(session));
         var gpu = Series(session, p => p.Gpu);
         HasGpuChart = gpu.Count > 0;
-        GpuChart = HasGpuChart ? new TimeSeriesData(gpu, Series(session, p => p.GameGpu), end, window, 100, "100%", label) : null;
+        GpuChart = HasGpuChart ? new TimeSeriesData(gpu, Series(session, p => p.GameGpu), end, window, 100, MetricFormatter.Percent(100), label) : null;
         GpuLegend = session.GameGpu is null
             ? Text.Format(UiStrings.Gaming_GpuLegendNoGame, Step(session))
             : Text.Format(UiStrings.Gaming_GpuLegend, Step(session));

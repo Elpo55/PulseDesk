@@ -6,6 +6,7 @@ using Sysora.Core.Interfaces;
 using Sysora.Core.Models;
 using Sysora.Core.Results;
 using Sysora.Infrastructure.Windows;
+using Sysora.Localization;
 
 namespace Sysora.Infrastructure.Processes;
 
@@ -32,7 +33,7 @@ public sealed class WindowsProcessManager(ILogger<WindowsProcessManager> logger)
 
         if (!IsSameProcess(handle, process))
         {
-            return details with { ExecutablePathError = "The process has exited." };
+            return details with { ExecutablePathError = Strings.Process_Exited };
         }
 
         details = details with { IsCritical = NativeMethods.IsProcessCritical(handle, out var critical) ? critical : null };
@@ -66,12 +67,12 @@ public sealed class WindowsProcessManager(ILogger<WindowsProcessManager> logger)
     {
         if (process.ProcessId is 0 or 4)
         {
-            return OperationResult.Failure(OperationError.Protected, "This is a core Windows process and cannot be ended.");
+            return OperationResult.Failure(OperationError.Protected, Strings.Process_CoreWindows);
         }
 
         if (process.ProcessId == Environment.ProcessId)
         {
-            return OperationResult.Failure(OperationError.Protected, "Use Exit to close Sysora.");
+            return OperationResult.Failure(OperationError.Protected, Strings.Process_UseExit);
         }
 
         using var handle = NativeMethods.OpenProcess(
@@ -80,19 +81,19 @@ public sealed class WindowsProcessManager(ILogger<WindowsProcessManager> logger)
         {
             var error = Marshal.GetLastPInvokeError();
             return error == NativeMethods.ErrorAccessDenied
-                ? OperationResult.Failure(OperationError.AccessDenied, "Access denied. Ending this process requires administrator rights.")
-                : OperationResult.Failure(OperationError.NotFound, "The process has already exited.");
+                ? OperationResult.Failure(OperationError.AccessDenied, Strings.Process_AccessDeniedEnd)
+                : OperationResult.Failure(OperationError.NotFound, Strings.Process_AlreadyExited);
         }
 
         if (!IsSameProcess(handle, process))
         {
-            return OperationResult.Failure(OperationError.NotFound, "The process has already exited.");
+            return OperationResult.Failure(OperationError.NotFound, Strings.Process_AlreadyExited);
         }
 
         // Ending a critical process makes Windows stop with a blue screen: never do it.
         if (NativeMethods.IsProcessCritical(handle, out var critical) && critical)
         {
-            return OperationResult.Failure(OperationError.Protected, "This is a critical system process. Ending it would stop Windows.");
+            return OperationResult.Failure(OperationError.Protected, Strings.Process_Critical);
         }
 
         if (!NativeMethods.TerminateProcess(handle, 1))
@@ -100,8 +101,8 @@ public sealed class WindowsProcessManager(ILogger<WindowsProcessManager> logger)
             var error = Marshal.GetLastPInvokeError();
             logger.LogWarning("Ending process {ProcessId} failed with error {Error}.", process.ProcessId, error);
             return error == NativeMethods.ErrorAccessDenied
-                ? OperationResult.Failure(OperationError.AccessDenied, "Access denied. Ending this process requires administrator rights.")
-                : OperationResult.Failure(OperationError.Failed, $"Windows could not end the process (error {error}).");
+                ? OperationResult.Failure(OperationError.AccessDenied, Strings.Process_AccessDeniedEnd)
+                : OperationResult.Failure(OperationError.Failed, Text.Format(Strings.Process_EndFailed, error));
         }
 
         logger.LogInformation("Process {ProcessId} was ended at the user's request.", process.ProcessId);
@@ -132,9 +133,9 @@ public sealed class WindowsProcessManager(ILogger<WindowsProcessManager> logger)
 
     private static string DescribeOpenError(int error) => error switch
     {
-        NativeMethods.ErrorAccessDenied => "Access denied. Viewing this information requires administrator rights.",
-        NativeMethods.ErrorInvalidParameter => "The process has exited.",
-        _ => $"Not available (Windows error {error}).",
+        NativeMethods.ErrorAccessDenied => Strings.Process_AccessDeniedView,
+        NativeMethods.ErrorInvalidParameter => Strings.Process_Exited,
+        _ => Text.Format(Strings.Process_WindowsError, error),
     };
 
     private static string? NullIfEmpty(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();

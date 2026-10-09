@@ -2337,4 +2337,121 @@
   <data name="Export_SaveFailed" xml:space="preserve">
     <value>The report could not be saved: {0}</value>
   </data>
+  <data name="Settings_Language" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="Settings_Language_Description" xml:space="preserve">
+    <value>Language of the interface, analyses, alerts and reports</value>
+  </data>
+  <data name="Settings_Language_Restart" xml:space="preserve">
+    <value>The new language applies after Sysora restarts. Your history and settings are kept.</value>
+  </data>
+  <data name="Settings_Language_RestartNow" xml:space="preserve">
+    <value>Restart now</value>
+  </data>
+  <data name="Settings_Log_Debug" xml:space="preserve">
+    <value>Debug</value>
+  </data>
+  <data name="Settings_Log_Information" xml:space="preserve">
+    <value>Information</value>
+  </data>
+  <data name="Settings_Log_Warning" xml:space="preserve">
+    <value>Warning</value>
+  </data>
+  <data name="Settings_Log_Error" xml:space="preserve">
+    <value>Error</value>
+  </data>
+  <data name="Settings_Language_System" xml:space="preserve">
+    <value>Windows language ({0})</value>
+  </data>
+  <data name="Settings_Theme_System" xml:space="preserve">
+    <value>System</value>
+  </data>
+  <data name="Settings_Theme_Light" xml:space="preserve">
+    <value>Light</value>
+  </data>
+  <data name="Settings_Theme_Dark" xml:space="preserve">
+    <value>Dark</value>
+  </data>
+  <data name="Settings_Close_Quit" xml:space="preserve">
+    <value>Quit application</value>
+  </data>
+  <data name="Settings_Close_Tray" xml:space="preserve">
+    <value>Minimize to tray</value>
+  </data>
+  <data name="Settings_Version" xml:space="preserve">
+    <value>Version {0}</value>
+  </data>
+  <data name="Settings_License" xml:space="preserve">
+    <value>{0} license · {1}</value>
+  </data>
+  <data name="Settings_DeleteHistory_Title" xml:space="preserve">
+    <value>Delete the local history?</value>
+  </data>
+  <data name="Settings_DeleteHistory_Message" xml:space="preserve">
+    <value>Sysora will delete the recorded performance history, application usage, events, alerts, detected changes and game sessions from this PC. The usual-behavior baseline will be learned again. This cannot be undone.</value>
+  </data>
+  <data name="Settings_DeleteHistory_Failed" xml:space="preserve">
+    <value>The history could not be deleted: {0}</value>
+  </data>
+  <data name="Settings_Startup_Enabled" xml:space="preserve">
+    <value>Sysora starts when you sign in.</value>
+  </data>
+  <data name="Settings_Startup_DisabledByUser" xml:space="preserve">
+    <value>Registered, but turned off in Windows Settings › Apps › Startup.</value>
+  </data>
+  <data name="Settings_Startup_Unknown" xml:space="preserve">
+    <value>The startup registration could not be read.</value>
+  </data>
+  <data name="Settings_Startup_Off" xml:space="preserve">
+    <value>Uses the standard per-user Run key; visible in Settings › Apps › Startup.</value>
+  </data>
+  <data name="Settings_Stretched" xml:space="preserve">
+    <value>stretched ×{0:0.##} to stay within the CPU budget</value>
+  </data>
+  <data name="Settings_History_Since" xml:space="preserve">
+    <value>data since {0}</value>
+  </data>
+  <data name="Settings_History_NoData" xml:space="preserve">
+    <value>no data yet</value>
+  </data>
+  <data name="Settings_History_OnDisk" xml:space="preserve">
+    <value>{0} on disk</value>
+  </data>
+  <data name="Settings_History_NotAvailable" xml:space="preserve">
+    <value>History not available: {0}</value>
+  </data>
+  <data name="Common_On" xml:space="preserve">
+    <value>On</value>
+  </data>
+  <data name="Dashboard_SortByCpu" xml:space="preserve">
+    <value>By CPU</value>
+  </data>
+  <data name="Dashboard_SortByMemory" xml:space="preserve">
+    <value>By memory</value>
+  </data>
+  <data name="Dashboard_TopCpu" xml:space="preserve">
+    <value>{0} CPU</value>
+  </data>
+  <data name="Dashboard_TopMemory" xml:space="preserve">
+    <value>{0} memory</value>
+  </data>
+  <data name="Dashboard_Uptime" xml:space="preserve">
+    <value>{0} · Up {1}</value>
+  </data>
+  <data name="AppImpact_LevelImpact" xml:space="preserve">
+    <value>{0} impact</value>
+  </data>
+  <data name="Changes_NoneFound" xml:space="preserve">
+    <value>No change found.</value>
+  </data>
+  <data name="Replay_PerMinute" xml:space="preserve">
+    <value>{0} (per minute)</value>
+  </data>
+  <data name="Replay_SourceHint" xml:space="preserve">
+    <value>Click a chart or move the slider to read the values at a given moment.</value>
+  </data>
+  <data name="Replay_SourceOlder" xml:space="preserve">
+    <value>Older than {0}: applications are shown per five minutes.</value>
+  </data>
 </root>

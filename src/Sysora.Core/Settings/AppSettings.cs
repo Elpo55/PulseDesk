@@ -54,6 +54,12 @@ public sealed record GeneralSettings
 {
     public ThemePreference Theme { get; init; } = ThemePreference.System;
 
+    /// <summary>
+    /// Interface language: a two-letter code ("en", "fr"), or empty to follow the Windows display language. Applied when
+    /// Sysora starts.
+    /// </summary>
+    public string Language { get; init; } = string.Empty;
+
     public CloseBehavior CloseBehavior { get; init; } = CloseBehavior.MinimizeToTray;
 
     /// <summary>When started with Windows, open minimized to the taskbar.</summary>

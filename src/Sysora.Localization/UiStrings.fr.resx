@@ -2337,4 +2337,121 @@
   <data name="Export_SaveFailed" xml:space="preserve">
     <value>Le rapport n'a pas pu être enregistré : {0}</value>
   </data>
+  <data name="Settings_Language" xml:space="preserve">
+    <value>Langue</value>
+  </data>
+  <data name="Settings_Language_Description" xml:space="preserve">
+    <value>Langue de l'interface, des analyses, des alertes et des rapports</value>
+  </data>
+  <data name="Settings_Language_Restart" xml:space="preserve">
+    <value>La nouvelle langue s'applique après le redémarrage de Sysora. Votre historique et vos paramètres sont conservés.</value>
+  </data>
+  <data name="Settings_Language_RestartNow" xml:space="preserve">
+    <value>Redémarrer maintenant</value>
+  </data>
+  <data name="Settings_Log_Debug" xml:space="preserve">
+    <value>Débogage</value>
+  </data>
+  <data name="Settings_Log_Information" xml:space="preserve">
+    <value>Information</value>
+  </data>
+  <data name="Settings_Log_Warning" xml:space="preserve">
+    <value>Avertissement</value>
+  </data>
+  <data name="Settings_Log_Error" xml:space="preserve">
+    <value>Erreur</value>
+  </data>
+  <data name="Settings_Language_System" xml:space="preserve">
+    <value>Langue de Windows ({0})</value>
+  </data>
+  <data name="Settings_Theme_System" xml:space="preserve">
+    <value>Système</value>
+  </data>
+  <data name="Settings_Theme_Light" xml:space="preserve">
+    <value>Clair</value>
+  </data>
+  <data name="Settings_Theme_Dark" xml:space="preserve">
+    <value>Sombre</value>
+  </data>
+  <data name="Settings_Close_Quit" xml:space="preserve">
+    <value>Quitter l'application</value>
+  </data>
+  <data name="Settings_Close_Tray" xml:space="preserve">
+    <value>Réduire dans la zone de notification</value>
+  </data>
+  <data name="Settings_Version" xml:space="preserve">
+    <value>Version {0}</value>
+  </data>
+  <data name="Settings_License" xml:space="preserve">
+    <value>Licence {0} · {1}</value>
+  </data>
+  <data name="Settings_DeleteHistory_Title" xml:space="preserve">
+    <value>Supprimer l'historique local ?</value>
+  </data>
+  <data name="Settings_DeleteHistory_Message" xml:space="preserve">
+    <value>Sysora va supprimer de ce PC l'historique des performances, l'utilisation des applications, les événements, les alertes, les changements détectés et les sessions de jeu. La référence du comportement habituel sera apprise à nouveau. Cette action est irréversible.</value>
+  </data>
+  <data name="Settings_DeleteHistory_Failed" xml:space="preserve">
+    <value>L'historique n'a pas pu être supprimé : {0}</value>
+  </data>
+  <data name="Settings_Startup_Enabled" xml:space="preserve">
+    <value>Sysora démarre à l'ouverture de session.</value>
+  </data>
+  <data name="Settings_Startup_DisabledByUser" xml:space="preserve">
+    <value>Enregistré, mais désactivé dans Paramètres Windows › Applications › Démarrage.</value>
+  </data>
+  <data name="Settings_Startup_Unknown" xml:space="preserve">
+    <value>L'inscription au démarrage n'a pas pu être lue.</value>
+  </data>
+  <data name="Settings_Startup_Off" xml:space="preserve">
+    <value>Utilise la clé Run standard de l'utilisateur ; visible dans Paramètres › Applications › Démarrage.</value>
+  </data>
+  <data name="Settings_Stretched" xml:space="preserve">
+    <value>allongés ×{0:0.##} pour rester dans le budget processeur</value>
+  </data>
+  <data name="Settings_History_Since" xml:space="preserve">
+    <value>données depuis {0}</value>
+  </data>
+  <data name="Settings_History_NoData" xml:space="preserve">
+    <value>pas encore de données</value>
+  </data>
+  <data name="Settings_History_OnDisk" xml:space="preserve">
+    <value>{0} sur le disque</value>
+  </data>
+  <data name="Settings_History_NotAvailable" xml:space="preserve">
+    <value>Historique non disponible : {0}</value>
+  </data>
+  <data name="Common_On" xml:space="preserve">
+    <value>Activé</value>
+  </data>
+  <data name="Dashboard_SortByCpu" xml:space="preserve">
+    <value>Par processeur</value>
+  </data>
+  <data name="Dashboard_SortByMemory" xml:space="preserve">
+    <value>Par mémoire</value>
+  </data>
+  <data name="Dashboard_TopCpu" xml:space="preserve">
+    <value>{0} processeur</value>
+  </data>
+  <data name="Dashboard_TopMemory" xml:space="preserve">
+    <value>{0} mémoire</value>
+  </data>
+  <data name="Dashboard_Uptime" xml:space="preserve">
+    <value>{0} · Allumé depuis {1}</value>
+  </data>
+  <data name="AppImpact_LevelImpact" xml:space="preserve">
+    <value>Impact {0}</value>
+  </data>
+  <data name="Changes_NoneFound" xml:space="preserve">
+    <value>Aucun changement trouvé.</value>
+  </data>
+  <data name="Replay_PerMinute" xml:space="preserve">
+    <value>{0} (par minute)</value>
+  </data>
+  <data name="Replay_SourceHint" xml:space="preserve">
+    <value>Cliquez sur un graphique ou déplacez le curseur pour lire les valeurs à un moment donné.</value>
+  </data>
+  <data name="Replay_SourceOlder" xml:space="preserve">
+    <value>Au-delà de {0} : les applications sont affichées par tranches de cinq minutes.</value>
+  </data>
 </root>

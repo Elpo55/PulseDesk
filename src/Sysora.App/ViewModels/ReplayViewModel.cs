@@ -340,7 +340,7 @@ public sealed partial class ReplayViewModel : PageViewModel
         var points = data.Points;
         IsEmpty = points.Count == 0;
         var window = data.To - data.From;
-        var label = data.IsDetailed ? Range.Label : $"{Range.Label} (per minute)";
+        var label = data.IsDetailed ? Range.Label : Text.Format(UiStrings.Replay_PerMinute, Range.Label);
 
         CpuChart = Percent(points, s => s.CpuPercent, data, label);
         MemoryChart = Percent(points, s => s.MemoryPercent, data, label);
@@ -365,8 +365,8 @@ public sealed partial class ReplayViewModel : PageViewModel
         EventTimes = data.Events.Select(e => e.Timestamp).ToArray();
         Summary = data.Story.Summary;
         SourceText = data.IsDetailed
-            ? $"{data.Source} Click a chart or move the slider to read the values at a given moment."
-            : $"{data.Source} Older than {MetricFormatter.DurationCompact(_replay.DetailedDuration)}: applications are shown per five minutes.";
+            ? $"{data.Source} {UiStrings.Replay_SourceHint}"
+            : $"{data.Source} {Text.Format(UiStrings.Replay_SourceOlder, MetricFormatter.DurationCompact(_replay.DetailedDuration))}";
         var moments = data.Story.Moments.Reverse().ToList();
         CollectionSync.Resize(Moments, moments.Count, _ => new MomentItemViewModel(m => SetCursor(m.Time)), (item, i) => item.Set(moments[i]));
 
@@ -501,7 +501,7 @@ public sealed partial class ReplayViewModel : PageViewModel
     }
 
     private static TimeSeriesData Percent(IReadOnlyList<MetricSnapshot> points, Func<MetricSnapshot, double?> value, ReplayData data, string label) =>
-        new(Samples(points, value), null, data.To, data.To - data.From, 100, "100%", label);
+        new(Samples(points, value), null, data.To, data.To - data.From, 100, MetricFormatter.Percent(100), label);
 
     private static MetricSample[] Samples(IReadOnlyList<MetricSnapshot> points, Func<MetricSnapshot, double?> value) =>
         points.Where(p => value(p) is not null).Select(p => new MetricSample(p.Timestamp, value(p)!.Value)).ToArray();

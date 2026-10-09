@@ -9,11 +9,6 @@
     NavigationCacheMode="Required">
 
     <Page.Resources>
-        <Style TargetType="ToggleSwitch">
-            <Setter Property="OnContent" Value="On" />
-            <Setter Property="OffContent" Value="Off" />
-            <Setter Property="MinWidth" Value="0" />
-        </Style>
         <Style x:Key="MinutesBoxStyle" TargetType="NumberBox">
             <Setter Property="Minimum" Value="1" />
             <Setter Property="Maximum" Value="60" />
@@ -43,18 +38,23 @@
 
             <!-- General -->
             <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="{x:Bind l:UiStrings.Settings_General}" />
+            <controls:SettingRow Description="{x:Bind l:UiStrings.Settings_Language_Description}" Glyph="&#xF2B7;" Header="{x:Bind l:UiStrings.Settings_Language}">
+                <ComboBox MinWidth="200" AutomationProperties.AutomationId="LanguageBox" AutomationProperties.Name="{x:Bind l:UiStrings.Settings_Language}" ItemsSource="{x:Bind ViewModel.Languages}" SelectedIndex="{x:Bind ViewModel.LanguageIndex, Mode=TwoWay}" />
+            </controls:SettingRow>
+            <InfoBar
+                IsClosable="False"
+                IsOpen="{x:Bind ViewModel.LanguageNeedsRestart, Mode=OneWay}"
+                Message="{x:Bind l:UiStrings.Settings_Language_Restart}"
+                Severity="Informational">
+                <InfoBar.ActionButton>
+                    <Button Command="{x:Bind ViewModel.RestartCommand}" Content="{x:Bind l:UiStrings.Settings_Language_RestartNow}" />
+                </InfoBar.ActionButton>
+            </InfoBar>
             <controls:SettingRow Description="{x:Bind l:UiStrings.Settings_FollowWindowsOrAlwaysUseLightOrDarkColors}" Glyph="&#xE790;" Header="{x:Bind l:UiStrings.Settings_Theme}">
-                <ComboBox MinWidth="160" AutomationProperties.Name="{x:Bind l:UiStrings.Settings_Theme}" SelectedIndex="{x:Bind ViewModel.ThemeIndex, Mode=TwoWay}">
-                    <x:String>System</x:String>
-                    <x:String>Light</x:String>
-                    <x:String>Dark</x:String>
-                </ComboBox>
+                <ComboBox MinWidth="160" AutomationProperties.Name="{x:Bind l:UiStrings.Settings_Theme}" ItemsSource="{x:Bind ViewModel.Themes}" SelectedIndex="{x:Bind ViewModel.ThemeIndex, Mode=TwoWay}" />
             </controls:SettingRow>
             <controls:SettingRow Description="{x:Bind l:UiStrings.Settings_WhatHappensWhenYouCloseTheSysoraWindow}" Glyph="&#xE8BB;" Header="{x:Bind l:UiStrings.Settings_CloseWindow}">
-                <ComboBox MinWidth="160" AutomationProperties.Name="{x:Bind l:UiStrings.Settings_CloseWindow}" SelectedIndex="{x:Bind ViewModel.CloseBehaviorIndex, Mode=TwoWay}">
-                    <x:String>Quit application</x:String>
-                    <x:String>Minimize to tray</x:String>
-                </ComboBox>
+                <ComboBox MinWidth="160" AutomationProperties.Name="{x:Bind l:UiStrings.Settings_CloseWindow}" ItemsSource="{x:Bind ViewModel.CloseBehaviors}" SelectedIndex="{x:Bind ViewModel.CloseBehaviorIndex, Mode=TwoWay}" />
             </controls:SettingRow>
 
             <!-- Startup -->
@@ -75,11 +75,7 @@
                 <ToggleSwitch AutomationProperties.Name="{x:Bind l:UiStrings.Settings_PauseMonitoring}" IsOn="{x:Bind ViewModel.IsPaused, Mode=TwoWay}" />
             </controls:SettingRow>
             <controls:SettingRow Description="{x:Bind ViewModel.IntensityDescription, Mode=OneWay}" Glyph="&#xE9E9;" Header="{x:Bind l:UiStrings.Settings_MonitoringIntensity}">
-                <ComboBox MinWidth="160" AutomationProperties.Name="{x:Bind l:UiStrings.Settings_MonitoringIntensity}" SelectedIndex="{x:Bind ViewModel.IntensityIndex, Mode=TwoWay}">
-                    <x:String>Minimal</x:String>
-                    <x:String>Balanced</x:String>
-                    <x:String>Detailed</x:String>
-                </ComboBox>
+                <ComboBox MinWidth="160" AutomationProperties.Name="{x:Bind l:UiStrings.Settings_MonitoringIntensity}" ItemsSource="{x:Bind ViewModel.Intensities}" SelectedIndex="{x:Bind ViewModel.IntensityIndex, Mode=TwoWay}" />
             </controls:SettingRow>
             <TextBlock Margin="16,0,16,6" Style="{StaticResource LabelTextStyle}" Text="{x:Bind ViewModel.EffectiveIntervals, Mode=OneWay}" TextWrapping="Wrap" />
             <controls:SettingRow Description="{x:Bind l:UiStrings.Settings_CPUMemoryAndNetworkSamplingInterval}" Glyph="&#xE9D9;" Header="{x:Bind l:UiStrings.Settings_RealTimeMetrics}">

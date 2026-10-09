@@ -417,7 +417,7 @@ public sealed partial class AppImpactDetailViewModel : ObservableObject
         var usage = result.Usage;
         Name = usage.Identity.Name;
         Location = usage.Identity.ExecutablePath ?? UiStrings.AppImpact_PathProtected;
-        LevelText = $"{InsightDisplay.Text(result.Score.Level)} impact";
+        LevelText = Text.Format(UiStrings.AppImpact_LevelImpact, InsightDisplay.Text(result.Score.Level).ToLower(CultureInfo.CurrentCulture));
         LevelBrushKey = InsightDisplay.BrushKey(result.Score.Level);
         ScoreText = Text.Format(UiStrings.AppImpact_RelativeScore, result.Score.Value);
         Explanation = result.Explanation;

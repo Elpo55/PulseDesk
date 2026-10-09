@@ -40,7 +40,7 @@ internal static class ChartFactory
             snapshot.Timestamp,
             window.Window,
             100,
-            "100%",
+            MetricFormatter.Percent(100),
             window.Label);
 
     /// <summary>A throughput chart (bits per second) whose scale adapts to the largest visible value.</summary>

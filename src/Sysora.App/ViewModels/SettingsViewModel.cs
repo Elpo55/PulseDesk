@@ -10,6 +10,7 @@ using Sysora.Core.Interfaces;
 using Sysora.Core.Models;
 using Sysora.Core.Settings;
 using Sysora.Infrastructure;
+using Sysora.Localization;
 
 namespace Sysora.App.ViewModels;
 
@@ -21,8 +22,8 @@ public sealed record IntervalOption(int Milliseconds, string Label)
     public static IntervalOption Of(int milliseconds) => new(
         milliseconds,
         milliseconds < 1000 ? $"{milliseconds} ms"
-        : milliseconds < 60_000 ? MetricFormatter.Plural(milliseconds / 1000, "second")
-        : MetricFormatter.Plural(milliseconds / 60_000, "minute"));
+        : milliseconds < 60_000 ? Text.Plural(milliseconds / 1000, UiStrings.Duration_Second_One, UiStrings.Duration_Second_Other)
+        : Text.Plural(milliseconds / 60_000, Strings.Duration_Minute_One, Strings.Duration_Minute_Other));
 }
 
 /// <summary>Preferences, privacy statement, Sysora's own overhead and About information.</summary>
@@ -77,7 +78,40 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     public IReadOnlyList<ChartWindowOption> ChartWindows => ChartWindowOption.All;
 
-    public IReadOnlyList<string> LogLevels { get; } = ["Debug", "Information", "Warning", "Error"];
+    public IReadOnlyList<string> LogLevels { get; } =
+    [
+        UiStrings.Settings_Log_Debug,
+        UiStrings.Settings_Log_Information,
+        UiStrings.Settings_Log_Warning,
+        UiStrings.Settings_Log_Error,
+    ];
+
+    /// <summary>"Windows language (Français)", then every supported language in its own name.</summary>
+    public IReadOnlyList<string> Languages { get; } =
+    [
+        Text.Format(UiStrings.Settings_Language_System, AppLanguage.Resolve(AppLanguage.System, System.Globalization.CultureInfo.InstalledUICulture).NativeName is { Length: > 0 } native ? char.ToUpper(native[0], System.Globalization.CultureInfo.CurrentCulture) + native[1..] : string.Empty),
+        .. AppLanguage.Supported.Select(l => l.NativeName),
+    ];
+
+    public IReadOnlyList<string> Themes { get; } =
+    [
+        UiStrings.Settings_Theme_System,
+        UiStrings.Settings_Theme_Light,
+        UiStrings.Settings_Theme_Dark,
+    ];
+
+    public IReadOnlyList<string> CloseBehaviors { get; } =
+    [
+        UiStrings.Settings_Close_Quit,
+        UiStrings.Settings_Close_Tray,
+    ];
+
+    public IReadOnlyList<string> Intensities { get; } =
+    [
+        Core.Monitoring.MonitoringProfile.Name(MonitoringIntensity.Minimal),
+        Core.Monitoring.MonitoringProfile.Name(MonitoringIntensity.Balanced),
+        Core.Monitoring.MonitoringProfile.Name(MonitoringIntensity.Detailed),
+    ];
 
     public IReadOnlyList<IntervalOption> ReplayDurations { get; } =
         SettingsValidator.ReplayMinuteOptions.Select(m => IntervalOption.Of(m * 60_000)).ToArray();
@@ -88,19 +122,43 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     public string Tagline => AppInfo.Tagline;
 
-    public string Version => $"Version {AppInfo.InformationalVersion}";
+    public string Version => Text.Format(UiStrings.Settings_Version, AppInfo.InformationalVersion);
 
     public string Description => AppInfo.LongDescription;
 
     public string Authors => AppInfo.Authors;
 
-    public string License => $"{AppInfo.License} license · {AppInfo.Copyright}";
+    public string License => Text.Format(UiStrings.Settings_License, AppInfo.License, AppInfo.Copyright);
 
     public string ProjectUrl => AppInfo.ProjectUrl;
 
     public string DataFolder => _paths.DataDirectory;
 
     // ---- General --------------------------------------------------------------------------------
+
+    /// <summary>0 = the Windows language, then the languages of <see cref="AppLanguage.Supported"/>.</summary>
+    [ObservableProperty]
+    public partial int LanguageIndex { get; set; }
+
+    /// <summary>True when the chosen language differs from the one Sysora is running in: a restart applies it.</summary>
+    [ObservableProperty]
+    public partial bool LanguageNeedsRestart { get; set; }
+
+    /// <summary>Restarts Sysora so that a new language applies everywhere (set by the application shell).</summary>
+    public Action? RestartRequested { get; set; }
+
+    [RelayCommand]
+    private void Restart() => RestartRequested?.Invoke();
+
+    partial void OnLanguageIndexChanged(int value)
+    {
+        var code = value <= 0 || value > AppLanguage.Supported.Count ? AppLanguage.System : AppLanguage.Supported[value - 1].Code;
+        LanguageNeedsRestart = !string.Equals(
+            AppLanguage.Resolve(code, System.Globalization.CultureInfo.InstalledUICulture).Name,
+            AppLanguage.Current.Name,
+            StringComparison.OrdinalIgnoreCase);
+        Save(s => s with { General = s.General with { Language = code } });
+    }
 
     /// <summary>0 = System, 1 = Light, 2 = Dark.</summary>
     [ObservableProperty]
@@ -422,9 +480,9 @@ public sealed partial class SettingsViewModel : PageViewModel
     private async Task ClearHistoryAsync()
     {
         var confirmed = await _dialogs.ConfirmAsync(
-            "Delete the local history?",
-            "Sysora will delete the recorded performance history, application usage, events, alerts, detected changes and game sessions from this PC. The usual-behavior baseline will be learned again. This cannot be undone.",
-            "Delete history");
+            UiStrings.Settings_DeleteHistory_Title,
+            UiStrings.Settings_DeleteHistory_Message,
+            UiStrings.Settings_DeleteHistory);
         if (!confirmed)
         {
             return;
@@ -436,7 +494,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            HistoryStatus = $"The history could not be deleted: {ex.Message}";
+            HistoryStatus = Text.Format(UiStrings.Settings_DeleteHistory_Failed, ex.Message);
             return;
         }
 
@@ -617,6 +675,12 @@ public sealed partial class SettingsViewModel : PageViewModel
         try
         {
             var general = settings.General;
+            var language = AppLanguage.Find(general.Language);
+            LanguageIndex = language is null ? 0 : AppLanguage.Supported.ToList().IndexOf(language) + 1;
+            LanguageNeedsRestart = !string.Equals(
+                AppLanguage.Resolve(general.Language, System.Globalization.CultureInfo.InstalledUICulture).Name,
+                AppLanguage.Current.Name,
+                StringComparison.OrdinalIgnoreCase);
             ThemeIndex = (int)general.Theme;
             CloseBehaviorIndex = general.CloseBehavior == CloseBehavior.Quit ? 0 : 1;
             StartMinimized = general.StartMinimized;
@@ -712,10 +776,10 @@ public sealed partial class SettingsViewModel : PageViewModel
     private void UpdateStartupStatus(StartupState state) =>
         StartupStatus = state switch
         {
-            StartupState.Enabled => "Sysora starts when you sign in.",
-            StartupState.DisabledByUser => "Registered, but turned off in Windows Settings › Apps › Startup.",
-            StartupState.Unknown => "The startup registration could not be read.",
-            _ => "Uses the standard per-user Run key; visible in Settings › Apps › Startup.",
+            StartupState.Enabled => UiStrings.Settings_Startup_Enabled,
+            StartupState.DisabledByUser => UiStrings.Settings_Startup_DisabledByUser,
+            StartupState.Unknown => UiStrings.Settings_Startup_Unknown,
+            _ => UiStrings.Settings_Startup_Off,
         };
 
     private void UpdateOverhead()
@@ -726,7 +790,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         var report = Core.Monitoring.SelfImpactAssessor.Assess(monitor.SelfUsage, schedule, _settings.Current.Monitoring.MaxSelfCpuPercent);
         SelfImpactHeadline = report.Headline;
         EffectiveIntervals = Core.Monitoring.SelfImpactAssessor.IntervalsText(schedule)
-            + (schedule.ThrottleFactor > 1.01 ? string.Create(System.Globalization.CultureInfo.CurrentCulture, $" · stretched ×{schedule.ThrottleFactor:0.##} to stay within the CPU budget") : string.Empty);
+            + (schedule.ThrottleFactor > 1.01 ? " · " + Text.Format(UiStrings.Settings_Stretched, schedule.ThrottleFactor) : string.Empty);
         if (!SelfImpactItems.SequenceEqual(report.Items))
         {
             SelfImpactItems.Clear();
@@ -745,14 +809,16 @@ public sealed partial class SettingsViewModel : PageViewModel
         try
         {
             var info = await _history.GetStorageInfoAsync(CancellationToken.None);
-            var since = info.OldestData is { } oldest ? $" · data since {InsightDisplay.Time(oldest)}" : " · no data yet";
+            var since = " · " + (info.OldestData is { } oldest
+                ? Text.Format(UiStrings.Settings_History_Since, InsightDisplay.Time(oldest))
+                : UiStrings.Settings_History_NoData);
             HistoryStatus = info.SizeBytes > 0
-                ? $"{MetricFormatter.Bytes((ulong)info.SizeBytes)} on disk{since}"
+                ? Text.Format(UiStrings.Settings_History_OnDisk, MetricFormatter.Bytes((ulong)info.SizeBytes)) + since
                 : $"{info.Location}{since}";
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            HistoryStatus = $"History not available: {ex.Message}";
+            HistoryStatus = Text.Format(UiStrings.Settings_History_NotAvailable, ex.Message);
         }
     }
 

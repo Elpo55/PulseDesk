@@ -215,6 +215,8 @@ public sealed partial class DashboardViewModel : PageViewModel
 
     private bool SortTopByMemory => TopSortIndex == 1;
 
+    public IReadOnlyList<string> TopSortOptions { get; } = [UiStrings.Dashboard_SortByCpu, UiStrings.Dashboard_SortByMemory];
+
     [ObservableProperty]
     public partial ChartWindowOption SelectedWindow { get; set; }
 
@@ -619,7 +621,9 @@ public sealed partial class DashboardViewModel : PageViewModel
             item.Set(
                 group,
                 SortTopByMemory ? memory : cpu,
-                SortTopByMemory ? $"{cpu} CPU" : $"{memory} memory",
+                SortTopByMemory
+                    ? Text.Format(UiStrings.Dashboard_TopCpu, cpu)
+                    : Text.Format(UiStrings.Dashboard_TopMemory, memory),
                 Percentages.Of(Weight(group), largest));
         });
     }
@@ -628,7 +632,7 @@ public sealed partial class DashboardViewModel : PageViewModel
     {
         var name = _information?.ComputerName ?? Environment.MachineName;
         Subtitle = snapshot.System is { } system
-            ? $"{name} · Up {MetricFormatter.DurationCompact(system.Uptime)}"
+            ? Text.Format(UiStrings.Dashboard_Uptime, name, MetricFormatter.DurationCompact(system.Uptime))
             : name;
     }
 }

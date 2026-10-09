@@ -317,7 +317,7 @@ public sealed partial class TroubleshootingViewModel : PageViewModel
             end,
             length > TimeSpan.Zero ? length : TimeSpan.FromMinutes(1),
             100,
-            "100%",
+            MetricFormatter.Percent(100),
             MetricFormatter.DurationCompact(report.End - report.Start));
         CpuChart = Chart(p => p.Cpu);
         MemoryChart = Chart(p => p.Memory);

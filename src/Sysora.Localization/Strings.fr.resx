@@ -3774,4 +3774,43 @@
   <data name="Report_Html_Footer" xml:space="preserve">
     <value>Produit localement par Sysora : chaque valeur provient de ce PC. Observé = mesuré ; Déduit = tiré des mesures (non prouvé) ; Inconnu = non observable.</value>
   </data>
+  <data name="App_LongDescription" xml:space="preserve">
+    <value>Sysora est un tableau de bord local qui surveille en temps réel les performances, les processus, le stockage, l'activité réseau et la santé du système, et explique ce qu'il mesure : pourquoi le PC est lent, ce qui a changé et quelles applications pèsent le plus.</value>
+  </data>
+  <data name="Process_Exited" xml:space="preserve">
+    <value>Le processus s'est terminé.</value>
+  </data>
+  <data name="Process_CoreWindows" xml:space="preserve">
+    <value>C'est un processus essentiel de Windows : il ne peut pas être arrêté.</value>
+  </data>
+  <data name="Process_UseExit" xml:space="preserve">
+    <value>Utilisez Quitter pour fermer Sysora.</value>
+  </data>
+  <data name="Process_AccessDeniedEnd" xml:space="preserve">
+    <value>Accès refusé. Arrêter ce processus nécessite des droits d'administrateur.</value>
+  </data>
+  <data name="Process_AlreadyExited" xml:space="preserve">
+    <value>Le processus s'est déjà terminé.</value>
+  </data>
+  <data name="Process_Critical" xml:space="preserve">
+    <value>C'est un processus système critique. Y mettre fin arrêterait Windows.</value>
+  </data>
+  <data name="Process_EndFailed" xml:space="preserve">
+    <value>Windows n'a pas pu arrêter le processus (erreur {0}).</value>
+  </data>
+  <data name="Process_AccessDeniedView" xml:space="preserve">
+    <value>Accès refusé. Afficher cette information nécessite des droits d'administrateur.</value>
+  </data>
+  <data name="Process_WindowsError" xml:space="preserve">
+    <value>Non disponible (erreur Windows {0}).</value>
+  </data>
+  <data name="LargeFiles_Excl_Svi" xml:space="preserve">
+    <value>Points de restauration et données du volume réservés à Windows (illisibles).</value>
+  </data>
+  <data name="LargeFiles_Excl_WinSxS" xml:space="preserve">
+    <value>Magasin de composants de Windows : ses fichiers sont des liens physiques partagés avec le reste de Windows, leurs tailles seraient comptées deux fois.</value>
+  </data>
+  <data name="History_InMemory" xml:space="preserve">
+    <value>En mémoire (mode démo : rien n'est écrit sur le disque)</value>
+  </data>
 </root>

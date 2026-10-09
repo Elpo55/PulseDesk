@@ -1,8 +1,11 @@
+using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
+using Microsoft.Windows.AppLifecycle;
 using Sysora.App.Services;
+using Sysora.App.ViewModels;
 using Sysora.Core.Interfaces;
 using Sysora.Core.Settings;
 
@@ -20,6 +23,7 @@ public partial class App : Application
     private DispatcherQueue? _dispatcher;
     private ILogger<App>? _logger;
     private bool _exiting;
+    private bool _restart;
 
     public App(StartupOptions options)
     {
@@ -50,6 +54,11 @@ public partial class App : Application
             await _host.Services.GetRequiredService<AnalysisServices>().StartAsync(CancellationToken.None);
             _shell = _host.Services.GetRequiredService<ApplicationShell>();
             _shell.ExitRequested += async (_, _) => await ExitAsync();
+            _host.Services.GetRequiredService<SettingsViewModel>().RestartRequested = () => _dispatcher.TryEnqueue(async () =>
+            {
+                _restart = true;
+                await ExitAsync();
+            });
             _shell.Start();
         }
         catch (Exception ex)
@@ -83,7 +92,39 @@ public partial class App : Application
             _logger?.LogError(ex, "Error during shutdown.");
         }
 
+        if (_restart)
+        {
+            StartNewInstance();
+        }
+
         Exit();
+    }
+
+    /// <summary>
+    /// Starts Sysora again once this instance has saved everything (used to apply a new language). The single-instance
+    /// key is released first so the new process does not hand itself back to this one.
+    /// </summary>
+    private void StartNewInstance()
+    {
+        try
+        {
+            AppInstance.GetCurrent().UnregisterKey();
+            if (Environment.ProcessPath is { } path)
+            {
+                var start = new ProcessStartInfo(path) { UseShellExecute = false };
+                if (_options.DemoMode)
+                {
+                    start.ArgumentList.Add("--demo");
+                }
+
+                start.ArgumentList.Add("--page=Settings");
+                Process.Start(start)?.Dispose();
+            }
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or System.Runtime.InteropServices.COMException)
+        {
+            _logger?.LogError(ex, "Sysora could not be started again.");
+        }
     }
 
     private void OnUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)

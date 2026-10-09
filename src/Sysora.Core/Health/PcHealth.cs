@@ -709,17 +709,4 @@ public static class PcHealthScorer
             });
         }
     }
-
-    private static string Join(IEnumerable<string> parts)
-    {
-        var list = parts.ToList();
-        return list.Count switch
-        {
-            0 => string.Empty,
-            1 => list[0],
-            _ => string.Join(", ", list.Take(list.Count - 1)) + " and " + list[^1],
-        };
-    }
-
-
 }

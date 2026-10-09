@@ -1,8 +1,12 @@
+using System.Globalization;
 using System.Runtime.InteropServices;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.Windows.AppLifecycle;
 using Sysora.App.Services;
+using Sysora.Core.Settings;
+using Sysora.Infrastructure;
+using Sysora.Localization;
 
 namespace Sysora.App;
 
@@ -17,6 +21,7 @@ public static partial class Program
     {
         WinRT.ComWrappersSupport.InitializeComWrappers();
         var options = StartupOptions.Parse(args);
+        ApplyLanguage();
 
         if (RedirectToRunningInstance(options))
         {
@@ -31,6 +36,39 @@ public static partial class Program
         });
 
         return 0;
+    }
+
+    /// <summary>
+    /// Applies the interface language chosen in Settings (or the Windows language) before any window, service or text is
+    /// created, so everything Sysora produces during this run is in that language. Never throws.
+    /// </summary>
+    private static void ApplyLanguage()
+    {
+        string? preference = null;
+        try
+        {
+            var file = new SysoraPaths().SettingsFile;
+            if (File.Exists(file) && SettingsSerializer.TryDeserialize(File.ReadAllText(file), out var settings, out _))
+            {
+                preference = settings.General.Language;
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Unreadable settings: follow the Windows language.
+        }
+
+        var culture = AppLanguage.Resolve(preference, CultureInfo.InstalledUICulture);
+        AppLanguage.Apply(culture);
+        try
+        {
+            // Built-in control texts (date pickers, context menus) follow the same language.
+            Microsoft.Windows.Globalization.ApplicationLanguages.PrimaryLanguageOverride = culture.Name;
+        }
+        catch (Exception ex) when (ex is COMException or InvalidOperationException or ArgumentException)
+        {
+            // Not supported in this configuration: Sysora's own texts are still translated.
+        }
     }
 
     /// <summary>Returns true when another instance is already running and was asked to show itself.</summary>

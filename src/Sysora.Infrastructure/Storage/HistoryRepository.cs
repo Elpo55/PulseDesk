@@ -9,6 +9,7 @@ using Sysora.Core.Gaming;
 using Sysora.Core.History;
 using Sysora.Core.Interfaces;
 using Sysora.Core.Troubleshooting;
+using Sysora.Localization;
 
 namespace Sysora.Infrastructure.Storage;
 
@@ -29,7 +30,7 @@ public sealed class HistoryRepository : IHistoryRepository, IAsyncDisposable, ID
     private const string ChangeDocument = "change";
     private const string GameDocument = "game";
     private const string TroubleshootingDocument = "troubleshooting";
-    private const string InMemoryLocation = "In memory (demo mode: nothing is written to disk)";
+    private static string InMemoryLocation => Strings.History_InMemory;
 
     /// <summary>Hourly roll-ups wait this long after the hour, so late writes (shutdown flush) are included.</summary>
     private static readonly TimeSpan RollupDelay = TimeSpan.FromMinutes(5);

@@ -319,10 +319,8 @@
                                 Grid.Column="1"
                                 VerticalAlignment="Center"
                                 AutomationProperties.Name="{x:Bind l:UiStrings.Dashboard_SortTopApplicationsBy}"
-                                SelectedIndex="{x:Bind ViewModel.TopSortIndex, Mode=TwoWay}">
-                                <x:String>By CPU</x:String>
-                                <x:String>By memory</x:String>
-                            </ComboBox>
+                                ItemsSource="{x:Bind ViewModel.TopSortOptions}"
+                                SelectedIndex="{x:Bind ViewModel.TopSortIndex, Mode=TwoWay}" />
                         </Grid>
                         <ItemsControl Grid.Row="1" ItemsSource="{x:Bind ViewModel.TopProcesses}">
                             <ItemsControl.ItemTemplate>
