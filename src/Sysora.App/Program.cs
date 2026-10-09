@@ -21,7 +21,7 @@ public static partial class Program
     {
         WinRT.ComWrappersSupport.InitializeComWrappers();
         var options = StartupOptions.Parse(args);
-        ApplyLanguage();
+        ApplyLanguage(options.Language);
 
         if (RedirectToRunningInstance(options))
         {
@@ -42,13 +42,14 @@ public static partial class Program
     /// Applies the interface language chosen in Settings (or the Windows language) before any window, service or text is
     /// created, so everything Sysora produces during this run is in that language. Never throws.
     /// </summary>
-    private static void ApplyLanguage()
+    /// <param name="overrideLanguage">The language asked on the command line for this run, if any.</param>
+    private static void ApplyLanguage(string? overrideLanguage)
     {
-        string? preference = null;
+        string? preference = overrideLanguage;
         try
         {
             var file = new SysoraPaths().SettingsFile;
-            if (File.Exists(file) && SettingsSerializer.TryDeserialize(File.ReadAllText(file), out var settings, out _))
+            if (preference is null && File.Exists(file) && SettingsSerializer.TryDeserialize(File.ReadAllText(file), out var settings, out _))
             {
                 preference = settings.General.Language;
             }

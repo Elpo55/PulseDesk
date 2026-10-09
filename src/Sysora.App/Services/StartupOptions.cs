@@ -5,9 +5,11 @@ namespace Sysora.App.Services;
 /// <param name="LaunchedAtSignIn"><c>--startup</c>: started by Windows at sign-in; honors "Start minimized" / "Start in tray".</param>
 /// <param name="StartInTray"><c>--tray</c>: start hidden in the notification area.</param>
 /// <param name="InitialPage"><c>--page=Name</c>: open on a given page (development and screenshots).</param>
-public sealed record StartupOptions(bool DemoMode, bool LaunchedAtSignIn, bool StartInTray, AppPage InitialPage = AppPage.Dashboard)
+/// <param name="Language"><c>--language=fr</c>: interface language for this run only, without changing the setting.</param>
+public sealed record StartupOptions(bool DemoMode, bool LaunchedAtSignIn, bool StartInTray, AppPage InitialPage = AppPage.Dashboard, string? Language = null)
 {
     private const string PagePrefix = "--page=";
+    private const string LanguagePrefix = "--language=";
 
     public static StartupOptions Parse(IEnumerable<string> args)
     {
@@ -28,6 +30,7 @@ public sealed record StartupOptions(bool DemoMode, bool LaunchedAtSignIn, bool S
             DemoMode: set.Contains("--demo"),
             LaunchedAtSignIn: set.Contains(Infrastructure.SystemInfo.RunKeyStartupRegistration.StartupArgument),
             StartInTray: set.Contains("--tray"),
-            InitialPage: page);
+            InitialPage: page,
+            Language: list.FirstOrDefault(a => a.StartsWith(LanguagePrefix, StringComparison.OrdinalIgnoreCase))?[LanguagePrefix.Length..]);
     }
 }
