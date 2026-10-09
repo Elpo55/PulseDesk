@@ -34,7 +34,8 @@ In Visual Studio, open `Sysora.slnx`, set **Sysora.App** as the startup project 
 
 Demo mode uses its own single-instance key, so it can run next to a normal instance. Its history is kept in
 memory only: simulated data never reaches the real history database, and Large files scans a made-up folder tree
-instead of the real disk.
+instead of the real disk. It starts from your settings, but changes made during a demo (including "Start with
+Windows") last only for that session.
 
 ### Local data
 
@@ -54,7 +55,7 @@ dotnet publish src/Sysora.App -c Release -r win-x64 --self-contained -o artifact
 ```
 
 The output folder runs on any Windows 10 1809+ PC without installing .NET or the Windows App SDK.
-Use `-r win-arm64` for ARM64.
+Use `-r win-arm64` for ARM64. Release publishes are precompiled (ReadyToRun), which makes Sysora start faster.
 
 ### Installer and release
 
@@ -63,7 +64,7 @@ Use `-r win-arm64` for ARM64.
 
 ```powershell
 dotnet publish src/Sysora.App -c Release -r win-x64 --self-contained -o artifacts/publish/win-x64
-& "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" /DAppVersion=1.0.0 /DArch=x64 installer\Sysora.iss
+& "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" /DAppVersion=1.2.0 /DArch=x64 installer\Sysora.iss
 ```
 
 The installer lands in `artifacts/installer`. To publish a release, set `<Version>` in `Directory.Build.props`, add

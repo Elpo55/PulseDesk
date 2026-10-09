@@ -86,6 +86,7 @@ the UI shows "Not available". The first failure is logged in full; repeats are l
 | Advanced analyses run only when their page or the dashboard is visible, off the UI thread, with caches (recurring problems 10 min, since yesterday 30 min) | `PcHealthService`, `RecurringProblemService`, `SinceYesterdayService` |
 | Large-file scans run only on request, one at a time, cancellable, at background priority; the last result is kept in memory | `LargeFileService`, `FileSystemLargeFileScanner` |
 | A counter with no valid value for one sample (wrap-around) skips that sample instead of reporting the metric unavailable | `MetricSampleSkippedException`, `MetricsMonitor` |
+| Released builds are precompiled (ReadyToRun): the window opens sooner and code first run minutes after start costs no JIT time | `Sysora.App.csproj` |
 
 Measured on a Ryzen 9 7845HX laptop (24 logical processors), Release build: in the background
 Sysora uses about 1% of one core (0.05% of total capacity). With the window open, a page uses
@@ -241,6 +242,33 @@ flowchart LR
 - **Reports** have readable sections and a `data` element with the complete analysis (source-generated JSON). HTML reports are
   self-contained (no external resource) and print to PDF from any browser.
 
+#### PC Health score
+
+| Area | Measured | Points taken off |
+| --- | --- | --- |
+| CPU | 15-minute average | 0 below 50%, linear up to 15 at 100% |
+| Memory | 15-minute average, commit charge | 0 below 60%, linear up to 20 at 95%; 3 more when the commit charge stays above 90% |
+| Storage | Free space of fixed volumes | 16 when the Windows volume is above the critical level, 8 above the warning level (Settings › Health thresholds); 4 per other volume above critical |
+| Disk activity | 15-minute average of the busiest disk | 0 below 40%, linear up to 10 at 90% |
+| GPU | Usage (informational), dedicated video memory | 5 when video memory is 95% full (a busy GPU alone is normal while gaming) |
+| Temperatures | Only when a driver reports them | 5 at 85 °C, 10 at 95 °C |
+| Stability | Recurring problems over 7 days | 4 per recurring problem (at most 12), once 2 days of history exist |
+| Recent anomalies | Alerts raised in the last 24 hours | 2 per warning, 4 per critical (at most 10); alerts "usual for this PC" take nothing off |
+| Usual behavior | 15-minute averages vs the baseline | 3 per metric above max(P95, median + margin) (at most 6), once the baseline is ready |
+
+A score needs 2 minutes of measurements. 85 to 100 is *Good*, 70 to 84 *Fair*, 50 to 69 *Needs attention*, below 50
+*Poor*.
+
+#### Monitoring intensity
+
+| Intensity | CPU, memory, network | Processes, GPU, disks | Free space | Applications per sample (per criterion) | Alert evaluation |
+| --- | --- | --- | --- | --- | --- |
+| Minimal | ×2 | ×3 | ×4 | 3 | 10 s |
+| Balanced (default) | ×1 | ×1 | ×1 | 5 | 5 s |
+| Detailed | ×0.5 (≥ 0.5 s) | ×0.5 (≥ 1 s) | ×0.5 (≥ 5 s) | 8 | 5 s |
+
+Multipliers apply to the configured intervals; the background slowdown and the CPU budget still apply on top.
+
 ### History and storage
 
 - **Short term, in memory**: `PerformanceHistory` keeps one `MetricSnapshot` per CPU sample in a ring buffer sized
@@ -308,13 +336,33 @@ The dashboard and the other pages don't need to change to keep working.
 
 ### Planned modules
 
-The architecture leaves room for plugins or a local API (export and monitoring profiles now exist). A future integration with Windows Orchestrator ("if CPU > 90% for
-30 s, run a scenario") would consume `AlertService.AlertRaised` or `IMetricsMonitor.MetricsUpdated`, without touching
-the UI. See `IMPLEMENTATION_NOTES.md` for the limitations and next steps of the analysis modules.
+The architecture leaves room for plugins or a local API. A future integration with Windows Orchestrator ("if CPU > 90%
+for 30 s, run a scenario") would consume `AlertService.AlertRaised` or `IMetricsMonitor.MetricsUpdated`, without
+touching the UI.
 
-## Deviations from the initial folder plan
+## Limitations
 
-- `Sysora.Infrastructure/System` is named `SystemInfo`: a namespace ending in `.System` would shadow
-  the `System` namespace in every Infrastructure file.
-- Core has extra folders: `Settings`, `Formatting` and `Simulation`. Infrastructure has extra `Logging`
-  and `Settings` folders. App has a `Themes` folder.
+- **Network usage per application** is not available: Windows does not expose it without administrator-level event
+  tracing. Per-process I/O combines files, devices and network and cannot be split by disk.
+- **Temperatures** are shown only when a driver reports them; there is no documented API without a kernel driver.
+- **FPS** is never shown: Windows exposes frame rates only through administrator-level event tracing or by hooking into
+  the game.
+- **Usual behavior** needs 4 hours of history (7-day window, last 15 minutes excluded); recurring problems need 2 days.
+  Until then nothing is called "unusual" or "recurring".
+- **Long-term application history** keeps the most significant applications of each five-minute period (up to about 75):
+  figures for minor applications over days are lower bounds.
+- **Application launches** are detected from process samples (every 2 s by default): an application that ran for less
+  than one interval is not reported.
+- **Changes** do not cover drivers, services, scheduled tasks or individual files. A change is dated between two
+  snapshots (every 6 hours, plus one kept per day), except installs whose installer recorded a date.
+- **Application identity**: protected processes (system services, other users' processes when Sysora is not elevated)
+  are identified by name only, and the UI says so.
+- **Replay** keeps per-second data in memory only (it is lost when Sysora exits); longer periods use per-minute
+  averages, with applications per five minutes.
+- **Large files** reports logical sizes, as File Explorer does; compressed or sparse files may use less space on disk.
+- **Uptime**: with Fast Startup, "Shut down" does not reset the uptime counter.
+
+## Naming note
+
+`Sysora.Infrastructure/SystemInfo` is not named `System`: a namespace ending in `.System` would shadow the `System`
+namespace in every Infrastructure file.
