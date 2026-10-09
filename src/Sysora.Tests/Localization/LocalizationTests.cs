@@ -11,26 +11,42 @@ public sealed partial class LocalizationTests
 {
     private static readonly CultureInfo French = CultureInfo.GetCultureInfo("fr");
 
-    public static TheoryData<string> ResourceSets => new() { nameof(Strings), nameof(UiStrings) };
-
-    [Theory]
-    [MemberData(nameof(ResourceSets))]
-    public void EveryTextHasAFrenchTranslation(string set)
+    /// <summary>Every resource set in every language Sysora is translated into (all supported languages but English).</summary>
+    public static TheoryData<string, string> Translations
     {
-        var english = Read(Manager(set), CultureInfo.InvariantCulture);
-        var french = Read(Manager(set), French);
+        get
+        {
+            var data = new TheoryData<string, string>();
+            foreach (var language in AppLanguage.Supported.Where(l => l.Code != AppLanguage.Fallback))
+            {
+                data.Add(nameof(Strings), language.Code);
+                data.Add(nameof(UiStrings), language.Code);
+            }
 
-        var missing = english.Keys.Where(k => !french.ContainsKey(k) || string.IsNullOrWhiteSpace(french[k])).ToArray();
-        Assert.True(missing.Length == 0, $"{set}: no French text for {string.Join(", ", missing)}");
-        Assert.Empty(french.Keys.Except(english.Keys));
+            return data;
+        }
     }
 
     [Theory]
-    [MemberData(nameof(ResourceSets))]
-    public void TranslationsUseOnlyThePlaceholdersTheCodeProvides(string set)
+    [MemberData(nameof(Translations))]
+    public void EveryTextIsTranslated(string set, string language)
     {
+        var culture = CultureInfo.GetCultureInfo(language);
         var english = Read(Manager(set), CultureInfo.InvariantCulture);
-        var french = Read(Manager(set), French);
+        var translated = Read(Manager(set), culture);
+
+        var missing = english.Keys.Where(k => !translated.ContainsKey(k) || string.IsNullOrWhiteSpace(translated[k])).ToArray();
+        Assert.True(missing.Length == 0, $"{set}: no {language} text for {string.Join(", ", missing)}");
+        Assert.Empty(translated.Keys.Except(english.Keys));
+    }
+
+    [Theory]
+    [MemberData(nameof(Translations))]
+    public void TranslationsUseOnlyThePlaceholdersTheCodeProvides(string set, string language)
+    {
+        var culture = CultureInfo.GetCultureInfo(language);
+        var english = Read(Manager(set), CultureInfo.InvariantCulture);
+        var translated = Read(Manager(set), culture);
         foreach (var (key, text) in english)
         {
             var count = MaxPlaceholder(text) + 1;
@@ -38,19 +54,19 @@ public sealed partial class LocalizationTests
 
             // The code fills the English placeholders: a translation must format with the same arguments.
             _ = string.Format(CultureInfo.InvariantCulture, text, args);
-            if (french.TryGetValue(key, out var translation))
+            if (translated.TryGetValue(key, out var translation))
             {
-                Assert.True(MaxPlaceholder(translation) < count, $"{set}.{key}: the French text uses a placeholder the code does not provide.");
-                _ = string.Format(French, translation, args);
+                Assert.True(MaxPlaceholder(translation) < count, $"{set}.{key}: the {language} text uses a placeholder the code does not provide.");
+                _ = string.Format(culture, translation, args);
             }
         }
     }
 
     [Theory]
-    [MemberData(nameof(ResourceSets))]
-    public void NoTextShowsItsResourceName(string set)
+    [MemberData(nameof(Translations))]
+    public void NoTextShowsItsResourceName(string set, string language)
     {
-        foreach (var culture in new[] { CultureInfo.InvariantCulture, French })
+        foreach (var culture in new[] { CultureInfo.InvariantCulture, CultureInfo.GetCultureInfo(language) })
         {
             foreach (var (key, text) in Read(Manager(set), culture))
             {
