@@ -2,7 +2,8 @@
 
 ## Prerequisites
 
-- Windows 10 1809+ or Windows 11 (WinUI 3 and the Windows performance APIs only exist on Windows)
+- Windows 10 1809+ or Windows 11 to build and run the application (WinUI 3 and the Windows performance APIs only
+  exist on Windows). On Linux and macOS, the shared projects and the tests build and run (see below).
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0). `global.json` accepts any 10.0 feature band.
 - Optional: Visual Studio 2026 (with the *WinUI application development* workload) or VS Code with C# Dev Kit.
 
@@ -16,6 +17,7 @@ dotnet build Sysora.slnx                     # build everything (Debug)
 dotnet run --project src/Sysora.App          # run with live data
 dotnet run --project src/Sysora.App -- --demo --page=Processes
 dotnet test --project src/Sysora.Tests       # run the unit tests
+dotnet run --project src/Sysora.App -- --demo --language=fr
 ```
 
 `global.json` opts into Microsoft.Testing.Platform for `dotnet test` (required by xUnit v3 on .NET 10).
@@ -30,6 +32,7 @@ In Visual Studio, open `Sysora.slnx`, set **Sysora.App** as the startup project 
 | `--demo` | Use `SimulatedMachine` instead of the Windows providers. The title bar shows "DEMO MODE". |
 | `--tray` | Start hidden in the notification area. |
 | `--startup` | Added by the Run key: applies "Start minimized" / "Start in tray". |
+| `--language=fr` | Use a language for this run only (`en` or `fr`), without changing the setting. |
 | `--page=Name` | Open on a page (`Dashboard`, `PcHealth`, `Timeline`, `Diagnosis`, `Troubleshooting`, `Replay`, `Compare`, `AppImpact`, `Changes`, `Alerts`, `Gaming`, `Performance`, `Processes`, `Storage`, `LargeFiles`, `Network`, `System`, `Settings`). `History` opens Replay. |
 
 Demo mode uses its own single-instance key, so it can run next to a normal instance. Its history is kept in
@@ -64,7 +67,7 @@ Use `-r win-arm64` for ARM64. Release publishes are precompiled (ReadyToRun), wh
 
 ```powershell
 dotnet publish src/Sysora.App -c Release -r win-x64 --self-contained -o artifacts/publish/win-x64
-& "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" /DAppVersion=1.2.0 /DArch=x64 installer\Sysora.iss
+& "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" /DAppVersion=1.3.0 /DArch=x64 installer\Sysora.iss
 ```
 
 The installer lands in `artifacts/installer`. To publish a release, set `<Version>` in `Directory.Build.props`, add
@@ -73,8 +76,11 @@ x64 and ARM64 installers with their SHA-256 checksums and creates the GitHub rel
 
 ## Conventions
 
-- **Layers**: Core stays platform-agnostic. Windows APIs belong in Infrastructure. WinUI types belong in App.
-  View models use services and Core interfaces, never Windows APIs directly.
+- **Layers**: Core and Infrastructure stay platform-agnostic. Windows APIs belong in Infrastructure.Windows, Linux and
+  macOS APIs in `Infrastructure/Linux` and `Infrastructure/MacOS` (marked `[SupportedOSPlatform]`). WinUI types
+  belong in App. View models use services and Core interfaces, never system APIs directly.
+- **Texts**: every text shown to the user comes from `Sysora.Localization`, never from a literal in C# or XAML (a test
+  checks the XAML pages). See [Translating Sysora](#translating-sysora).
 - **No invented values**: a metric that can't be read is `null` and is displayed as "Not available"
   (`MetricFormatter.NotAvailable`). Simulated values exist only in tests and demo mode.
 - **Strong typing**: immutable `record` models, nullable for optional metrics, no `dynamic`.
@@ -95,12 +101,40 @@ x64 and ARM64 installers with their SHA-256 checksums and creates the GitHub rel
 ## Adding a metric
 
 See [architecture.md](architecture.md#adding-a-metric). Add tests for any new logic in Core. Keep
-Windows-specific parsing in small pure functions (like `GpuCounterInstance`) so they can be unit tested too.
+system-specific parsing in small pure functions (like `GpuCounterInstance` or `ProcFiles`) so they can be unit tested
+on every system.
+
+## Translating Sysora
+
+Texts are in `src/Sysora.Localization`:
+
+| File | Contents |
+| --- | --- |
+| `Strings.resx` / `Strings.fr.resx` | Texts produced by the analysis: diagnoses, alerts, events, reports, units |
+| `UiStrings.resx` / `UiStrings.fr.resx` | The interface: pages, buttons, settings, messages |
+
+- Edit a text in Visual Studio's resource editor or in any text editor (they are XML). Keep the placeholders (`{0}`,
+  `{1:N0}`...): the tests fail when a translation uses a placeholder the English text does not have.
+- A French text may reorder the placeholders, and must use French typography: a space before `: ; ? !` (it becomes
+  non-breaking automatically), « » quotes, and a decimal comma comes from the regional format, not from the text.
+- Plurals: texts used with `Text.Plural` have a singular and a plural version (`..._One` and `..._Other`). In French,
+  0 and 1 are singular.
+- To add a language: add `Strings.<code>.resx` and `UiStrings.<code>.resx` with every text, add the language to
+  `AppLanguage.Supported`, and run the tests, which check that every text is translated.
+- Run `dotnet run --project src/Sysora.App -- --demo --language=fr` to see the result without changing your settings.
+
+Texts saved in the history (events, alerts, detected changes) keep the language they were recorded in.
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` runs on every push and pull request (Windows runner):
-restore → build (Release, warnings as errors) → test.
+`.github/workflows/ci.yml` runs on every push and pull request:
+
+- **Windows**: restore → build of the whole solution (Release, warnings as errors) → every test.
+- **Ubuntu and macOS**: build of the shared projects and the tests on `net10.0` → every test. Tests of the Linux or
+  macOS adapters read the runner itself; the Windows-only tests (`src/Sysora.Tests/WindowsOnly`) are not compiled.
+
+Each job adds its totals and every failed test as annotations on the run (`.github/scripts/report-tests.ps1`).
+See [platforms.md](platforms.md) for what this does and does not prove.
 
 ## Troubleshooting
 

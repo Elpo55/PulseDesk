@@ -1,0 +1,56 @@
+name: Bug report
+description: Something does not work as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a problem. For a security problem, do not open an issue: see SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: Sysora version
+      description: Settings › About, or the installer's name.
+      placeholder: "1.3.0"
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      description: Press Win+R, type `winver`.
+      placeholder: "Windows 11 24H2 (build 26100), x64"
+    validations:
+      required: true
+  - type: dropdown
+    id: language
+    attributes:
+      label: Sysora's language
+      options:
+        - English
+        - Français
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead. Screenshots help.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open ...
+        2. Click ...
+        3. See ...
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log extract
+      description: |
+        Optional. Logs are in `%LOCALAPPDATA%\Sysora\Logs`. They can contain file paths with your user name and the names
+        of your applications: remove what you do not want to share.
+      render: text

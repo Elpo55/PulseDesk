@@ -19,25 +19,24 @@
 
 Sysora monitors your PC's performance, processes, storage, network and health in real time, and tells you what it
 means: why the PC is slow, what changed, which application weighs the most, what happened while you were away. It is a
-native WinUI 3 application: no account, no server, no telemetry, and it works offline.
+native WinUI 3 application, in English and French: no account, no server, no telemetry, and it works offline.
 
 ![Sysora dashboard](docs/images/dashboard.png)
 
 > Screenshots use demo mode (`--demo`): every value is simulated, and the app shows a "DEMO MODE" badge.
 
-## What's new in 1.2
+## What's new in 1.3
 
-- **PC Health**: a score out of 100 where every point taken off is explained, area by area.
-- **Why now?**: when something rises, when it started, from what level and what most likely caused it.
-- **Compare**: before / after any moment, today vs yesterday, a game vs the previous one.
-- **Since yesterday** and **recurring problems**: what changed since yesterday, and what keeps coming back.
-- **Timeline**: everything that happened on the PC, in order, with real timestamps.
-- **Troubleshooting mode**: record a problem for a few minutes with detailed collection, then read the report.
-- **Large files**: find what takes the most space, read-only.
-- **Reports**: export any analysis as an HTML page (prints to PDF) or JSON.
-- **Monitoring intensity** and **Sysora's own impact**, and a faster start.
+- **Sysora in French**: the interface, analyses, diagnoses, alerts and reports, with French formats. Choose the language
+  in Settings (Windows language, English or Français).
+- **Games installed with a launcher**: games installed with Steam, Epic Games, Riot Client or GOG Galaxy are found from
+  the launchers' own files on your PC, offline, and followed automatically. Confirm them or ignore them in Settings.
+- **Add a game**: pick any game's program with the Windows file picker, even when it is not running.
+- **Ready for other systems**: the shared code now builds and is tested on Windows, Linux and macOS. There is no Linux
+  or macOS application yet; see [platforms](docs/platforms.md).
 
-Full details in the [release notes](docs/release-notes/v1.2.0.md).
+Full details in the [release notes](docs/release-notes/v1.3.0.md). Earlier versions:
+[1.2](docs/release-notes/v1.2.0.md), [1.1](docs/release-notes/v1.1.0.md).
 
 ## Features
 
@@ -81,10 +80,13 @@ Full details in the [release notes](docs/release-notes/v1.2.0.md).
 
 ### Gaming
 
-- **Game recaps**: games are detected automatically when Windows or a game library (Steam, Epic, Xbox, GOG...) knows
-  them, and you can mark or unmark any application. When the game closes, a recap shows averages and peaks (CPU, GPU,
-  video memory, RAM, disk, network, the game's own usage), the limits reached, the likely limiting factor, the busiest
-  background applications and a comparison with your previous sessions.
+- **Game detection**: games are followed automatically when Windows recognizes them, when Steam, Epic Games, Riot
+  Client or GOG Galaxy reports them as installed (read from the launchers' files on your PC, offline, never changed), or
+  when they are installed in a game library folder. Confirm or ignore each launcher game, add any other game by choosing
+  its program, and mark any application as not a game.
+- **Game recaps**: when the game closes, a recap shows averages and peaks (CPU, GPU, video memory, RAM, disk, network,
+  the game's own usage), the limits reached, the likely limiting factor, the busiest background applications and a
+  comparison with your previous sessions.
 - **FPS is never estimated**: Windows offers no reliable source, so it is shown as "Not available".
 - **Out of the way**: while a game is in front, Sysora pauses its own window updates and samples less often.
 
@@ -110,6 +112,7 @@ Full details in the [release notes](docs/release-notes/v1.2.0.md).
 - **Notification area**: close to the tray, pause and resume, start with Windows; pending history is saved before the
   PC sleeps and every value is refreshed when it wakes up
 - **Light, dark and system themes** with the Windows 11 look (Mica, Fluent controls)
+- **English and French**, with dates and numbers in your Windows regional format
 - **No account, no telemetry**: nothing is ever uploaded
 
 ## Screenshots
@@ -122,6 +125,8 @@ Full details in the [release notes](docs/release-notes/v1.2.0.md).
 | **Timeline**: what happened, in order | **Replay**: the last minutes or hours, second by second |
 | ![App Impact](docs/images/app-impact.png) | ![Performance](docs/images/performance.png) |
 | **App Impact**: which applications weigh the most | **Performance**: real-time charts and details |
+| ![Dashboard in French](docs/images/dashboard-fr.png) | ![Games found in the launchers](docs/images/settings-games.png) |
+| **En français**: the whole application, with French formats | **Games**: found in Steam, Epic Games, Riot Client and GOG Galaxy |
 
 ## Privacy
 
@@ -161,6 +166,13 @@ The installer is not code-signed yet: if SmartScreen shows "Windows protected yo
 - To build: the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
   Visual Studio is optional. Everything else (Windows App SDK, WinUI 3) comes from NuGet.
 
+## Linux and macOS
+
+Sysora is a Windows application: **there is no Linux or macOS version yet**. The shared code (analysis, history,
+settings, translations) and the first Linux and macOS data sources are built and tested on those systems by CI, as the
+groundwork for a future version. [docs/platforms.md](docs/platforms.md) lists, feature by feature, what works on each
+system and how it was checked.
+
 ## Build
 
 ```powershell
@@ -182,6 +194,7 @@ needed. Useful options:
 | --- | --- |
 | `--demo` | Simulated metrics (clearly labeled), for UI work and screenshots; settings changes last only for the session |
 | `--tray` | Start hidden in the notification area |
+| `--language=fr` | Use a language for this run only (`en` or `fr`), without changing the setting |
 | `--page=Processes` | Open on a given page (`Dashboard`, `PcHealth`, `Timeline`, `Diagnosis`, `Troubleshooting`, `Replay`, `Compare`, `AppImpact`, `Changes`, `Alerts`, `Gaming`, `Performance`, `Processes`, `Storage`, `LargeFiles`, `Network`, `System`, `Settings`) |
 
 Pass them after `--` with `dotnet run`, for example `dotnet run --project src/Sysora.App -- --demo`.
@@ -195,26 +208,30 @@ dotnet test --project src/Sysora.Tests
 The unit tests cover the Core logic (ring buffers, history, formatting, trends, thresholds, anomaly detection, health,
 settings serialization, the monitoring loop, diagnosis, alerts, app impact, change detection, replay, PC Health, why
 now, comparisons, since yesterday, recurring problems, timeline, troubleshooting, monitoring intensity, Sysora's own
-impact, insights, large-file scans, reports and demo mode), the SQLite history (in memory and on disk, including schema
-upgrades) and the pure parsing helpers of the Windows layer. They use simulated data, a fixed culture and fake clocks,
-and never depend on the machine's hardware.
+impact, insights, large-file scans, reports, games and launcher files, translations and demo mode), the SQLite history
+(in memory and on disk, including schema upgrades) and the parsing helpers of the Windows, Linux and macOS layers. They
+use simulated data, a fixed culture and fake clocks, and never depend on the machine's hardware. CI runs them on
+Windows, Ubuntu and macOS.
 
 ## Project structure
 
 ```
 src/
-  Sysora.App/             WinUI 3 application: views, view models, controls, UI services
-  Sysora.Core/            Models, interfaces, monitoring loop, health, history, analysis, diagnosis,
-                          alerts, change detection, settings (no Windows dependency)
-  Sysora.Infrastructure/  Windows implementations: performance counters, native APIs, registry, files,
-                          local SQLite history
-  Sysora.Tests/           Unit tests
-docs/                     Architecture and development guides, release notes
-installer/                Inno Setup script of the Windows installer
+  Sysora.App/                     WinUI 3 application: views, view models, controls, UI services
+  Sysora.Core/                    Models, interfaces, monitoring loop, health, history, analysis, diagnosis,
+                                  alerts, change detection, games, settings (any system)
+  Sysora.Localization/            English and French texts, language selection (any system)
+  Sysora.Infrastructure/          Settings file, SQLite history, logs, large-file scan (any system);
+                                  Linux and macOS adapters
+  Sysora.Infrastructure.Windows/  Windows adapters: performance counters, native APIs, registry, games
+  Sysora.Tests/                   Unit tests
+docs/                             Architecture, development and platform guides, release notes
+installer/                        Inno Setup script of the Windows installer
 ```
 
-Read [docs/architecture.md](docs/architecture.md) for the design and [docs/development.md](docs/development.md)
-to contribute.
+Read [docs/architecture.md](docs/architecture.md) for the design, [docs/development.md](docs/development.md) for
+the commands and conventions, and [CONTRIBUTING.md](CONTRIBUTING.md) to contribute. Corrections to the French texts
+and new translations are welcome.
 
 ## Roadmap
 
@@ -223,7 +240,9 @@ to contribute.
 2. Per-process network usage (optional, administrator-level event tracing), change detection for drivers, services
    and scheduled tasks
 3. Alerts for a specific application, and alert snoozing
-4. An optional local API (for example for Windows Orchestrator)
+4. Processes, disk activity and network on Linux and macOS, then an interface for those systems
+   ([evaluation](docs/platforms.md#a-linux-and-macos-interface))
+5. An optional local API (for example for Windows Orchestrator)
 
 ## License
 

@@ -1,27 +1,38 @@
 # Architecture
 
-Sysora is split into three projects with a strict dependency rule, plus tests.
+Sysora is split into five projects with a strict dependency rule, plus tests.
 
 ```mermaid
 flowchart TB
     App["Sysora.App<br/>WinUI 3 · views · view models · UI services"]
-    Core["Sysora.Core<br/>models · interfaces · monitoring · history · analysis · diagnosis · alerts · changes · settings"]
-    Infra["Sysora.Infrastructure<br/>Windows implementations · SQLite history"]
+    Win["Sysora.Infrastructure.Windows<br/>Windows adapters: counters · native APIs · registry · games"]
+    Infra["Sysora.Infrastructure<br/>settings file · SQLite history · logs · large files · Linux and macOS adapters"]
+    Core["Sysora.Core<br/>models · interfaces · monitoring · history · analysis · diagnosis · alerts · changes · games · settings"]
+    Loc["Sysora.Localization<br/>English and French texts · language · plurals"]
     Tests["Sysora.Tests"]
-    App --> Core
+    App --> Win
     App --> Infra
+    App --> Core
+    Win --> Infra
     Infra --> Core
-    Tests --> Core
+    Core --> Loc
     Tests --> Infra
+    Tests -. on Windows .-> Win
 ```
 
 - **Core** depends on nothing Windows-specific (it targets plain `net10.0`): no WinUI, no P/Invoke, no registry.
   It defines the interfaces (`ICpuMetricProvider`, `IMetricsMonitor`, `IProcessManager`...) and contains
   all logic that can be tested without hardware.
-- **Infrastructure** implements the Core interfaces with Windows APIs. It never references WinUI.
-- **App** is the only place that knows both. `Services/AppHost.cs` is the composition root: the single
+- **Localization** holds every text shown to the user, in English and French (see [Languages](#languages)).
+- **Infrastructure** targets plain `net10.0` too: what works on every system (settings file, SQLite history, logs,
+  large-file scan, data folders) and the first Linux and macOS adapters. It never references WinUI.
+- **Infrastructure.Windows** implements the Core interfaces with Windows APIs. Its types keep the
+  `Sysora.Infrastructure.*` namespaces of the layer they extend.
+- **App** is the only place that knows them all. `Services/AppHost.cs` is the composition root: the single
   place that decides which implementation backs each interface (Windows providers normally, simulated
   ones with `--demo`).
+
+What runs on which system, and how it was checked, is in [platforms.md](platforms.md).
 
 The UI never reads system counters itself:
 
@@ -118,6 +129,10 @@ Sysora uses about 1% of one core (0.05% of total capacity). With the window open
 | Per-application network | — | Not available: requires administrator-level event tracing |
 | GPU usage per process (games) | PDH `\GPU Engine(*)\Utilization Percentage` (instance names carry `pid_N`) | Busiest engine per process, like Task Manager |
 | Games recognized by Windows | `HKCU\System\GameConfigStore\Children\*\MatchedExeFullPath` | Game Bar's list for the user; read-only |
+| Games installed with Steam | `HKCU\Software\Valve\Steam\SteamPath`, `steamapps\libraryfolders.vdf`, `appmanifest_*.acf` | Every library folder; fully installed apps only; tools (Proton, runtimes, redistributables) excluded |
+| Games installed with Epic Games | `%ProgramData%\Epic\EpicGamesLauncher\Data\Manifests\*.item` | Applications in the "games" category whose installation is complete |
+| Games installed with Riot Client | `%ProgramData%\Riot Games\Metadata\*\*.product_settings.yaml` | VALORANT, League of Legends, Teamfight Tactics, Legends of Runeterra, 2XKO; the Riot Client itself excluded |
+| Games installed with GOG Galaxy | `HKLM\SOFTWARE\WOW6432Node\GOG.com\Games\*` (`gameName`, `path`) | Read-only |
 | Frame rate (FPS) | — | Not available: requires administrator-level event tracing or hooking into the game |
 | Sleep and resume | `PowerRegisterSuspendResumeNotification` | Pending history written before sleep; all metrics refreshed on resume |
 | Free space over time (Windows volume) | `GetDiskFreeSpaceEx`, kept in the per-minute history | Used by Compare; history written by earlier versions has no value (shown as not available) |
@@ -289,6 +304,44 @@ Multipliers apply to the configured intervals; the background slowdown and the C
   and add the rule to `AlertEngine.CreateDefaultRules` (and its thresholds to `SmartAlertSettings`).
 - **A change type**: add it to `ChangeType` and to `BaselineComparer` with a deterministic `ChangeId`.
 
+## Games
+
+`GameClassifier` decides whether a running program is a game, in this order: the user's "not a game" list, the user's
+games, Windows system folders (never games), games the user confirmed, games a launcher reports as installed (unless
+the user ignored them), games Windows recognizes (Game Bar), then executables inside a game library folder. Launcher
+helpers, anti-cheat programs and crash reporters are never games.
+
+`LauncherGameScanner` (Core, pure) reads the launchers' own files from the folders `LauncherLocations` lists: only
+folders that exist, never a whole drive, never the network, never a write. A game whose folder no longer exists is left
+out. The resulting `InstalledGameIndex` matches a running program to its game by install folder. `WindowsGameLibrary`
+finds the folders on Windows (registry and `%ProgramData%`); `UnixLauncherLocations` lists them for Linux and macOS.
+The scan runs when game sessions start, every 30 minutes and on "Look again" in Settings.
+
+The user's choices are kept in `GamingSettings`: games added by hand (`AddedGames`, by program path), programs that
+are not games (`ExcludedGames`), launcher games ignored (`IgnoredLauncherGames`, by launcher key such as `Steam:730`)
+and launcher games confirmed (`ConfirmedGames`, kept with their name and folder so they are still followed if the
+launcher is uninstalled). A program the user picks with "Add a game..." is checked by `GameExecutable.Check` (a
+program file, that exists, outside the Windows folder) and is never started.
+
+## Languages
+
+Every text shown to the user lives in `Sysora.Localization`: `Strings.resx` (texts produced by Core and Infrastructure:
+analyses, diagnoses, alerts, events, reports) and `UiStrings.resx` (the interface), each with a `.fr.resx` French
+version. The generated classes are used from C# (`Strings.Diagnosis_...`) and from XAML (`{x:Bind l:UiStrings....}`);
+they are in their own project because the XAML compiler runs before resources of the App project are generated.
+
+- `AppLanguage` picks the language: the setting (`GeneralSettings.Language`, empty for "Windows language"), else the
+  Windows display language when it is supported, else English. `Program.Main` applies it before anything else, for
+  the whole process; changing it in Settings offers to restart Sysora.
+- `Text.Format` and `Text.Plural` format texts with the current culture; French plural rules (0 and 1 are singular)
+  and French typography (a non-breaking space before `: ; ? !` and inside « ») are applied by the texts themselves.
+- Dates and numbers follow the Windows regional format (`CurrentCulture`), not the display language.
+- Missing translations fall back to English, and tests check that both languages define the same texts with the same
+  placeholders.
+- Texts already saved in the history (events, alerts, detected changes) stay in the language they were recorded in.
+  Logic never reads translated text back: identities are stored separately (`Alert.AppName`, application keys,
+  language-neutral change IDs).
+
 ## Settings
 
 `AppSettings` is an immutable record tree serialized with source-generated `System.Text.Json`
@@ -364,5 +417,5 @@ touching the UI.
 
 ## Naming note
 
-`Sysora.Infrastructure/SystemInfo` is not named `System`: a namespace ending in `.System` would shadow the `System`
-namespace in every Infrastructure file.
+The `SystemInfo` folders are not named `System`: a namespace ending in `.System` would shadow the `System`
+namespace in every Infrastructure file. For the same reason the Windows-only tests are in `WindowsOnly`, not `Windows`.

@@ -1,0 +1,28 @@
+name: Feature request
+description: An idea to make Sysora more useful
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like to understand or do?
+      description: Describe the situation and the question you want Sysora to answer, rather than a solution.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea
+      description: How you imagine it could work, if you have an idea.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you do today
+      description: Other tools or workarounds you use for this.
+  - type: checkboxes
+    id: principles
+    attributes:
+      label: Sysora's principles
+      options:
+        - label: I understand that Sysora stays local (no account, no server, no telemetry) and never shows an estimated value as a measurement.
+          required: true
