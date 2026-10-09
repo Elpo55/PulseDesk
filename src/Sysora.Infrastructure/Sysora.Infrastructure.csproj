@@ -1,13 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Sysora.Infrastructure: Windows implementations of the Core interfaces
-    (performance counters, native APIs, registry, file system).
+    Sysora.Infrastructure: implementations of the Core interfaces that work on every operating system
+    (settings file, SQLite history, log files, large-file scan, data folders) and the Linux and macOS adapters.
+    The Windows adapters are in Sysora.Infrastructure.Windows.
   -->
   <PropertyGroup>
-    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
-    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
-    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>Sysora.Infrastructure</RootNamespace>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
@@ -22,6 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Sysora.Infrastructure.Windows" />
     <InternalsVisibleTo Include="Sysora.Tests" />
   </ItemGroup>
 

@@ -3,9 +3,14 @@
   <!--
     Unit tests. They never depend on the real hardware: Core logic is tested with simulated data,
     and Infrastructure is only tested through its pure parsing/normalization helpers.
+    On Windows they also cover the Windows adapters (WindowsOnly folder); on Linux and macOS
+    they run on plain .NET without them.
   -->
   <PropertyGroup>
-    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <SysoraWindowsTests Condition="$([MSBuild]::IsOSPlatform('Windows'))">true</SysoraWindowsTests>
+    <TargetFramework Condition="'$(SysoraWindowsTests)' == 'true'">net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetFramework Condition="'$(SysoraWindowsTests)' != 'true'">net10.0</TargetFramework>
+    <DefineConstants Condition="'$(SysoraWindowsTests)' == 'true'">$(DefineConstants);SYSORA_WINDOWS</DefineConstants>
     <RootNamespace>Sysora.Tests</RootNamespace>
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
@@ -20,6 +25,14 @@
   <ItemGroup>
     <ProjectReference Include="..\Sysora.Core\Sysora.Core.csproj" />
     <ProjectReference Include="..\Sysora.Infrastructure\Sysora.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(SysoraWindowsTests)' == 'true'">
+    <ProjectReference Include="..\Sysora.Infrastructure.Windows\Sysora.Infrastructure.Windows.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(SysoraWindowsTests)' != 'true'">
+    <Compile Remove="WindowsOnly/**" />
   </ItemGroup>
 
   <ItemGroup>

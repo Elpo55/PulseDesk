@@ -10,7 +10,7 @@ namespace Sysora.Infrastructure.Storage;
 /// Lists a folder with <see cref="FileSystemEnumerable{TResult}"/>: names, sizes, dates and attributes come from the
 /// directory listing itself, so no file is ever opened. Access errors are thrown (not hidden) so the scan can report them.
 /// </summary>
-public sealed class WindowsDirectoryReader : IDirectoryReader
+public sealed class FileSystemDirectoryReader : IDirectoryReader
 {
     private static readonly EnumerationOptions Options = new()
     {
@@ -38,7 +38,7 @@ public sealed class WindowsDirectoryReader : IDirectoryReader
 }
 
 /// <summary>
-/// Runs large-file scans on a dedicated thread in Windows' background processing mode (lower CPU and I/O priority), so a
+/// Runs large-file scans on a dedicated low-priority thread (on Windows, in background processing mode: lower CPU and I/O priority), so a
 /// scan of a whole disk does not slow the PC down. Skips the folders whose size would be misleading or that cannot be read.
 /// </summary>
 public sealed partial class FileSystemLargeFileScanner(ILogger<FileSystemLargeFileScanner> logger, IDirectoryReader? reader = null) : ILargeFileScanner
@@ -46,7 +46,7 @@ public sealed partial class FileSystemLargeFileScanner(ILogger<FileSystemLargeFi
     private const int ThreadModeBackgroundBegin = 0x00010000;
     private const int ThreadModeBackgroundEnd = 0x00020000;
 
-    private readonly IDirectoryReader _reader = reader ?? new WindowsDirectoryReader();
+    private readonly IDirectoryReader _reader = reader ?? new FileSystemDirectoryReader();
 
     /// <summary>Folders not scanned by default, for each volume root being scanned.</summary>
     public static IReadOnlyList<LargeFileExclusion> DefaultExclusions(IEnumerable<string> roots)
@@ -72,7 +72,7 @@ public sealed partial class FileSystemLargeFileScanner(ILogger<FileSystemLargeFi
         var completion = new TaskCompletionSource<LargeFileScanResult>(TaskCreationOptions.RunContinuationsAsynchronously);
         var thread = new Thread(() =>
         {
-            var background = SetThreadPriority(GetCurrentThread(), ThreadModeBackgroundBegin);
+            var background = OperatingSystem.IsWindows() && SetThreadPriority(GetCurrentThread(), ThreadModeBackgroundBegin);
             try
             {
                 completion.TrySetResult(new LargeFileScanEngine(_reader).Scan(request, progress, cancellationToken));

@@ -4,7 +4,7 @@ using Sysora.Infrastructure.Performance;
 using Sysora.Infrastructure.SystemInfo;
 using Sysora.Infrastructure.Windows;
 
-namespace Sysora.Tests.Services;
+namespace Sysora.Tests.WindowsOnly;
 
 /// <summary>Pure parsing and normalization helpers of the Windows layer (no hardware involved).</summary>
 public sealed class InfrastructureParsingTests

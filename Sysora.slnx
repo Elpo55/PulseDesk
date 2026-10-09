@@ -17,6 +17,7 @@
     <Project Path="src/Sysora.App/Sysora.App.csproj" />
     <Project Path="src/Sysora.Core/Sysora.Core.csproj" />
     <Project Path="src/Sysora.Infrastructure/Sysora.Infrastructure.csproj" />
+    <Project Path="src/Sysora.Infrastructure.Windows/Sysora.Infrastructure.Windows.csproj" />
     <Project Path="src/Sysora.Localization/Sysora.Localization.csproj" />
     <Project Path="src/Sysora.Tests/Sysora.Tests.csproj" />
   </Folder>

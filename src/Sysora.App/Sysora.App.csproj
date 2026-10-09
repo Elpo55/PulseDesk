@@ -49,6 +49,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Sysora.Core\Sysora.Core.csproj" />
     <ProjectReference Include="..\Sysora.Infrastructure\Sysora.Infrastructure.csproj" />
+    <ProjectReference Include="..\Sysora.Infrastructure.Windows\Sysora.Infrastructure.Windows.csproj" />
   </ItemGroup>
 
   <ItemGroup>

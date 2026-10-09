@@ -8,8 +8,9 @@ permissions:
   contents: read
 
 jobs:
-  build-and-test:
-    # WinUI 3 and the Windows performance APIs require a Windows runner.
+  windows:
+    name: Windows (app and tests)
+    # The WinUI 3 interface and the Windows adapters require a Windows runner.
     runs-on: windows-latest
 
     steps:
@@ -28,4 +29,40 @@ jobs:
         run: dotnet build Sysora.slnx --configuration Release --no-restore
 
       - name: Test
-        run: dotnet test --project src/Sysora.Tests --configuration Release --no-build
+        run: dotnet test --project src/Sysora.Tests --configuration Release --no-build --report-xunit-ctrf --report-xunit-ctrf-filename results.ctrf.json --results-directory TestResults
+
+      - name: Report test results
+        if: always()
+        shell: pwsh
+        run: ./.github/scripts/report-tests.ps1 -ResultsFolder TestResults -Platform Windows
+
+  portable:
+    name: ${{ matrix.platform }} (shared code and tests)
+    # Sysora has no interface on Linux or macOS yet: these jobs build the shared projects (Core, Localization,
+    # Infrastructure) and run the tests, including the Linux or macOS adapters against the runner itself.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: Linux
+          - os: macos-latest
+            platform: macOS
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build and test
+        run: dotnet test --project src/Sysora.Tests --configuration Release --report-xunit-ctrf --report-xunit-ctrf-filename results.ctrf.json --results-directory TestResults
+
+      - name: Report test results
+        if: always()
+        shell: pwsh
+        run: ./.github/scripts/report-tests.ps1 -ResultsFolder TestResults -Platform ${{ matrix.platform }}
