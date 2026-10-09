@@ -21,6 +21,7 @@ public sealed class AppStartDetectionTests
     [Fact]
     public void NewApplication_IsReportedOnceConfirmed_AtTheTimeItWasFirstSeen()
     {
+        Requires.WindowsPaths();
         var detector = new SystemEventDetector();
         Detect(detector, T0, App("explorer2.exe", started: T0.AddHours(-1)));
 

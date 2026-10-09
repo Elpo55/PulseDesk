@@ -24,7 +24,14 @@ foreach ($report in $reports) {
     $summary = $results.summary
     Write-Output "::notice title=$(Escape-Property "Tests on $Platform")::$($summary.passed) passed, $($summary.failed) failed, $($summary.skipped) skipped ($($summary.tests) in total)."
 
-    foreach ($test in @($results.tests | Where-Object { $_.status -eq 'failed' })) {
+    # GitHub shows at most 10 errors per step: list every failed test in the first one, then detail the first 9.
+    $failed = @($results.tests | Where-Object { $_.status -eq 'failed' })
+    if ($failed.Count -gt 0) {
+        $names = ($failed | ForEach-Object { $_.name }) -join "`n"
+        Write-Output "::error title=$(Escape-Property "$($failed.Count) failed tests on $Platform")::$(Escape-Data $names)"
+    }
+
+    foreach ($test in @($failed | Select-Object -First 9)) {
         $message = "$($test.message)"
         if ($test.trace) {
             $message += "`n" + (($test.trace -split "`n" | Select-Object -First 6) -join "`n")

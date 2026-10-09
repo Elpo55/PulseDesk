@@ -24,6 +24,7 @@ public partial class App : Application
     private ILogger<App>? _logger;
     private bool _exiting;
     private bool _restart;
+    private string? _restartLanguage;
 
     public App(StartupOptions options)
     {
@@ -57,6 +58,7 @@ public partial class App : Application
             _host.Services.GetRequiredService<SettingsViewModel>().RestartRequested = () => _dispatcher.TryEnqueue(async () =>
             {
                 _restart = true;
+                _restartLanguage = _host.Services.GetRequiredService<SettingsService>().Current.General.Language;
                 await ExitAsync();
             });
             _shell.Start();
@@ -114,7 +116,9 @@ public partial class App : Application
                 var start = new ProcessStartInfo(path) { UseShellExecute = false };
                 if (_options.DemoMode)
                 {
+                    // Demo mode never saves settings: the new instance gets the chosen language on its command line.
                     start.ArgumentList.Add("--demo");
+                    start.ArgumentList.Add("--language=" + _restartLanguage);
                 }
 
                 start.ArgumentList.Add("--page=Settings");

@@ -81,6 +81,7 @@ public sealed class RenameMigrationTests : IDisposable
     [Fact]
     public void LockedPreviousFolder_IsUsedForTheSession()
     {
+        Requires.WindowsFileLocking();
         WriteLegacy("history.db", "db");
         var paths = new SysoraPaths(Current, Legacy);
 

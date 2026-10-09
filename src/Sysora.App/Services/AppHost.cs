@@ -229,6 +229,12 @@ public sealed class AppHost : IAsyncDisposable
     {
         var settings = _services.GetRequiredService<SettingsService>();
         await settings.LoadAsync(CancellationToken.None);
+        if (Options.DemoMode && Options.Language is { } language)
+        {
+            // Demo settings are never saved: the language it was started in is the one Settings shows.
+            settings.Update(s => s with { General = s.General with { Language = language } });
+        }
+
         ApplyLogLevel(settings.Current.Diagnostics.LogLevel);
         settings.Changed += (_, e) => ApplyLogLevel(e.Current.Diagnostics.LogLevel);
 

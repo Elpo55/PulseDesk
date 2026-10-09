@@ -67,6 +67,7 @@ public sealed class RecurringProblemsTests
     [Fact]
     public void FrequentEveningEpisodes_HaveHighConfidence_AndATimePattern_AndAnAssociatedApplication()
     {
+        Requires.WindowsPaths();
         var alerts = new List<Alert>();
         var events = new List<SystemEvent>();
         for (var day = 1; day <= 5; day++)
@@ -94,6 +95,7 @@ public sealed class RecurringProblemsTests
     [Fact]
     public void ApplicationAlerts_AreGroupedPerApplication()
     {
+        Requires.WindowsPaths();
         var alerts = new List<Alert>();
         for (var day = 1; day <= 3; day++)
         {

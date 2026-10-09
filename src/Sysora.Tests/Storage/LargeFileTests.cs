@@ -14,6 +14,7 @@ public sealed class LargeFileTests
     [Fact]
     public void Scan_ListsTheLargestFilesFirst_WithTheirGroups()
     {
+        Requires.WindowsPaths();
         var reader = new FakeReader
         {
             [@"D:\"] = [Dir(@"D:\Videos"), Dir(@"D:\Downloads"), File(@"D:\small.txt", 10)],
@@ -57,6 +58,7 @@ public sealed class LargeFileTests
     [Fact]
     public void HugeFiles_AreHandledWithoutOverflow()
     {
+        Requires.WindowsPaths();
         var reader = new FakeReader { [@"E:\"] = [File(@"E:\disk1.vhdx", 3L * 1024 * GB), File(@"E:\disk2.vhdx", 4L * 1024 * GB)] };
 
         var result = new LargeFileScanEngine(reader).Scan(new LargeFileScanRequest([@"E:\"]), null, TestContext.Current.CancellationToken);
@@ -111,6 +113,7 @@ public sealed class LargeFileTests
     [Fact]
     public void CancelledScan_ReturnsPartialResults_AndSaysSo()
     {
+        Requires.WindowsPaths();
         using var cancellation = new CancellationTokenSource();
         var reader = new FakeReader
         {
@@ -214,6 +217,7 @@ public sealed class LargeFileTests
     [Fact]
     public async Task DemoScanner_NeverReadsTheRealDisk()
     {
+        Requires.WindowsPaths();
         var result = await new SimulatedLargeFileScanner().ScanAsync(new LargeFileScanRequest([@"Z:\"]), null, TestContext.Current.CancellationToken);
 
         Assert.Equal("GameArchive.zip", result.Files[0].Name);
@@ -224,6 +228,7 @@ public sealed class LargeFileTests
     [Fact]
     public void DefaultExclusions_CoverTheComponentStoreOfTheWindowsVolume()
     {
+        Requires.WindowsPaths();
         var windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
         var root = Path.GetPathRoot(windows)!;
 

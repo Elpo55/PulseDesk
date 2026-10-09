@@ -100,6 +100,7 @@ public sealed class GameClassifierTests
     [InlineData(@"D:\GAMES\Forza Horizon 5\ForzaHorizon5.exe", "Forza Horizon 5", "Forza Horizon 5")]
     public void DisplayName_PrefersMeaningfulNames(string path, string? product, string expected)
     {
+        Requires.WindowsPaths();
         Assert.Equal(expected, GameClassifier.DisplayName(path, product));
     }
 
@@ -111,6 +112,7 @@ public sealed class GameClassifierTests
     [InlineData(@"D:\game.exe", null)]
     public void InstallFolder_IsSpecificToTheGame(string path, string? expected)
     {
+        Requires.WindowsPaths();
         Assert.Equal(expected, GameClassifier.InstallFolder(path));
     }
 }
